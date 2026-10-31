@@ -2190,6 +2190,102 @@ voices held on the Suitcase patch (on the machine and interpreters
 ballad, funk bark comping, high glass tines melody, dark tonebar groove, fast
 auto-pan chords, and staccato damper stabs), writing `wav_exports/electric_piano_demo.wav`.
 
+## Playing the ReedPiano
+
+The ReedPiano is a ten-voice plucked-reed electric piano after a small 1960s
+and 70s model with no hammers. Each key lifts a sticky pad that rests on a
+flat steel reed; the pad pulls the reed up until it tears free, and the reed
+rings. When you let the key go, the pad lands back on the reed and damps it
+with a soft thud. An electromagnetic pickup beside the reed gives a bright,
+slightly hollow plink. A preamp with a tone control and a stereo auto-pan
+follow the voices.
+
+```python
+import vrack.adapter as adapter
+
+inst = adapter.create(48000, voice="reed_piano")      # ten voices
+audio_out.play(inst.output)
+inst.program_change(0)                                # Classic
+for note in (45, 52, 57, 60):
+    inst.note_on(note, 100)
+```
+
+### The mechanism
+
+Each voice is one key, scaled across the original's 61 keys, F1 to F6 (MIDI 29
+to 89). Any key plays; outside that range the per-key values hold their end
+values.
+
+- **The pad** (`HammerExciter` with `shape="pluck"`) pulls the reed with a
+  force that climbs and then lets go all at once, at its height: a pluck, not
+  a hammer's round push. `pad_stick` sets how long the pull takes, so a pad
+  that sticks harder lets go with a sharper snap and more high harmonics.
+  Because the reed tears free at nearly the same point however fast you press
+  the key, velocity moves the level by only about 5 dB from 32 to 127, and the
+  brightness a little.
+- **The reed** (`StruckBarCore`) rings in an `audiomodal.Bank`: its
+  fundamental, two quiet bending modes at 6.2 and 17.5 times it, and a short
+  snap at 2.8 times it that follows `pad_stick`. The fundamental rings for
+  about 7 s at F1, 5.5 s at middle C and 1 s at F6 (to -60 dB, scaled 0.3 to
+  2 times by `decay`), so a middle C falls 6 dB in about 0.4 s and the top
+  octave is short. Those times were steered toward a sampled instrument of the
+  same kind, whose notes fall about that fast from the middle up.
+- **The pickup** (`PickupCore` with `curve="electromagnetic"`) has the reed
+  resting off centre, so the tone carries a strong second harmonic beside the
+  odd ones: at middle C the second, third and fourth come out about 4, 23 and
+  21 dB under the fundamental, close to the sampled instrument's. A short
+  treble reed swings less past the pickup, so the top keys are nearly pure.
+  The level does not follow the swing: bass and treble play at the same level.
+- **The pad landing** damps a released key, 20 dB down in about 50 ms, with a
+  short low thud whose level is `pad_thud`. The original has no sustain pedal;
+  the pedal (CC 64) works here as on every vrack instrument, an addition.
+- **The preamp and auto-pan** (`ReedPianoOutput`) block the pickup's slow
+  offset below 15 Hz, tilt the tone with a low shelf at 200 Hz and a high shelf
+  at 3 kHz moved in opposite directions (12 dB either way), and pan the sound
+  between the speakers at 1.5 to 9 Hz, which stands in for the chorus or
+  phaser players usually ran this kind of piano through.
+
+### Controls and presets
+
+Every control runs from 0 to 10:
+
+- `volume` (7 fresh): master level.
+- `tone` (5 fresh): dark at 0, flat at 5, bright at 10.
+- `pad_stick` (5 fresh): a soft, round pluck at 0, a sharp snap at 10. The
+  level stays within a couple of dB.
+- `decay` (5 fresh): the reed's ring, 0.3 to 2 times the times above.
+- `pad_thud` (4 fresh): the level of the release thud.
+- `vibrato_rate` (4 fresh) and `vibrato_depth` (0 fresh): the auto-pan's
+  speed and width.
+
+The six patches: `Classic` (0), everything fresh; `Snappy` (1), `pad_stick` 8
+and `tone` 7, hard and cutting; `Soft Plucks` (2), `pad_stick` 2, `tone` 3 and
+`pad_thud` 2, mellow; `Long Ring` (3), `decay` 9; `Wide` (4), `vibrato_depth`
+6 at `vibrato_rate` 5, a stereo shimmer; `Dead Thud` (5), `decay` 2 and
+`pad_thud` 8, short, almost a percussion sound. The six macros are `tone`,
+`pad_stick`, `decay`, `pad_thud`, `vibrato_rate` and `vibrato_depth`.
+
+`inst.latency_samples` is 256 frames (5.3 ms at 48 kHz), the reed's modal bank.
+
+### What it costs
+
+`examples/poly_bench.py reed_piano` renders with all ten voices held on the
+Classic patch:
+
+| block | CPython ms | factor | MicroPython ms | factor |
+| ---: | ---: | ---: | ---: | ---: |
+| 64 | 9.4 | 2.3 | 7.2 | 3.0 |
+| 128 (the default) | 6.2 | 3.4 | 4.3 | 5.0 |
+| 256 | 4.3 | 5.0 | 2.9 | 7.4 |
+
+The milliseconds are per 1024-frame buffer (21 ms of audio), on the machine
+and interpreters of 2026-10-30.
+
+`examples/reed_piano_demo.py` plays a one-minute piece in five sections (a
+beat-group chord riff on Classic, a fast line on Snappy, a slow melody on Soft
+Plucks, held arpeggios on Wide and a rhythm of short notes on Dead Thud) and
+writes `wav_exports/reed_piano_demo.wav`.
+
 ## Playing the ReedPiano200A
 
 The ReedPiano200A is a ten-voice electric reed piano after a portable 1970s
@@ -2284,6 +2380,116 @@ the Classic patch:
 `examples/reed_piano200a_demo.py` plays a 70-second piece in six sections
 (Classic, Tremolo, Snarl, Soft Ballad, Dry Funk and Overdriven) and writes
 `wav_exports/reed_piano200a_demo.wav`.
+
+## Playing the ElectricGrand70
+
+The ElectricGrand70 is a ten-voice electric grand piano after the stage
+grands of the late 1970s: a real piano action with felt hammers and real
+strings, two to a note, on a short, stiff frame with no soundboard, read by
+piezo pickups under the bridge. It sounds like a piano made brighter, thinner
+and more percussive: a strong attack, a quick drop, a long thin ring with the
+shimmer of two strings slightly out of tune with each other, and a short,
+twangy bass. A three-band EQ and a tremolo follow the voices.
+
+```python
+import vrack.adapter as adapter
+
+inst = adapter.create(48000, voice="electric_grand70")  # ten voices
+audio_out.play(inst.output)
+inst.program_change(0)                                  # Stage Grand
+inst.control_change(64, 127)                            # sustain pedal down
+for note in (40, 52, 59, 64, 68):
+    inst.note_on(note, 100)
+```
+
+### The mechanism
+
+Each voice is one key of the original's 73, E1 to E7 (MIDI 28 to 100). Any key
+plays; outside that range the per-key values hold their end values.
+
+- **The strings** (`StruckBarCore`) ring in an `audiomodal.Bank` of 52 modes:
+  two strings of 20 partials each, and the prompt sound on the lowest 12.
+  The strings are stiff, so partial n sits at n·f·sqrt(1 + B·n²), with B at
+  0.0008 on the short bass strings, 0.0001 at middle C and 0.0002 at the top:
+  at E1 the sixth partial is about 24 cents sharp, which is the bass's twang.
+- **Two stages of decay.** A struck string first loses its up-and-down motion
+  quickly, then rings on in the other direction. The prompt sound falls away
+  in about half a second, taking 4 dB with it in the bass, 6 dB at middle C
+  and 9 dB at the top; the aftersound's fundamental rings about 14 s at E1,
+  9 s at middle C and 2 s at E7 (to -60 dB), each partial above it shorter,
+  all scaled 0.3 to 2 times by `decay`. Those times are longer than an
+  acoustic piano's figures because the sampled electric grand used as a
+  reference fades slowly in the bass.
+- **The unison.** The two strings sit half the `detune` spread either side of
+  the note (3 cents apart at middle C, 1 cent at E1, 1.5 cents at E7 on the
+  fresh setting), the second a little quieter than the first, so they beat
+  slowly through the whole ring rather than in a honky-tonk wobble.
+- **The hammer** (`HammerExciter`) strikes 1/8 of the way along the string,
+  so partials near multiples of 8 are weak. A harder blow, from velocity or
+  `brightness`, is shorter and its felt reaches higher partials: at middle C
+  the third partial is about 45 dB under the fundamental at velocity 1 and
+  12 dB under at 127. The level is a straight line in dB, about 30 dB from
+  velocity 1 to 127.
+- **The piezo pickup** lifts the partials around 2 to 4 kHz and cuts below
+  90 Hz, second order, so in the low octave the fundamental sits under the
+  second partial and the bass doesn't boom.
+- **The dampers** stop a released key in about 0.2 s, on every key but the
+  top 18 (MIDI 83 and up), which have none and ring on, as on an acoustic
+  grand. The sustain pedal (CC 64) holds them all.
+- **The preamp and tremolo** (`ElectricGrand70Output`): shelves at 150 Hz and
+  4 kHz and a peaking band at 1 kHz, each 12 dB either way, on
+  `audiobiquad.Biquad` nodes; then the volume into an output stage that
+  rounds the coincident attacks of a hard chord instead of clipping them
+  (linear in normal playing); then an amplitude tremolo at 2 to 8 Hz.
+
+### Controls and presets
+
+Every control runs from 0 to 10:
+
+- `volume` (7 fresh): master level.
+- `bass`, `middle`, `treble` (5 fresh): the EQ, -12 dB at 0, flat at 5,
+  +12 dB at 10.
+- `tremolo_rate` (5 fresh) and `tremolo_depth` (0 fresh): the tremolo's speed,
+  2 to 8 Hz, and depth; 0 is off.
+- `brightness` (5 fresh): the hammer felt, soft to hard.
+- `detune` (4 fresh): the spread between a note's two strings, pure at 0 and a
+  honky-tonk at 10 (about 12 cents at middle C).
+- `decay` (5 fresh): the strings' ring, 0.3 to 2 times the times above.
+
+`bend_range` (2 semitones fresh) is on the MIDI module.
+
+The six patches: `Stage Grand` (0), everything fresh, the bright, cutting
+sound of a band; `Ballad` (1), `brightness` 3, `treble` 4 and `detune` 3,
+softer and rounder; `Bright Rock` (2), `brightness` 8, `treble` 7 and
+`middle` 6, hard and percussive; `Chorused` (3), `detune` 8 with
+`tremolo_depth` 2 at `tremolo_rate` 5, thick and shimmering; `Tremolo` (4),
+`tremolo_depth` 6 at `tremolo_rate` 5; `Dark Felt` (5), `brightness` 1,
+`treble` 2 and `bass` 6, warm and muted. The eight macros are `brightness`,
+`detune`, `decay`, `bass`, `middle`, `treble`, `tremolo_depth` and
+`tremolo_rate`.
+
+`inst.latency_samples` is 256 frames (5.3 ms at 48 kHz), the strings' modal
+bank. The EQ and the tremolo add none.
+
+### What it costs
+
+`examples/poly_bench.py electric_grand70` renders with all ten voices held on
+the Stage Grand patch:
+
+| block | CPython ms | factor | MicroPython ms | factor |
+| ---: | ---: | ---: | ---: | ---: |
+| 64 | 13.1 | 1.6 | 10.6 | 2.0 |
+| 128 (the default) | 9.4 | 2.3 | 8.3 | 2.6 |
+| 256 | 8.3 | 2.6 | 8.4 | 2.6 |
+
+The milliseconds are per 1024-frame buffer (21 ms of audio), on the machine
+and interpreters of 2026-10-30. Nearly all of it is the ten 52-mode banks.
+
+`examples/electric_grand70_demo.py` plays a 70-second piece in five sections
+(a pop ballad with the pedal on Stage Grand, hard eighth-note chords on Bright
+Rock, a soft melody over pedalled chords on Ballad, slow arpeggios on
+Chorused and held chords on Tremolo) and writes
+`wav_exports/electric_grand70_demo.wav`.
 
 ## How an instrument is built
 
