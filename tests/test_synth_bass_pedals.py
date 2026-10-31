@@ -995,6 +995,26 @@ def test_route_foot_loudness():
     assert low == pytest.approx(high, abs=1e-9)
 
 
+def test_a_step_on_the_loudness_pedal_ramps_across_one_block():
+    # CC 11 from the top to the bottom mid-note: the gain falls along a line
+    # through the next block, not in one sample (a click), and lands exactly
+    c = cap(0.3, {0: [on(43)], 8: [cc(11, 0)]}, probes=("_filt", "_lenv"))
+    src = c["_filt"] * c["_lenv"]
+    full = bp.OUTPUT_GAIN
+    low = bp.OUTPUT_GAIN * bp.foot_loudness(0.0)
+    gain = np.empty(len(src))
+    first = 8 * BLOCK
+    gain[:first] = full
+    gain[first : first + BLOCK] = full + (low - full) * np.arange(1, BLOCK + 1) / BLOCK
+    gain[first + BLOCK :] = low
+    span = slice(first - BLOCK, first + 3 * BLOCK)
+    assert np.max(np.abs(src[span])) > 0.01
+    assert np.max(np.abs(c["out"][span] - src[span] * gain[span])) < 1e-6
+    # the plant this catches: the whole step in one sample
+    stepped = np.where(np.arange(len(src)) < first, full, low)
+    assert np.max(np.abs(c["out"][span] - src[span] * stepped[span])) > 1e-3
+
+
 def test_route_foot_filter():
     # CC 4 moves the cutoff by FOOT_FILTER_OCT octaves and the gain not at all
     low = cutoff_cv(script={0: [cc(4, 0), on(43)]})["_fcv"][-1]

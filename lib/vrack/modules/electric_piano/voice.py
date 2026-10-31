@@ -106,7 +106,6 @@ class ElectricPianoVoice(Module):
         self.pitch_in = self.add_input("pitch", "1V/Oct", cv)
         self.gate_in = self.add_input("gate", "Gate", gate)
         self.vel_in = self.add_input("velocity", "Velocity", cv)
-        self.bend_in = self.add_input("bend", "Bender", cv)
 
         self.audio_out = self.add_output("out", "Voice Out", audio)
         self.env_out = self.add_output("env", "Env Out", cv)
@@ -140,13 +139,11 @@ class ElectricPianoVoice(Module):
 
     def process(self, block_size):
         pitch = jack_signal(self.pitch_in)
-        bend = jack_signal(self.bend_in)
         gate = jack_signal(self.gate_in)
         vel = jack_signal(self.vel_in)
 
-        cv = (float(pitch[0]) if pitch is not None else 0.0) + (
-            float(bend[0]) if bend is not None else 0.0
-        )
+        # the pitch jack already carries the bender
+        cv = float(pitch[0]) if pitch is not None else 0.0
         note = 60.0 + cv * 120.0
         f0 = BASE_FREQ_C4 * (2.0 ** (cv * 10.0))
         v = max(0.0, min(1.0, float(vel[0]) if vel is not None else 0.8))
