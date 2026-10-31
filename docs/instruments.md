@@ -460,6 +460,121 @@ When idle, parked voices take 0.10 ms per buffer on CPython (factor 214) and
 0.27 ms on MicroPython (factor 78). On MicroPython, all eleven voices running
 simultaneously execute comfortably in real time (2.82x at default 128-frame blocks).
 
+## Playing the Rhythm78
+
+The Rhythm78 is a fourteen-voice analog preset drum machine inspired by the Roland
+CR-78 CompuRhythm (1978). Its warm, rounded sounds defined late-1970s pop, disco,
+and early new wave: soft bridged-T resonators for the bass drum, snare, and toms,
+pure white-noise hiss for the hi-hats and cymbal, and a rich palette of analog Latin
+percussion including maracas, claves, cowbell, tambourine, and guiro.
+
+```python
+import vrack.adapter as adapter
+
+inst = adapter.create(48000, voice="rhythm78")   # 14 voices, 1 per sound
+audio_out.play(inst.output)
+inst.program_change(0)                           # CompuRhythm
+inst.note_on(36, 127)                            # Accented Bass Drum
+inst.note_on(38, 100)                            # Snare Drum
+```
+
+### Sounds and circuits
+
+The fourteen sounds are mapped to General MIDI percussion keys:
+
+| voice | sound | keys | panel controls |
+|---|---|---|---|
+| 0 | bass drum (BD) | 35, 36 | bd_level |
+| 1 | snare drum (SD) | 38, 40 | sd_level |
+| 2 | rim shot (RS) | 37 | rs_level |
+| 3 | hi-hat / cymbal (HH/CY) | 42, 44 (CH), 46 (OH), 49, 51, 57 (CY) | hh_level, cy_level |
+| 4 | low bongo (LB) | 61, 64 | bo_level |
+| 5 | high bongo (HB) | 60, 63 | bo_level |
+| 6 | low conga (LC) | 62, 65 | bo_level |
+| 7 | cowbell (CB) | 56 | cb_level |
+| 8 | tambourine (TB) | 54 | tb_level |
+| 9 | maracas (MA) | 70 | ma_level |
+| 10 | claves (CL) | 75 | cl_level |
+| 11 | guiro short (GS) | 73 | gu_level |
+| 12 | guiro long (GL) | 74 | gu_level |
+| 13 | metallic beat (MB) | 53 | mb_level |
+
+The **bass drum** is a soft, deep bridged-T resonator tuned near 54 Hz with a gentle
+90-cent downward bend and a soft 220 ms decay. Unlike punchy 808 or 909 kicks, it has
+no high-pass click transient.
+
+The **snare drum** combines two low bridged-T resonance rings near 190 Hz and 290 Hz
+with high-passed white noise (1.8 kHz cutoff) for a warm, pillowy snare strike.
+
+The **rim shot** ping uses a bridged-T filter tuned near 420 Hz with a steep 120-cent
+downward bend and a tight 35 ms decay.
+
+The **hi-hats and cymbal** share a pure white-noise source passed through a sharp
+7.2 kHz high-pass filter: closed hat has a tight 40 ms decay, open hat rings for
+220 ms, and the cymbal adds a wide 5.5 kHz band-pass for a shimmering 650 ms tail.
+
+The **bongos and conga** use bridged-T ringing filters with characteristic upward
+pitch sweeps on strike (+180 cents for low bongo at 160 Hz, +220 cents for high bongo
+at 300 Hz, +140 cents for low conga at 110 Hz).
+
+The **cowbell** sums two narrow band-pass filtered square waves at 540 Hz and 800 Hz
+into a shared 120 ms ring.
+
+The **tambourine** fires a rapid cluster of three 12 ms noise bursts followed by a
+decaying tail at 7.5 kHz high-pass, capturing rattling metal jingles.
+
+The **maracas** produce a single crisp 22 ms burst of high-passed noise at 6.5 kHz.
+
+The **claves** resonate pure wood with a bridged-T tone at 2.4 kHz decaying in 40 ms.
+
+The **guiro** generates textured scrape bursts (40 ms for short, 110 ms for long)
+by clocking a low-frequency pulse train into decaying noise bursts.
+
+The **metallic beat** accent pulse rings at 1.4 kHz with an 85 ms decay.
+
+### Choke and additions
+
+On the original hardware, the hats and cymbal shared a single noise circuit. In Rhythm78,
+closed hi-hat (keys 42, 44), open hi-hat (key 46), and cymbal (keys 49, 51, 57) all
+map to voice 3. Striking a closed hat or cymbal immediately retriggers voice 3, cutting
+off any ringing open hat or cymbal without clicking. Because they share voice 3, no
+adapter-level choke group is required (`CHOKE = ()`). Re-striking any drum voice similarly
+resets its envelope and core cleanly.
+
+The panel adds individual voice level trimmers (`bd_level`, `sd_level`, etc.),
+master tuning (`tune`, +/- 4 semitones), global decay scaling (`decay`, x0.5 to x2.0),
+`balance` (shifting level between the drum voices and the hat/cymbal group),
+`tone` (a low- and high-shelf tilt filter around 1 kHz), and velocity `accent`.
+
+### Patches and macros
+
+Four presets provide distinct voicings:
+- **CompuRhythm**: factory CR-78 tuning and balance, warm and intimate.
+- **Bossa**: lowered percussion decays and elevated Latin percussion levels.
+- **Disco**: brighter tone tilt, boosted hats, punchier kick and snare.
+- **Dark**: warm rolled-off tone, longer decays, softer percussion.
+
+The eight macros are `tune`, `decay`, `accent`, `balance`, `tone`, `bd_level`,
+`sd_level`, and `volume`.
+
+`examples/rhythm78_demo.py` demonstrates all four presets across four classic
+patterns in 58 seconds, streaming audio to `wav_exports/rhythm78_demo.wav`.
+
+### What it costs
+
+`examples/poly_bench.py rhythm78` benchmarks all fourteen voices sounding
+simultaneously (struck every four buffers) across block sizes:
+
+| block | CPython ms | factor | MicroPython ms | factor |
+| ---: | ---: | ---: | ---: | ---: |
+| 64 | 24.66 | 0.87 | 7.54 | 2.83 |
+| 128 (default) | 11.23 | 1.90 | 4.53 | 4.71 |
+| 256 | 6.06 | 3.52 | 3.00 | 7.11 |
+
+When idle, parked voices take 1.11 ms per buffer on CPython (factor 19.3) and
+0.48 ms on MicroPython (factor 44.8). On MicroPython, all fourteen voices running
+simultaneously execute comfortably in real time (4.71x at default 128-frame blocks).
+
 ## Traits
 
 `tools/traits.py` plays an instrument's fixed phrase and measures its sound:

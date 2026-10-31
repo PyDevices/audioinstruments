@@ -144,6 +144,14 @@ MODULES = [
     vrack.Rhythm606OpenHat,
     vrack.Rhythm606Snare,
     vrack.Rhythm606Tom,
+    vrack.Rhythm78Cowbell,
+    vrack.Rhythm78Cymbal,
+    vrack.Rhythm78Drum,
+    vrack.Rhythm78Guiro,
+    vrack.Rhythm78HiHat,
+    vrack.Rhythm78Output,
+    vrack.Rhythm78Snare,
+    vrack.Rhythm78Tambourine,
     vrack.Rhythm808BassDrum,
     vrack.Rhythm808Clap,
     vrack.Rhythm808Claves,
@@ -223,6 +231,32 @@ def test_module_block_creates_no_arrays(module_cls):
     assert created == [], "arrays created in one block:\n" + "\n".join(
         "%d B at %s" % (size, where) for size, where in created
     )
+
+
+RHYTHM78_MODULES = [
+    m for m in MODULES if m.NAME.startswith("Rhythm78") and m.NAME != "Rhythm78Output"
+]
+
+
+@pytest.mark.parametrize("module_cls", RHYTHM78_MODULES, ids=lambda c: c.NAME)
+def test_rhythm78_voice_creates_no_arrays_on_the_strike_block(module_cls):
+    """The strike itself (retuning a hat, laying out the scrapes) makes no array either."""
+    rack = driven_rack(module_cls)
+    midi = next(m for m in rack.modules if isinstance(m, vrack.MidiCVModule))
+    for _ in range(8):
+        rack.step()
+    midi.note_off(48)
+    for _ in range(300):  # let the voice die away and park
+        rack.step()
+    del EVENTS[:]
+    TRACING[0] = True
+    try:
+        midi.note_on(46 if module_cls.NAME == "Rhythm78HiHat" else 48, 127)
+        rack.step()
+        rack.step()
+    finally:
+        TRACING[0] = False
+    assert EVENTS == [], "arrays created:\n" + "\n".join("%d B at %s" % e for e in EVENTS)
 
 
 def test_the_tracer_sees_a_temporary():

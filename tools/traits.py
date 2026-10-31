@@ -298,6 +298,15 @@ SPECS = {
         "ring": 10.0,
         "tail": 0.3,
     },
+    "rhythm78": {
+        "patches": (0, 1),
+        "drums": True,
+        "notes": (36, 38, 37, 42, 49, 70, 75, 56, 54, 73, 74, 60, 61, 64),
+        "velocity": 100,
+        "velocities": (40, 100, 127),
+        "ring": 10.0,
+        "tail": 0.3,
+    },
     "rhythm808": {
         "patches": (0, 1),
         "drums": True,

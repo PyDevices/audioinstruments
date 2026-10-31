@@ -73,6 +73,7 @@ _PATCH_VOICES = {
     "polyxa": ("polyxa", "PolyXa"),
     "reed_piano200a": ("reed_piano200a", "ReedPiano200A"),
     "rhythm606": ("rhythm606", "Rhythm606"),
+    "rhythm78": ("rhythm78", "Rhythm78"),
     "rhythm808": ("rhythm808", "Rhythm808"),
     "rhythm909": ("rhythm909", "Rhythm909"),
     "string_ensemble": ("string_ensemble", "StringEnsemble"),
