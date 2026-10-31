@@ -9,6 +9,8 @@ square), ``cutoff_hz``, ``resonance``, ``env_mod``, ``decay``, ``accent``,
 ``volume``; ``set_step(i, pitch, gate, accent, slide)`` programs a step.
 """
 
+import math
+
 from ..core.jack import SignalType
 from ..core.module import Module
 from ..core.signal import copy_into, mul
@@ -18,6 +20,8 @@ from ..dsp.ladder import AcidFilterCore
 from ..dsp.oscillator import OscillatorCore
 from ._util import jack_signal
 from .drum_synth import InternalClock
+
+_LN2 = math.log(2.0)
 
 
 class Acid303(Module):
@@ -36,6 +40,17 @@ class Acid303(Module):
         "waveform",
         "volume",
     )
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "TOGGLE",
+        8: "UNIPOLAR",
+    }
 
     def _build(self):
         sr, n = self.sample_rate, self.block_size
@@ -108,6 +123,28 @@ class Acid303(Module):
             self.waveform = 1 if v > 0.5 else 0
         elif index == 8:
             self.volume = v * 1.5
+
+    def get_macro(self, index):
+        """The panel attribute behind macro ``index``, 0..1, as ``set_macro`` takes it."""
+        if index == 0:
+            return (self.bpm - 80.0) / 120.0
+        if index == 1:
+            return math.log(self.tuning / 32.7) / _LN2 / 3.0
+        if index == 2:
+            return math.log(self.cutoff_hz / 50.0) / _LN2 / 7.5
+        if index == 3:
+            return self.resonance / 0.98
+        if index == 4:
+            return self.env_mod
+        if index == 5:
+            return ((self.decay - 0.05) / 1.5) ** 0.5
+        if index == 6:
+            return self.accent
+        if index == 7:
+            return float(self.waveform)
+        if index == 8:
+            return self.volume / 1.5
+        return 0.0
 
     def set_step(self, step_idx, pitch, gate=True, accent=False, slide=False):
         """Program one of the 16 steps: pitch offset (1 V/oct) and three flags."""

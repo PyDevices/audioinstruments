@@ -181,10 +181,21 @@ class ElectricPiano(VoicePatch):
     """The ElectricPiano as a voice patch for ``vrack.adapter.create()``."""
 
     NAME = "electric_piano"
+    DISPLAY_NAME = "Electric Piano"
+    CATEGORIES = ("Piano",)
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "UNIPOLAR",
+    }
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))

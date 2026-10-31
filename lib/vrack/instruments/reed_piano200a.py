@@ -110,10 +110,20 @@ class ReedPiano200A(VoicePatch):
     """The ReedPiano200A as a voice patch for ``vrack.adapter.create()``."""
 
     NAME = "reed_piano200a"
+    DISPLAY_NAME = "Reed Piano 200A"
+    CATEGORIES = ("Piano",)
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+    }
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))

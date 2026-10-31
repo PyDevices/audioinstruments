@@ -71,9 +71,17 @@ Where an audiodsp node does a module's job, use it through
 control (sync, linear FM, PWM, cutoff under a fast envelope), a model
 audiodsp lacks, or a feedback loop inside the module.
 [docs/audiodsp.md](docs/audiodsp.md) lists what is on which side and why.
-Do not write a pure-Python copy of a node audiodsp has. Do not import
-`audioinstruments` or `audioeffects`: read them for technique, but vrack
-depends on audiodsp alone.
+Do not write a pure-Python copy of a node audiodsp has. Nothing under
+`lib/vrack` imports `audioinstruments` or `audioeffects`: vrack depends on
+audiodsp alone. The `audioinstruments` package in this repo is the public
+face over vrack, so it imports vrack and never the other way round.
+
+The face is generated. Each `lib/audioinstruments/<name>.py` is written by
+`tools/make_faces.py` from the instrument's class, so change `MACRO_LABELS`,
+`MACRO_MODES`, `PATCHES` or `DISPLAY_NAME` there and run the script again.
+`tests/test_face.py` fails while a face is out of date, and
+`tools/validate_metadata.py` checks the metadata against the instrument
+contract.
 
 ## Polyphony
 
