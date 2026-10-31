@@ -1,9 +1,10 @@
-# vrack overview
+# Overview
 
 The whole tour: what is in the rack, how a patch is rendered, and where each part
 is documented. The [README](../README.md) has the short version.
 
-vrack is a virtual Eurorack modular synthesizer in Python. Twenty modules
+Every instrument in audioinstruments is a patch on `vrack`, a virtual Eurorack
+modular synthesizer in Python. Twenty modules
 inspired by classic instruments, with their panels, patch cables between them,
 and a rack that renders a block at a time on
 [audiodsp](https://github.com/PyDevices/audiodsp). It runs on CPython and on

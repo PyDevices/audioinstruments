@@ -15,5 +15,5 @@ wav_exports/
 *.sf2
 *.sf3
 
-# Instrument briefs are written by the session and kept out of git
+# Design notes kept beside a checkout, not in it
 briefs/

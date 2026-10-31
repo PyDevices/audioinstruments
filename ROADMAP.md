@@ -1,10 +1,17 @@
 # Roadmap
 
-vrack is a virtual Eurorack in Python: twenty modules inspired by classic
-instruments, with their panels, patched with cables, rendered a block at a
-time on audiodsp.
+audioinstruments is a set of playable instruments, each a patch of modules
+on a virtual rack, rendered a block at a time on audiodsp.
 Planned work, in rough order:
 
+- Every instrument by name: `audioinstruments.create("poly106", 48000)`, with
+  each instrument's macros and patches readable from its module.
+- The rack moves to `audioinstruments._rack` before 0.5.0. Instruments are the
+  public surface; the rack's modules and jacks stay free to change.
+- The MicroPython tests in CI, on a unix build with audiodsp and ulab; today
+  they are run by hand before a merge.
+- The docs in the shared five sections: Get started, Guides, Reference, How it
+  works and Changelog.
 - A board. Run a two-module patch on an ESP32-P4 or -S3 build of MicroPython
   with audiodsp and measure what a block costs, now that the oscillator and
   ladder run as nodes; that decides which per-sample cores (the two-poles,

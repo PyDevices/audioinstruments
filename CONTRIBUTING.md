@@ -1,7 +1,7 @@
-# Contributing to vrack
+# Contributing to audioinstruments
 
-vrack is a virtual Eurorack modular synthesizer in Python, built on
-[audiodsp](https://github.com/PyDevices/audiodsp). Twenty modules inspired by
+Every instrument here is a patch on `vrack`, a virtual Eurorack modular
+synthesizer in Python, built on [audiodsp](https://github.com/PyDevices/audiodsp). Twenty modules inspired by
 classic instruments live in `lib/vrack/modules/`, their DSP in `lib/vrack/dsp/`, the
 rack and its kernels in `lib/vrack/core/`. These are the rules of the repo.
 

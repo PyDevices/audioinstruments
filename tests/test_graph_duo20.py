@@ -653,7 +653,7 @@ FAULTS = [
     ("vco1 an octave up", "_graph_pitch", _scale("_n_osc1", "OSC_FREQUENCY", 2.0), {}),
     ("vco2 on the saw", "_graph_waves", _set("_n_osc2", "OSC_WAVEFORM", 1), {}),
     ("vco2 an octave up", "_graph_pitch", _scale("_n_osc2", "OSC_FREQUENCY", 2.0), {}),
-    # the brief's plain product: right but for the band-limited edges
+    # a plain product: right but for the band-limited edges
     ("a ring that multiplies", "fragment", _set("_n_ring_vca", "VCA_GAIN", 0.707 / 0.25), RING),
     (
         "a ring at half level",

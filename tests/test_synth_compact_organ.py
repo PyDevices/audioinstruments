@@ -352,7 +352,7 @@ def test_full_polyphony_no_stealing():
     inst.deinit()
 
 
-# -- what the brief's risks would break --------------------------------------
+# -- what the known risks would break ----------------------------------------
 
 
 def make_blocks(patch):

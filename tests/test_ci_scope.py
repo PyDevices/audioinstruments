@@ -169,7 +169,7 @@ def test_the_traits_tool_checks_every_instrument(repo):
 
 
 def test_docs_and_examples_check_little(repo):
-    assert ci_scope.scope(repo, ["README.md", "docs/x.md", "briefs/b.md"])["nothing"]
+    assert ci_scope.scope(repo, ["README.md", "docs/x.md", "ROADMAP.md"])["nothing"]
     out = ci_scope.scope(repo, ["examples/demo.py"])
     assert out["lint"] == ["examples/demo.py"]
     assert out["pytest"] == [] and out["instruments"] == []
