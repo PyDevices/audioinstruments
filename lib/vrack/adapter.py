@@ -59,6 +59,7 @@ _MODULE_VOICES = {
 #: submodule of ``vrack.instruments`` and the ``VoicePatch`` class in it.
 _PATCH_VOICES = {
     "bass_pedals": ("bass_pedals", "BassPedals"),
+    "clavichord": ("clavichord", "Clavichord"),
     "combo_organ": ("combo_organ", "ComboOrgan"),
     "compact_organ": ("compact_organ", "CompactOrgan"),
     "duosynth": ("duosynth", "DuoSynth"),
