@@ -226,6 +226,8 @@ class Fragment:
         self.module = module
         self.group = group
         self.nodes = []
+        self.kinds = []  # each node's kind, for a recompile to match nodes by
+        self.own = []  # the wires buffer() handed out, in order
         self.before = []
         self.after = []
         self.resets = []
@@ -258,7 +260,9 @@ class Fragment:
 
     def buffer(self):
         """A buffer of the module's own."""
-        return self._c.graph.buffer()
+        buf = self._c.graph.buffer()
+        self.own.append(buf)
+        return buf
 
     def keep(self, buf):
         """Give wire ``buf`` a graph buffer of its own, for a module that reads it from Python
@@ -283,6 +287,7 @@ class Fragment:
             output, arg = output  # the graph itself: the second output is the node's arg
         node = graph.add(kind, self.group if group is None else group, inputs, output, arg)
         self.nodes.append(node)
+        self.kinds.append(kind)
         return node
 
     def set(self, node, index, value):
@@ -995,6 +1000,119 @@ class CompiledRack:
                 module.reset()
         finally:
             self.commit()
+
+    # -- changing the patch while it plays --------------------------------------------------
+
+    def recompile(self, groups=(), carry=True):
+        """The rack as it stands now, compiled beside this graph; returns the new ``CompiledRack``.
+
+        Call it between two ``step()`` calls, after changing the patch (a cable
+        plugged or pulled, a module added or removed). The new graph takes this
+        one's running state (see ``take_state``), so the next ``step()`` on it
+        renders the block this one would have rendered, with the change in it.
+        This graph is dropped and must not be stepped again. ``groups`` are the
+        module groups, as for ``compile_rack``. If the compile fails, this graph
+        is left as it was and goes on playing.
+        """
+        if self.pumped:
+            raise RuntimeError("an attached graph cannot be recompiled while something pulls it")
+        if self.graph is None:
+            raise RuntimeError("this graph has been dropped")
+        old = [(f.module, f) for f in self.fragments]
+        try:
+            new = CompiledRack(
+                self.rack,
+                groups=groups,
+                scale=self._scale0,
+                channel_count=self.channel_count,
+            )
+        except BaseException:
+            # the failed compile bound the modules it reached: hand them back
+            for module in self.rack.modules:
+                module._fragment = None
+                try:
+                    delattr(module, "reset")
+                except AttributeError:
+                    pass
+            for module, f in old:
+                module._fragment = f
+                module.reset = f.do_reset
+            raise
+        if carry:
+            new.take_state(self)
+        now = set(f.module for f in new.fragments)
+        for module, _f in old:
+            if module not in now:  # taken out of the rack: it gets its own reset() back
+                module._fragment = None
+                try:
+                    delattr(module, "reset")
+                except AttributeError:
+                    pass
+        graph = self.graph
+        self.graph = None
+        self.fragments = []
+        if hasattr(graph, "deinit"):
+            graph.deinit()
+        return new
+
+    def take_state(self, old):
+        """Take over the running state of ``old``, a graph of the same rack.
+
+        Each module's nodes take the state of the old graph's nodes of the same
+        kind, in the order the module added them (``Graph.carry``): voices,
+        envelopes, phases, filter memory, delay lines. A node the module now
+        builds differently, or one it did not have, starts fresh. The wires
+        carry their last block across (a late cable's previous block, a
+        buffer a module keeps), controls keep their values, and a ``watch``
+        does not fire again for a value it has seen.
+        """
+        g, og = self.graph, old.graph
+        mine = {f.module: f for f in old.fragments}
+        for f in self.fragments:
+            o = mine.get(f.module)
+            if o is None:
+                continue
+            seen = {}
+            for kind, node in zip(o.kinds, o.nodes):
+                seen.setdefault(kind, []).append(node)
+            taken = {}
+            for kind, node in zip(f.kinds, f.nodes):
+                nodes = seen.get(kind)
+                i = taken.get(kind, 0)
+                if nodes is None or i >= len(nodes):
+                    continue
+                taken[kind] = i + 1
+                try:
+                    g.carry(node, og, nodes[i])
+                except ValueError:
+                    pass  # built differently (a delay of another length): fresh
+            for a, b in zip(o.own, f.own):
+                self._copy_wire(old, a, b)
+        for jack, buf in self.buffers.items():
+            src = old.buffers.get(jack)
+            if src is not None:
+                self._copy_wire(old, src, buf)
+        for jack, control in self.controls.items():
+            was = old.controls.get(jack)
+            if was is not None:
+                control.set(was.value)
+                if control.node is not None and was.node is not None:
+                    g.carry(control.node, og, was.node)
+        g.carry(self.out_node, og, old.out_node)
+        lasts = {}
+        for jack, (_, _, last) in zip(old._watch_jacks, old._watch_buffers):
+            lasts[jack] = last[0]
+        for jack, (_, _, last) in zip(self._watch_jacks, self._watch_buffers):
+            last[0] = lasts.get(jack)
+
+    def _copy_wire(self, old, src, dst):
+        """Copy the last block of ``old``'s wire ``src`` into this graph's wire ``dst``."""
+        if old.phys is not None:
+            src = old.phys[src]
+        if self.phys is not None:
+            dst = self.phys[dst]
+        old.graph.read(src, self._i16)
+        self.graph.write(dst, self._i16)
 
     def deinit(self):
         """Drop the graph; the modules get their own ``reset()`` back."""

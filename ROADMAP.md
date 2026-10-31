@@ -34,6 +34,9 @@ Planned work, in rough order:
 - `examples/hmi_board.py` on the audio pump. It renders on the interpreter's
   thread, so a busy screen eats the audio's time; `examples/hmi_instrument.py
   --pump` plays the graph on the pump's core instead, and this one should too.
+- Changing the patch of a graph on the audio pump. `recompile()` swaps a new graph
+  in between two `step()` calls; an attached graph needs the pump to switch graphs at
+  a block boundary, and refuses for now.
 - Notes on their own frame with the graph on the audio pump. A note played in
   a turn lands at the next block; with `audiograph` setting a value at a frame
   inside a block, `schedulable` can be True and a sequencer can time notes.

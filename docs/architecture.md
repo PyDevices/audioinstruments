@@ -168,8 +168,26 @@ parameter for: an oscillator's starting phase, which the rack scatters from
 voice to voice so a stack of voices on one pitch does not start in phase,
 and where each voice's noise starts.
 
-Compile after the patch is complete: a cable plugged after `compile_rack()`
-is not in the graph. The fragments that exist: `PolyMidiCV` (poly and mono), `VoiceMix` (a mix with buses has none: see [polyphony.md](polyphony.md#buses)), the voice, LFO
+A cable plugged after `compile_rack()` is not in the graph until you compile
+again, and a patch can change while it plays without stopping a note. Change
+the rack (plug or pull a cable, add or remove a module), then, between two
+`step()` calls, `compiled = compiled.recompile(groups)`. It compiles the rack
+as it now stands beside the running graph and hands that graph's state over
+(audiodsp 0.6.11.dev9 and later, for `Graph.carry`): each module's nodes take
+the state of the nodes of the same kind it added before, in order, so voices,
+envelopes, oscillator phases, filter memory and delay lines carry on; wires
+keep their last block, so a late cable still carries the previous one; and
+controls keep their values. A node a module now builds differently starts
+fresh. The next `step()` renders the block the old graph would have, with the
+change in it. If the compile fails, the old graph is left as it was. An
+instrument does this for you: `connect()`, `disconnect()`, `add_module()` and
+`remove_module()` take a `sample_position` and swap the new graph in at the
+block it falls in. A swap costs the compile and little more: about 1.3 ms for
+the Poly6 (99 nodes) and 6.7 ms for the PolyA6 (676) on a desktop CPython,
+and 6 ms and 44 ms on the MicroPython unix port, with the handover itself
+under 0.4 ms and 1.5 ms. An attached graph cannot be swapped yet.
+
+The fragments that exist: `PolyMidiCV` (poly and mono), `VoiceMix` (a mix with buses has none: see [polyphony.md](polyphony.md#buses)), the voice, LFO
 and output section of the Poly106 and of the Poly6, the voice and LFO of the
 Poly5, the voice, noise and output of the PolyA6, the voice and LFO of the Poly8, the voice, LFO and output of the PolyXa, the voice and LFO of the Mono101, the voice of the MonoSynth, the voice, LFO and output of the DuoSynth, and the
 Duo20, HybridMono, WestCoastSynth and ModalResonator modules. The
