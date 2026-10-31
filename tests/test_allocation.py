@@ -157,6 +157,15 @@ MODULES = [
     vrack.Rhythm808RimShot,
     vrack.Rhythm808Snare,
     vrack.Rhythm808Tom,
+    vrack.Rhythm909BassDrum,
+    vrack.Rhythm909Clap,
+    vrack.Rhythm909ClosedHat,
+    vrack.Rhythm909Crash,
+    vrack.Rhythm909OpenHat,
+    vrack.Rhythm909Ride,
+    vrack.Rhythm909RimShot,
+    vrack.Rhythm909Snare,
+    vrack.Rhythm909Tom,
 ]
 
 
