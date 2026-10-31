@@ -13,6 +13,8 @@ from .._lazy import load
 _REGISTRY = (
     ("Acid303", "Acid303", "acid303"),
     ("BassPedalsVoice", "BassPedalsVoice", "bass_pedals.voice"),
+    ("ClavichordOutput", "ClavichordOutput", "clavichord.output"),
+    ("ClavichordVoice", "ClavichordVoice", "clavichord.voice"),
     ("CompactOrganOutput", "CompactOrganOutput", "compact_organ.output"),
     ("CompactOrganVibrato", "CompactOrganVibrato", "compact_organ.vibrato"),
     ("CompactOrganVoice", "CompactOrganVoice", "compact_organ.voice"),
@@ -24,6 +26,8 @@ _REGISTRY = (
     ("DuoSynthLFO", "DuoSynthLFO", "duosynth.lfo"),
     ("DuoSynthOutput", "DuoSynthOutput", "duosynth.output"),
     ("DuoSynthVoice", "DuoSynthVoice", "duosynth.voice"),
+    ("ElectricGrand70Output", "ElectricGrand70Output", "electric_grand70.output"),
+    ("ElectricGrand70Voice", "ElectricGrand70Voice", "electric_grand70.voice"),
     ("ElectricPianoOutput", "ElectricPianoOutput", "electric_piano.output"),
     ("ElectricPianoVoice", "ElectricPianoVoice", "electric_piano.voice"),
     ("FunctionGenerator", "FunctionGenerator", "function_generator"),

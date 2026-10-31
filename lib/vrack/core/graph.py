@@ -101,6 +101,7 @@ note that goes in between turns. A rack with a module that still runs in Python
 cannot be attached, because nothing would run that module between blocks.
 """
 
+import gc
 from array import array
 
 from .jack import InputJack, OutputJack
@@ -490,6 +491,7 @@ class CompiledRack:
         self._tmp = create_buffer(size)
         self._i16 = create_int16_buffer(size)
         self.pumped = False
+        self.since = 0  # the frame an attached graph took over at (recompile)
         self.elapsed = 1
         self.rendered = 1
         self._turn = set()
@@ -866,6 +868,22 @@ class CompiledRack:
         """
         if self.pumped:
             return self.graph
+        self._check_pullable()
+        g = self.graph
+        if not hasattr(g, "hold"):
+            raise RuntimeError("this audiograph cannot be pulled: it has no change queue")
+        _, frame, _, _ = g.sounding()
+        self._seen = frame
+        self._credited = frame
+        self._mask = None
+        self._touched = {}  # group -> changes queued when its last note went in
+        self._depth = 0
+        self.pumped = True
+        self.elapsed = 0
+        return g
+
+    def _check_pullable(self):
+        """Refuse a rack with a module that still runs in Python, naming it."""
         for module in self.rack_side:
             raise ValueError(
                 "%s has no graph fragment and would run in Python every block,"
@@ -886,18 +904,6 @@ class CompiledRack:
                 "%s watches a signal block by block, which an attached graph cannot"
                 " do; feed it from a control" % jack.qualified_name
             )
-        g = self.graph
-        if not hasattr(g, "hold"):
-            raise RuntimeError("this audiograph cannot be pulled: it has no change queue")
-        _, frame, _, _ = g.sounding()
-        self._seen = frame
-        self._credited = frame
-        self._mask = None
-        self._touched = {}  # group -> changes queued when its last note went in
-        self._depth = 0
-        self.pumped = True
-        self.elapsed = 0
-        return g
 
     def hold(self):
         """Start a batch: the graph applies everything until ``commit()`` on one block.
@@ -1013,11 +1019,22 @@ class CompiledRack:
         This graph is dropped and must not be stepped again. ``groups`` are the
         module groups, as for ``compile_rack``. If the compile fails, this graph
         is left as it was and goes on playing.
+
+        On an attached graph, call it from the control side, between two of
+        its turns. The new graph is compiled while the old one plays; then the
+        pump is parked at a block boundary, the state is carried, and the two
+        graphs trade patches (``Graph.swap``), so whatever pulls the graph
+        goes on pulling the same object and hears the new patch from the next
+        block. The pump is parked only for the carry and the swap. A batch
+        held with ``hold()`` lands on the old graph's last block, as the
+        changes before the recompile would have, and the hold carries over to
+        the new graph. ``since`` on the new rack is the frame it took over at.
+        It needs an audiograph with ``Graph.swap``.
         """
-        if self.pumped:
-            raise RuntimeError("an attached graph cannot be recompiled while something pulls it")
         if self.graph is None:
             raise RuntimeError("this graph has been dropped")
+        if self.pumped and not hasattr(self.graph, "swap"):
+            raise RuntimeError("an attached graph needs an audiograph with Graph.swap to change")
         old = [(f.module, f) for f in self.fragments]
         try:
             new = CompiledRack(
@@ -1026,6 +1043,11 @@ class CompiledRack:
                 scale=self._scale0,
                 channel_count=self.channel_count,
             )
+            if self.pumped:
+                new._check_pullable()
+                self._hand_over(new, carry)
+            elif carry:
+                new.take_state(self)
         except BaseException:
             # the failed compile bound the modules it reached: hand them back
             for module in self.rack.modules:
@@ -1038,8 +1060,6 @@ class CompiledRack:
                 module._fragment = f
                 module.reset = f.do_reset
             raise
-        if carry:
-            new.take_state(self)
         now = set(f.module for f in new.fragments)
         for module, _f in old:
             if module not in now:  # taken out of the rack: it gets its own reset() back
@@ -1055,6 +1075,58 @@ class CompiledRack:
             graph.deinit()
         return new
 
+    def _hand_over(self, new, carry):
+        """Put ``new`` in this attached graph's place on a block boundary (see ``recompile``).
+
+        On success ``self.graph`` is the spare, holding the old patch, and
+        ``new.graph`` the object that is pulled. On a failure nothing has
+        changed: the old patch plays on and ``new`` is dropped.
+        """
+        g = self.graph
+        depth = self._depth
+        if depth:
+            g.commit()  # the held batch belongs to the old patch's last block
+        mask = 0
+        for module in new.grouped:
+            if module.enabled:
+                mask |= module._fragment.bits
+        new.graph.enable(mask)
+        plan = None
+        if carry:
+            plan = new._plan_state(self)
+            new._set_controls(plan)
+        gc.collect()  # so a collection does not land while the pump stands still
+        resume = _park()
+        try:
+            if carry:
+                new._apply_state(self, plan, controls=False)
+            frame = g.sounding()[1]
+            g.swap(new.graph)
+        except BaseException:
+            if resume is not None:
+                resume()
+            if depth:
+                g.hold()
+            new.graph.deinit()
+            raise
+        if resume is not None:
+            resume()
+        spare = new.graph
+        new.graph = g
+        self.graph = spare
+        new.since = frame
+        new.pumped = True
+        new._seen = self._seen
+        new._credited = self._credited
+        new._mask = mask
+        new._touched = {}  # the carry applied every queued change
+        new._turn = self._turn
+        new.elapsed = self.elapsed
+        new.rendered = self.rendered
+        new._depth = depth
+        if depth:
+            g.hold()  # the rest of the caller's batch goes to the new patch
+
     def take_state(self, old):
         """Take over the running state of ``old``, a graph of the same rack.
 
@@ -1066,8 +1138,17 @@ class CompiledRack:
         buffer a module keeps), controls keep their values, and a ``watch``
         does not fire again for a value it has seen.
         """
-        g, og = self.graph, old.graph
+        self._apply_state(old, self._plan_state(old))
+
+    def _plan_state(self, old):
+        """Which node, wire and control of ``old`` each of this graph's takes over.
+
+        Only the matching, no state: it runs before the pump is parked, so the
+        time the pump stands still is the copying alone.
+        """
         mine = {f.module: f for f in old.fragments}
+        nodes = []
+        wires = []
         for f in self.fragments:
             o = mine.get(f.module)
             if o is None:
@@ -1077,27 +1158,50 @@ class CompiledRack:
                 seen.setdefault(kind, []).append(node)
             taken = {}
             for kind, node in zip(f.kinds, f.nodes):
-                nodes = seen.get(kind)
+                was = seen.get(kind)
                 i = taken.get(kind, 0)
-                if nodes is None or i >= len(nodes):
+                if was is None or i >= len(was):
                     continue
                 taken[kind] = i + 1
-                try:
-                    g.carry(node, og, nodes[i])
-                except ValueError:
-                    pass  # built differently (a delay of another length): fresh
-            for a, b in zip(o.own, f.own):
-                self._copy_wire(old, a, b)
+                nodes.append((node, was[i]))
+            wires.extend(zip(o.own, f.own))
         for jack, buf in self.buffers.items():
             src = old.buffers.get(jack)
             if src is not None:
-                self._copy_wire(old, src, buf)
+                wires.append((src, buf))
+        controls = []
         for jack, control in self.controls.items():
             was = old.controls.get(jack)
             if was is not None:
-                control.set(was.value)
-                if control.node is not None and was.node is not None:
-                    g.carry(control.node, og, was.node)
+                controls.append((control, was))
+        return nodes, wires, controls
+
+    def _set_controls(self, plan):
+        """Give this graph's controls the values of ``old``'s (see ``_plan_state``).
+
+        Values only, which the old patch keeps until the swap, so this too runs
+        before the pump is parked."""
+        for control, was in plan[2]:
+            control.set(was.value)
+
+    def _apply_state(self, old, plan, controls=True):
+        """Copy the state ``_plan_state`` matched from ``old`` into this graph.
+
+        ``controls=False``: ``_set_controls`` has given the controls their values."""
+        if controls:
+            self._set_controls(plan)
+        nodes, wires, controls = plan
+        g, og = self.graph, old.graph
+        for node, was in nodes:
+            try:
+                g.carry(node, og, was)
+            except ValueError:
+                pass  # built differently (a delay of another length): fresh
+        for src, dst in wires:
+            self._copy_wire(old, src, dst)
+        for control, was in controls:
+            if control.node is not None and was.node is not None:
+                g.carry(control.node, og, was.node)
         g.carry(self.out_node, og, old.out_node)
         lasts = {}
         for jack, (_, _, last) in zip(old._watch_jacks, old._watch_buffers):
@@ -1123,6 +1227,21 @@ class CompiledRack:
             except AttributeError:
                 pass
         self.graph = None
+
+
+def _park():
+    """Park the audio pump at a block boundary, if one is running; returns what
+    resumes it, or None when nothing needed parking. Raises when the pump does
+    not park in time, so a change waits rather than racing a block."""
+    try:
+        import audiopump
+    except ImportError:
+        return None
+    if not audiopump.running():
+        return None
+    if not audiopump.park():
+        raise RuntimeError("the audio pump did not park; the patch is unchanged")
+    return audiopump.unpark
 
 
 def compile_rack(rack, groups=(), scale=1.0, channel_count=2):

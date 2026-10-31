@@ -185,7 +185,22 @@ instrument does this for you: `connect()`, `disconnect()`, `add_module()` and
 block it falls in. A swap costs the compile and little more: about 1.3 ms for
 the Poly6 (99 nodes) and 6.7 ms for the PolyA6 (676) on a desktop CPython,
 and 6 ms and 44 ms on the MicroPython unix port, with the handover itself
-under 0.4 ms and 1.5 ms. An attached graph cannot be swapped yet.
+under 0.4 ms and 1.5 ms.
+
+A graph the audio pump plays (`attach()`) changes the same way, and the
+instrument's calls work unchanged; it needs an audiodsp with `Graph.swap`.
+The new graph is compiled while the pump plays on. Then the pump is parked
+at a block boundary, the state is carried, and the two graphs trade patches,
+so the pump, output or mixer pulling the graph keeps the object it has and
+hears the new patch from its next block. Everything an instrument changes in
+one turn lands together, on the block after the turn, and `since` on the new
+rack is the frame it took over at. The stream stays byte-equal to a rack
+built with the change from that block on (`tools/pump_swap.py`). The pump
+stands parked for 0.05 to 0.4 ms on a desktop CPython and 0.3 to 1.5 ms on
+the MicroPython unix port, from the 26-node Mono101 to the 676-node PolyA6;
+the compile, which it plays through, takes 0.5 to 7 ms and 1.6 to 54 ms.
+A module that still runs in Python can't be added to an attached graph: the
+change is refused and the old patch plays on.
 
 The fragments that exist: `PolyMidiCV` (poly and mono), `VoiceMix` (a mix with buses has none: see [polyphony.md](polyphony.md#buses)), the voice, LFO
 and output section of the Poly106 and of the Poly6, the voice and LFO of the

@@ -104,11 +104,3 @@ def test_a_failed_recompile_leaves_the_running_graph_playing():
     assert m["vcf"]._fragment is fragment
     compiled.step(out, 0)
     compiled.deinit()
-
-
-def test_an_attached_graph_refuses():
-    rack, _ = lp.build(cable=False)
-    compiled = lp.compile_rack(rack)
-    compiled.attach()
-    with pytest.raises(RuntimeError):
-        compiled.recompile()
