@@ -20,7 +20,7 @@ classifiers = [
 keywords = ["instruments", "synthesizer", "eurorack", "audio", "dsp", "micropython", "midi"]
 dependencies = [
     "numpy>=1.20",
-    "omnipython-audiodsp>=0.6.11.dev9",
+    "omnipython-audiodsp>=0.6.11.dev10",
 ]
 
 [project.optional-dependencies]

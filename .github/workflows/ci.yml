@@ -57,7 +57,7 @@ jobs:
         run: |
           python -m pip install -q -i https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            "omnipython-audiodsp>=0.6.11.dev9" numpy pytest ruff==0.17.1
+            "omnipython-audiodsp>=0.6.11.dev10" numpy pytest ruff==0.17.1
           python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy|pytest|ruff) "
 
       - name: Lint
