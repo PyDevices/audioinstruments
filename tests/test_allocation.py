@@ -72,6 +72,7 @@ MODULES = [
     vrack.ElectricGrand70Output,
     vrack.ElectricPianoVoice,
     vrack.ElectricPianoOutput,
+    vrack.ElectronicDrums5Voice,
     vrack.ClavichordVoice,
     vrack.ClavichordOutput,
     vrack.ReedPianoVoice,

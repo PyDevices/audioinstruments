@@ -70,6 +70,7 @@ _PATCH_VOICES = {
     "duosynth": ("duosynth", "DuoSynth"),
     "electric_grand70": ("electric_grand70", "ElectricGrand70"),
     "electric_piano": ("electric_piano", "ElectricPiano"),
+    "electronic_drums5": ("electronic_drums5", "ElectronicDrums5"),
     "mono101": ("mono101", "Mono101"),
     "mono_synth": ("mono_synth", "MonoSynth"),
     "poly106": ("poly106", "Poly106"),
