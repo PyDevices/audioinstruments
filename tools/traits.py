@@ -225,6 +225,15 @@ SPECS = {
         "ring": 1.0,
         "tail": 0.3,
     },
+    "electronic_drums5": {
+        "patches": (0, 1),
+        "drums": True,
+        "notes": (36, 38, 48, 45, 41),
+        "velocity": 100,
+        "velocities": (40, 100, 127),
+        "ring": 10.0,
+        "tail": 0.3,
+    },
     "reed_piano200a": {
         "patches": (0, 1, 2, 3, 4, 6),
         "notes": (36, 48, 60, 72, 84),

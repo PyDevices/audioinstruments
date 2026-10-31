@@ -23,6 +23,7 @@ _REGISTRY = (
     ("DuoSynthVoice", "DuoSynthVoice", "duosynth.voice"),
     ("ElectricPianoOutput", "ElectricPianoOutput", "electric_piano.output"),
     ("ElectricPianoVoice", "ElectricPianoVoice", "electric_piano.voice"),
+    ("ElectronicDrums5Voice", "ElectronicDrums5Voice", "electronic_drums5.voice"),
     ("FunctionGenerator", "FunctionGenerator", "function_generator"),
     ("GranularProcessor", "GranularProcessor", "granular_processor"),
     ("HybridMono", "HybridMono", "hybrid_mono"),

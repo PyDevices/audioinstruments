@@ -884,7 +884,12 @@ class SweptOscillatorDrumCore:
     strike ramp, and an optional noise mix with its own filter and decay.
     """
 
-    def __init__(self, sample_rate=DEFAULT_SAMPLE_RATE, block_size=DEFAULT_BLOCK_SIZE):
+    def __init__(
+        self,
+        sample_rate=DEFAULT_SAMPLE_RATE,
+        block_size=DEFAULT_BLOCK_SIZE,
+        noise_filter_mode="HP",
+    ):
         self.sample_rate = sample_rate
         self.block_size = block_size
         self.edges = EdgeDetector(block_size)
@@ -898,16 +903,21 @@ class SweptOscillatorDrumCore:
         self.sweep_time_sec = 0.030
         self.click_level = 0.35
         self.click_tone_hz = 3200.0
+        self.tone_mix = 1.0
         self.noise_mix = 0.0
         self.noise_decay_sec = 0.05
         self.shape = 1.0
         self.accent = 0.5
+        self.noise_filter_mode = noise_filter_mode
+        self.noise_cutoff_hz = 2000.0
 
         self.click_filter = BiquadFilter(block_size, sample_rate, mode="HP", stages=1, q=1.0)
         self.click_filter.set(self.click_tone_hz)
 
-        self.noise_filter = BiquadFilter(block_size, sample_rate, mode="HP", stages=1, q=1.0)
-        self.noise_filter.set(2000.0)
+        self.noise_filter = BiquadFilter(
+            block_size, sample_rate, mode=self.noise_filter_mode, stages=1, q=1.0
+        )
+        self.noise_filter.set(self.noise_cutoff_hz)
 
         self.amp = 0.0
         self.rise = 0.0
@@ -941,8 +951,10 @@ class SweptOscillatorDrumCore:
         self.ramp = Ramp(block_size)
         self.click_filter = BiquadFilter(block_size, self.sample_rate, mode="HP", stages=1, q=1.0)
         self.click_filter.set(self.click_tone_hz)
-        self.noise_filter = BiquadFilter(block_size, self.sample_rate, mode="HP", stages=1, q=1.0)
-        self.noise_filter.set(2000.0)
+        self.noise_filter = BiquadFilter(
+            block_size, self.sample_rate, mode=self.noise_filter_mode, stages=1, q=1.0
+        )
+        self.noise_filter.set(self.noise_cutoff_hz)
 
         self._sweep_buf = create_buffer(block_size)
         self._pitch_cv = create_buffer(block_size)
@@ -961,6 +973,19 @@ class SweptOscillatorDrumCore:
         self._filtered_noise = create_buffer(block_size)
         self._noise_env_buf = create_buffer(block_size)
         self._tmp = create_buffer(block_size)
+
+    def set_noise_filter(self, cutoff_hz, mode=None):
+        if mode is not None and mode != self.noise_filter_mode:
+            self.noise_filter_mode = mode
+            self.noise_filter = BiquadFilter(
+                self.block_size, self.sample_rate, mode=mode, stages=1, q=1.0
+            )
+        self.noise_cutoff_hz = cutoff_hz
+        self.noise_filter.set(cutoff_hz)
+
+    def set_click_tone(self, tone_hz):
+        self.click_tone_hz = tone_hz
+        self.click_filter.set(tone_hz)
 
     def reset(self):
         self.amp = 0.0
@@ -1035,6 +1060,8 @@ class SweptOscillatorDrumCore:
         else:
             self.rise = 0.0
         mul(dst, self._amp_buf)
+        if self.tone_mix != 1.0:
+            scale(dst, self.tone_mix)
 
         if self.click_level > 0.0 and (self.click_env > 1e-4 or self.click_lpf > 1e-4):
             click_alpha = 1.0 - math.exp(
