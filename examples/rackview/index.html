@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vrack panel</title>
+<style>
+  :root { --bg:#14161a; --panel:#1f232a; --ink:#e6e6e6; --dim:#8a93a0; --led:#39d353; --arm:#f1c40f; --line:#2b313a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.3 system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:#0f1114; padding:8px 12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+  header .name { font-weight:600; }
+  header .st { color:var(--dim); font-variant-numeric: tabular-nums; }
+  header button, header select { background:#2a303a; color:var(--ink); border:1px solid #3a414d; border-radius:6px; padding:6px 10px; font:inherit; }
+  #rack { position:relative; display:flex; flex-wrap:wrap; gap:10px; padding:12px; align-items:flex-start; }
+  svg#cables { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; }
+  .mod { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px; min-width:200px; flex:0 0 auto; }
+  .mod h3 { margin:0 0 2px; font-size:14px; }
+  .mod .id { color:var(--dim); font-size:12px; margin-bottom:8px; }
+  .param { display:grid; grid-template-columns: 1fr 48px; gap:4px 8px; align-items:center; margin:4px 0; }
+  .param label { grid-column:1 / 3; font-size:12px; color:var(--dim); }
+  .param input[type=range] { width:100%; }
+  .param .v { font-variant-numeric: tabular-nums; font-size:12px; text-align:right; }
+  .jacks { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
+  .jack { display:flex; align-items:center; gap:6px; background:#2a303a; border:1px solid #3a414d; border-radius:8px; padding:6px 8px; cursor:pointer; user-select:none; min-height:34px; font-size:12px; }
+  .jack .dot { width:12px; height:12px; border-radius:50%; background:#0b0d10; border:2px solid #555; flex:0 0 auto; }
+  .jack.in .dot { border-color:#7aa2f7; }
+  .jack.out .dot { border-color:#f7768e; }
+  .jack.plugged .dot { background:#ddd; }
+  .jack.armed { outline:2px solid var(--arm); }
+  .jack .led { margin-left:auto; width:34px; height:6px; background:#0b0d10; border-radius:3px; overflow:hidden; }
+  .jack .led i { display:block; height:100%; width:0; background:var(--led); }
+  .late .dot { border-color:#f1c40f !important; }
+  #log { color:var(--dim); font-size:12px; padding:0 12px 12px; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <span class="name" id="name">vrack</span>
+  <span class="st" id="status">connecting</span>
+  <span class="st" id="rtt"></span>
+  <button id="save">Save</button>
+  <button id="load">Load</button>
+  <select id="types"></select>
+  <button id="add">Add module</button>
+</header>
+<div id="rack"><svg id="cables"></svg></div>
+<div id="log"></div>
+<script>
+// A front panel for a vrack rack over hmilink. It draws from the device's
+// description and document, sends ops as you move things, and follows every
+// op the device echoes, whoever made it. Layout is this page's choice: the
+// contract carries none.
+
+const $ = (s) => document.querySelector(s);
+const rackEl = $("#rack"), svg = $("#cables"), logEl = $("#log");
+let ws, doc = null, desc = null, me = null, seq = 0, nextId = 1;
+const pending = {};            // path -> id of my newest op in flight
+const sliders = {};            // path -> {input, value}
+const jacks = {};              // qualified jack name -> element
+let armed = null;              // an output's qualified name, waiting for an input
+const lastSent = {};           // path -> time of last knob send, for throttling
+const trailing = {};           // path -> pending trailing value
+
+function log(s) { logEl.textContent = (s + "\n" + logEl.textContent).slice(0, 2000); }
+
+function connect() {
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+  ws.onopen = () => { $("#status").textContent = "connected"; send({t: "hello", v: 1}); setInterval(ping, 2000); };
+  ws.onclose = () => { $("#status").textContent = "disconnected"; setTimeout(connect, 1500); };
+  ws.onmessage = (ev) => handle(JSON.parse(ev.data));
+}
+function send(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
+function ping() { send({t: "ping", at: performance.now()}); }
+
+// -- the panel side of the contract --
+function sendOp(op, path, value) {
+  const msg = {t: "op", op, path, id: nextId++};
+  if (op !== "remove") msg.value = value;
+  applyOp(doc, msg);              // at once, so a knob never lags its finger
+  pending[path] = msg.id;
+  send(msg);
+  return msg.id;
+}
+function handle(msg) {
+  if (msg.t === "doc") { doc = msg.doc; desc = msg.desc; me = msg.you; seq = msg.seq; for (const k in pending) delete pending[k]; render(); }
+  else if (msg.t === "op") {
+    seq = msg.seq;
+    const mine = me !== null && msg.from === me;
+    if (mine && path_in(pending, msg.path)) {
+      if (pending[msg.path] === msg.id) {
+        delete pending[msg.path];
+        // applied when sent; an append or a list remove isn't idempotent, so don't apply the echo
+        if (/\/(-|\d+)$/.test(msg.path)) { onOp(msg); return; }
+      }
+      else return;                // a newer op of mine on this path is still in flight
+    }
+    applyOp(doc, msg); onOp(msg);
+  }
+  else if (msg.t === "err") {
+    log("refused: " + msg.msg);
+    if (msg.path !== undefined && doc) {
+      const undo = ("value" in msg) ? {op: "add", path: msg.path, value: msg.value} : {op: "remove", path: msg.path};
+      delete pending[msg.path]; applyOp(doc, undo); onOp(undo);
+    }
+  }
+  else if (msg.t === "tele") onTele(msg.v);
+  else if (msg.t === "ev") onEvent(msg);
+  else if (msg.t === "pong") $("#rtt").textContent = "rtt " + (performance.now() - msg.at).toFixed(1) + " ms";
+  $("#status").textContent = "seq " + seq;
+}
+function path_in(obj, k) { return Object.prototype.hasOwnProperty.call(obj, k); }
+function splitPointer(p) { return p === "" ? [] : p.split("/").slice(1).map(s => s.replace(/~1/g, "/").replace(/~0/g, "~")); }
+function applyOp(d, op) {
+  const keys = splitPointer(op.path);
+  if (!keys.length) { for (const k in d) delete d[k]; if (op.op !== "remove") Object.assign(d, op.value); return; }
+  let node = d;
+  for (const k of keys.slice(0, -1)) node = Array.isArray(node) ? node[+k] : node[k];
+  const k = keys[keys.length - 1];
+  if (Array.isArray(node)) {
+    if (op.op === "add") { if (k === "-") node.push(op.value); else node.splice(+k, 0, op.value); }
+    else if (op.op === "replace") node[+k] = op.value; else node.splice(+k, 1);
+  } else if (op.op === "remove") delete node[k]; else node[k] = op.value;
+}
+
+// -- drawing --
+function render() {
+  $("#name").textContent = doc.name;
+  rackEl.querySelectorAll(".mod").forEach(e => e.remove());
+  for (const k in sliders) delete sliders[k];
+  for (const k in jacks) delete jacks[k];
+  if (desc.instrument) rackEl.appendChild(instrumentCard(desc.instrument));
+  for (const id in doc.modules) rackEl.appendChild(moduleCard(id, doc.modules[id], desc.modules[id]));
+  rackEl.appendChild(masterCard());
+  const sel = $("#types"); sel.innerHTML = "";
+  for (const t of desc.types || []) { const o = document.createElement("option"); o.textContent = t; sel.appendChild(o); }
+  drawCables();
+}
+function moduleCard(id, m, d) {
+  const card = document.createElement("div"); card.className = "mod"; card.dataset.id = id;
+  card.innerHTML = `<h3>${(d && d.name) || m.type}</h3><div class="id">${id} · ${m.type}</div>`;
+  for (const p of (d ? d.params : Object.keys(m.params).map(n => ({name: n, label: n, min: 0, max: 1})))) {
+    const path = `/modules/${id}/params/${p.name}`;
+    const row = document.createElement("div"); row.className = "param";
+    row.innerHTML = `<label>${p.label}</label><input type="range" min="${p.min}" max="${p.max}" step="${(p.max - p.min) / 200}"><span class="v"></span>`;
+    const input = row.querySelector("input"), v = row.querySelector(".v");
+    input.value = m.params[p.name]; v.textContent = fmt(m.params[p.name]);
+    input.addEventListener("input", () => { v.textContent = fmt(+input.value); knob(path, +input.value); });
+    sliders[path] = {input, v};
+    card.appendChild(row);
+  }
+  const grid = document.createElement("div"); grid.className = "jacks";
+  const ins = document.createElement("div"), outs = document.createElement("div");
+  for (const j of (d ? d.inputs : [])) ins.appendChild(jackEl(`${id}.${j.name}`, j.label, "in"));
+  for (const j of (d ? d.outputs : [])) outs.appendChild(jackEl(`${id}.${j.name}`, j.label, "out"));
+  grid.appendChild(ins); grid.appendChild(outs); card.appendChild(grid);
+  return card;
+}
+// an instrument's patches and macros, when the device is one (desc.instrument)
+let patchSel = null;
+function instrumentCard(ins) {
+  const card = document.createElement("div"); card.className = "mod"; card.dataset.id = "__instrument";
+  card.innerHTML = `<h3>${ins.name}</h3><div class="id">patch</div>`;
+  patchSel = document.createElement("select");
+  ins.patches.forEach((name, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `${i}: ${name}`; patchSel.appendChild(o); });
+  patchSel.value = doc.patch;
+  patchSel.addEventListener("change", () => sendOp("replace", "/patch", +patchSel.value));
+  card.appendChild(patchSel);
+  const [lo, hi] = ins.macro_range || [0, 127];
+  for (const label of ins.macros) {
+    const path = "/macros/" + label;
+    const row = document.createElement("div"); row.className = "param";
+    row.innerHTML = `<label>${label}</label><input type="range" min="${lo}" max="${hi}" step="0.5"><span class="v"></span>`;
+    const input = row.querySelector("input"), v = row.querySelector(".v");
+    input.value = doc.macros[label]; v.textContent = fmt(doc.macros[label]);
+    input.addEventListener("input", () => { v.textContent = fmt(+input.value); knob(path, +input.value); });
+    sliders[path] = {input, v};
+    card.appendChild(row);
+  }
+  return card;
+}
+function masterCard() {
+  const card = document.createElement("div"); card.className = "mod";
+  card.innerHTML = `<h3>Master</h3><div class="id">out</div>`;
+  const grid = document.createElement("div"); grid.className = "jacks"; const ins = document.createElement("div");
+  for (const j of desc.master || []) ins.appendChild(jackEl(j.name, j.label, "in"));
+  grid.appendChild(ins); card.appendChild(grid);
+  return card;
+}
+function jackEl(q, label, dir) {
+  const el = document.createElement("div"); el.className = "jack " + dir; el.dataset.q = q;
+  el.innerHTML = `<span class="dot"></span><span>${label}</span>` + (dir === "out" ? `<span class="led"><i></i></span>` : "");
+  if (dir === "in" && doc.cables[q]) el.classList.add("plugged");
+  el.addEventListener("click", () => tapJack(q, dir, el));
+  jacks[q] = el;
+  return el;
+}
+function fmt(x) { return (Math.round(x * 1000) / 1000).toString(); }
+
+// tap an output, then an input, to plug; tap a plugged input with nothing armed to unplug
+function tapJack(q, dir, el) {
+  if (dir === "out") {
+    if (armed) jacks[armed].classList.remove("armed");
+    armed = armed === q ? null : q;
+    if (armed) el.classList.add("armed");
+    return;
+  }
+  if (armed) {
+    sendOp("add", "/cables/" + q, {source: armed});
+    jacks[armed].classList.remove("armed"); armed = null;
+    el.classList.add("plugged"); drawCables();
+  } else if (doc.cables[q]) {
+    sendOp("remove", "/cables/" + q); el.classList.remove("plugged"); drawCables();
+  }
+}
+function knob(path, value) {
+  const now = performance.now();
+  if (!lastSent[path] || now - lastSent[path] > 30) { lastSent[path] = now; sendOp("replace", path, value); delete trailing[path]; }
+  else { const first = !(path in trailing); trailing[path] = value; if (first) setTimeout(() => { if (path in trailing) { const v = trailing[path]; delete trailing[path]; lastSent[path] = performance.now(); sendOp("replace", path, v); } }, 35); }
+}
+function onOp(op) {
+  const keys = splitPointer(op.path);
+  if ((keys[0] === "modules" && keys[2] === "params" || keys[0] === "macros") && sliders[op.path]) {
+    const s = sliders[op.path]; s.input.value = op.value; s.v.textContent = fmt(op.value);
+  } else if (keys[0] === "patch") {
+    if (patchSel) patchSel.value = op.value;
+  } else if (keys[0] === "cables") {
+    const el = jacks[keys[1]]; if (el) el.classList.toggle("plugged", !!doc.cables[keys[1]]);
+    drawCables();
+  } else if (keys[0] === "modules" && keys.length === 2) {
+    if (op.op === "remove") { const c = rackEl.querySelector(`.mod[data-id="${keys[1]}"]`); if (c) c.remove(); drawCables(); }
+    else if (desc.modules[keys[1]]) render();   // the 'module' event brought its description
+    else setTimeout(render, 200);
+  } else if (keys[0] === "name") $("#name").textContent = doc.name;
+}
+function onEvent(ev) {
+  if (ev.name === "module") { desc.modules[ev.id] = ev.desc; if (doc.modules[ev.id]) render(); }
+  else if (ev.name === "late") { document.querySelectorAll(".late").forEach(e => e.classList.remove("late")); for (const q of ev.cables) jacks[q] && jacks[q].classList.add("late"); log("late cables: " + ev.cables.join(", ")); }
+  else log("event: " + JSON.stringify(ev));
+}
+function onTele(v) {
+  for (const q in v.levels) { const el = jacks[q]; if (el) { const i = el.querySelector(".led i"); if (i) i.style.width = Math.min(100, v.levels[q] * 200) + "%"; } }
+}
+function center(el) {
+  const r = el.querySelector(".dot").getBoundingClientRect(), b = rackEl.getBoundingClientRect();
+  return [r.left + r.width / 2 - b.left + rackEl.scrollLeft, r.top + r.height / 2 - b.top + rackEl.scrollTop];
+}
+function drawCables() {
+  let w = 0, h = 0;   // size the overlay from the cards, never from a scroll size that includes it
+  rackEl.querySelectorAll(".mod").forEach(c => { w = Math.max(w, c.offsetLeft + c.offsetWidth); h = Math.max(h, c.offsetTop + c.offsetHeight); });
+  svg.setAttribute("width", w); svg.setAttribute("height", h);
+  svg.innerHTML = "";
+  for (const dest in doc.cables) {
+    const c = doc.cables[dest], a = jacks[c.source], b = jacks[dest];
+    if (!a || !b) continue;
+    const [x1, y1] = center(a), [x2, y2] = center(b);
+    const sag = 30 + Math.abs(x2 - x1) * 0.15;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", `M${x1},${y1} C${x1},${y1 + sag} ${x2},${y2 + sag} ${x2},${y2}`);
+    p.setAttribute("stroke", c.color || "#e74c3c"); p.setAttribute("stroke-width", "3"); p.setAttribute("fill", "none"); p.setAttribute("opacity", "0.85");
+    svg.appendChild(p);
+  }
+}
+window.addEventListener("resize", drawCables);
+rackEl.addEventListener("scroll", drawCables);
+$("#save").onclick = () => send({t: "cmd", name: "save", args: {path: "hmi_patch.json"}});
+$("#load").onclick = () => send({t: "cmd", name: "load", args: {path: "hmi_patch.json"}});
+$("#add").onclick = () => { const type = $("#types").value; const id = prompt("module id", type.toLowerCase()); if (id) sendOp("add", "/modules/" + id, {type}); };
+connect();
+</script>
+</body>
+</html>

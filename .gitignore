@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Rendered audio stays out of git
+wav_exports/
+*.wav
+
+# SoundFonts are supplied by the user and never kept in the repository
+*.sf2
+*.sf3
+
+# Instrument briefs are written by the session and kept out of git
+briefs/

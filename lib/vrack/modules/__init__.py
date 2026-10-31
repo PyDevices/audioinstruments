@@ -1,0 +1,203 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+# SPDX-License-Identifier: MIT
+"""Synth module implementations for vrack.
+
+Nothing here is imported until you use it. ``from vrack.modules import PinMatrix3``
+loads ``pin_matrix3`` and no other synth, and a saved patch loads only the modules
+it contains. Reading ``MODULE_TYPES`` is the one thing that loads them all.
+"""
+
+from .._lazy import load
+
+# (class name, NAME the patch format stores, submodule path)
+_REGISTRY = (
+    ("Acid303", "Acid303", "acid303"),
+    ("BassPedalsVoice", "BassPedalsVoice", "bass_pedals.voice"),
+    ("CompactOrganOutput", "CompactOrganOutput", "compact_organ.output"),
+    ("CompactOrganVibrato", "CompactOrganVibrato", "compact_organ.vibrato"),
+    ("CompactOrganVoice", "CompactOrganVoice", "compact_organ.voice"),
+    ("DrumSynth", "DrumSynth", "drum_synth"),
+    ("Duo20", "Duo20", "duo20"),
+    ("DuoSynthLFO", "DuoSynthLFO", "duosynth.lfo"),
+    ("DuoSynthOutput", "DuoSynthOutput", "duosynth.output"),
+    ("DuoSynthVoice", "DuoSynthVoice", "duosynth.voice"),
+    ("ElectricPianoOutput", "ElectricPianoOutput", "electric_piano.output"),
+    ("ElectricPianoVoice", "ElectricPianoVoice", "electric_piano.voice"),
+    ("FunctionGenerator", "FunctionGenerator", "function_generator"),
+    ("GranularProcessor", "GranularProcessor", "granular_processor"),
+    ("HybridMono", "HybridMono", "hybrid_mono"),
+    ("MacroOscillator", "MacroOscillator", "macro_oscillator"),
+    ("MidiCVModule", "MidiCV", "midi_cv"),
+    ("ModalResonator", "ModalResonator", "modal_resonator"),
+    ("Modular100EnvLFO", "Modular100EnvLFO", "modular100.env_lfo"),
+    ("Modular100Utility", "Modular100Utility", "modular100.utility"),
+    ("Modular100VCA", "Modular100VCA", "modular100.vca"),
+    ("Modular100VCF", "Modular100VCF", "modular100.vcf"),
+    ("Modular100VCO", "Modular100VCO", "modular100.vco"),
+    ("Modular55Envelope", "Modular55Envelope", "modular55.envelope"),
+    ("Modular55HighPass", "Modular55HighPass", "modular55.highpass"),
+    ("Modular55LowPass", "Modular55LowPass", "modular55.lowpass"),
+    ("Modular55VCA", "Modular55VCA", "modular55.vca"),
+    ("Modular55VCO", "Modular55VCO", "modular55.vco"),
+    ("Mono101LFO", "Mono101LFO", "mono101.lfo"),
+    ("Mono101Voice", "Mono101Voice", "mono101.voice"),
+    ("MonoOne", "MonoOne", "mono_one"),
+    ("MonoSynthVoice", "MonoSynthVoice", "mono_synth.voice"),
+    ("ParaphonicSynth", "ParaphonicSynth", "paraphonic_synth"),
+    ("Patch2600", "Patch2600", "patch2600"),
+    ("PinMatrix3", "PinMatrix3", "pin_matrix3"),
+    ("Poly106LFO", "Poly106LFO", "poly106.lfo"),
+    ("Poly106Output", "Poly106Output", "poly106.output"),
+    ("Poly106Voice", "Poly106Voice", "poly106.voice"),
+    ("Poly5LFO", "Poly5LFO", "poly5.lfo"),
+    ("Poly5Voice", "Poly5Voice", "poly5.voice"),
+    ("Poly6LFO", "Poly6LFO", "poly6.lfo"),
+    ("Poly6Output", "Poly6Output", "poly6.output"),
+    ("Poly6Voice", "Poly6Voice", "poly6.voice"),
+    ("Poly8LFO", "Poly8LFO", "poly8.lfo"),
+    ("Poly8Voice", "Poly8Voice", "poly8.voice"),
+    ("Poly80Mod", "Poly80Mod", "poly80.mod"),
+    ("Poly80Output", "Poly80Output", "poly80.output"),
+    ("Poly80Voice", "Poly80Voice", "poly80.voice"),
+    ("PolyA6Noise", "PolyA6Noise", "polya6.noise"),
+    ("PolyA6Output", "PolyA6Output", "polya6.output"),
+    ("PolyA6Voice", "PolyA6Voice", "polya6.voice"),
+    ("PolyMidiCV", "PolyMidiCV", "poly_midi_cv"),
+    ("PolyXaLFO", "PolyXaLFO", "polyxa.lfo"),
+    ("PolyXaOutput", "PolyXaOutput", "polyxa.output"),
+    ("PolyXaVoice", "PolyXaVoice", "polyxa.voice"),
+    ("PolyrhythmSynth", "PolyrhythmSynth", "polyrhythm_synth"),
+    ("RandomSequencer", "RandomSequencer", "random_sequencer"),
+    ("ReedPiano200AOutput", "ReedPiano200AOutput", "reed_piano200a.output"),
+    ("ReedPiano200AVoice", "ReedPiano200AVoice", "reed_piano200a.voice"),
+    ("RotarySpeaker", "RotarySpeaker", "rotary_speaker"),
+    ("Semi32", "Semi32", "semi32"),
+    ("StateVariableMono", "StateVariableMono", "state_variable_mono"),
+    ("StringEnsembleBass", "StringEnsembleBass", "string_ensemble.bass"),
+    ("StringEnsembleEnvelope", "StringEnsembleEnvelope", "string_ensemble.envelope"),
+    ("StringEnsembleOutput", "StringEnsembleOutput", "string_ensemble.output"),
+    ("StringEnsembleVoice", "StringEnsembleVoice", "string_ensemble.voice"),
+    ("Tonewheel3Expression", "Tonewheel3Expression", "tonewheel3.expression"),
+    ("Tonewheel3Percussion", "Tonewheel3Percussion", "tonewheel3.percussion"),
+    ("Tonewheel3Rotary", "Tonewheel3Rotary", "tonewheel3.rotary"),
+    ("Tonewheel3Vibrato", "Tonewheel3Vibrato", "tonewheel3.vibrato"),
+    ("Tonewheel3Voice", "Tonewheel3Voice", "tonewheel3.voice"),
+    ("Tremolo", "Tremolo", "tremolo"),
+    ("Vocoder330Bank", "Vocoder330Bank", "vocoder330.bank"),
+    ("Vocoder330Keys", "Vocoder330Keys", "vocoder330.keys"),
+    ("Vocoder330Mic", "Vocoder330Mic", "vocoder330.mic"),
+    ("Vocoder330Output", "Vocoder330Output", "vocoder330.output"),
+    ("Vocoder330Voice", "Vocoder330Voice", "vocoder330.voice"),
+    ("VoiceMix", "VoiceMix", "voice_mix"),
+    ("WestCoast0", "WestCoast0", "west_coast0"),
+    ("WestCoastSynth", "WestCoastSynth", "west_coast_synth"),
+)
+
+_LAZY = {}
+for _entry in _REGISTRY:
+    _LAZY[_entry[0]] = _entry[2]
+
+
+def __getattr__(name):
+    if name == "MODULE_TYPES":
+        types = {}
+        for entry in _REGISTRY:
+            cls = __getattr__(entry[0])
+            types[entry[1]] = cls
+            types[entry[0]] = cls
+        globals()["MODULE_TYPES"] = types
+        return types
+    return load(__name__, _LAZY, name, globals())
+
+
+def __dir__():
+    return sorted(set(globals()) | set(__all__))
+
+
+def get_module_class(type_name):
+    """Return the Module subclass for ``type_name`` (its NAME or class name).
+
+    Imports only the submodule that holds that class.
+    """
+    for entry in _REGISTRY:
+        if type_name == entry[0] or type_name == entry[1]:
+            return __getattr__(entry[0])
+    raise ValueError("Unknown module type '%s'" % (type_name,))
+
+
+__all__ = [
+    "Acid303",
+    "BassPedalsVoice",
+    "DrumSynth",
+    "Duo20",
+    "DuoSynthLFO",
+    "DuoSynthOutput",
+    "DuoSynthVoice",
+    "FunctionGenerator",
+    "GranularProcessor",
+    "HybridMono",
+    "MODULE_TYPES",
+    "MacroOscillator",
+    "MidiCVModule",
+    "ModalResonator",
+    "Modular100EnvLFO",
+    "Modular100Utility",
+    "Modular100VCA",
+    "Modular100VCF",
+    "Modular100VCO",
+    "Modular55Envelope",
+    "Modular55HighPass",
+    "Modular55LowPass",
+    "Modular55VCA",
+    "Modular55VCO",
+    "Mono101LFO",
+    "Mono101Voice",
+    "MonoOne",
+    "MonoSynthVoice",
+    "ParaphonicSynth",
+    "Patch2600",
+    "PinMatrix3",
+    "Poly106LFO",
+    "Poly106Output",
+    "Poly106Voice",
+    "Poly5LFO",
+    "Poly5Voice",
+    "Poly6LFO",
+    "Poly6Output",
+    "Poly6Voice",
+    "Poly8LFO",
+    "Poly8Voice",
+    "Poly80Mod",
+    "Poly80Output",
+    "Poly80Voice",
+    "PolyA6Noise",
+    "PolyA6Output",
+    "PolyA6Voice",
+    "PolyMidiCV",
+    "PolyXaLFO",
+    "PolyXaOutput",
+    "PolyXaVoice",
+    "PolyrhythmSynth",
+    "RandomSequencer",
+    "RotarySpeaker",
+    "Semi32",
+    "StateVariableMono",
+    "StringEnsembleBass",
+    "StringEnsembleEnvelope",
+    "StringEnsembleOutput",
+    "StringEnsembleVoice",
+    "Tonewheel3Expression",
+    "Tonewheel3Percussion",
+    "Tonewheel3Rotary",
+    "Tonewheel3Vibrato",
+    "Tonewheel3Voice",
+    "Vocoder330Bank",
+    "Vocoder330Keys",
+    "Vocoder330Mic",
+    "Vocoder330Output",
+    "Vocoder330Voice",
+    "VoiceMix",
+    "WestCoast0",
+    "WestCoastSynth",
+    "get_module_class",
+]

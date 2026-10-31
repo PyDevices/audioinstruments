@@ -1,0 +1,74 @@
+name: CI
+
+# A pull request is checked for what it changes: tools/ci_scope.py reads the diff
+# and says which files to lint, which tests to run and which instruments to check
+# against their trait files. A change to the core checks every instrument; a change
+# to docs checks nothing. A push to main, and a manual run, check everything.
+#
+# MicroPython (tests/mpy) is not run here: it needs a build with ulab and audiodsp.
+# Run `micropython tests/mpy/run.py` before you merge.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The runner's own python3 reads the diff, so a change with no code in it
+      # ends here without downloading anything.
+      - name: Scope
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            python3 tools/ci_scope.py --base "$BASE" --out "$RUNNER_TEMP/scope.json" --github
+          else
+            python3 tools/ci_scope.py --all --out "$RUNNER_TEMP/scope.json" --github
+          fi
+
+      - uses: actions/setup-python@v7
+        if: steps.scope.outputs.nothing != 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # audiodsp 0.6.11 is on TestPyPI until its release; naming a dev release
+      # in the requirement lets pip take pre-releases of it, and of nothing else.
+      - name: Install
+        if: steps.scope.outputs.nothing != 'true'
+        run: |
+          python -m pip install -q -i https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            "omnipython-audiodsp>=0.6.11.dev8" numpy pytest ruff==0.17.1
+          python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy|pytest|ruff) "
+
+      - name: Lint
+        if: steps.scope.outputs.lint == 'true'
+        run: |
+          mapfile -t FILES < <(python tools/ci_scope.py --from "$RUNNER_TEMP/scope.json" --get lint)
+          ruff check "${FILES[@]}"
+          ruff format --check "${FILES[@]}"
+
+      - name: Test
+        if: steps.scope.outputs.nothing != 'true'
+        run: |
+          mapfile -t TESTS < <(python tools/ci_scope.py --from "$RUNNER_TEMP/scope.json" --get pytest)
+          if [ "${#TESTS[@]}" -gt 0 ]; then python -m pytest -q "${TESTS[@]}"; fi

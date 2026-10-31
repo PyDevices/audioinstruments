@@ -1,0 +1,694 @@
+{
+ "instrument": "poly8",
+ "spec": {
+  "hold": 0.5,
+  "notes": [
+   36,
+   60,
+   84
+  ],
+  "patches": [
+   0,
+   2,
+   5,
+   6,
+   7
+  ],
+  "ring": 0.6,
+  "tail": 0.3,
+  "velocities": [
+   32,
+   80,
+   127
+  ],
+  "velocity": 100,
+  "velocity_note": 60
+ },
+ "traits": {
+  "p0.lr_corr": {
+   "kind": "corr",
+   "tol": 0.05,
+   "value": 1.0
+  },
+  "p0.n36.attack_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 14.0
+  },
+  "p0.n36.centroid_hz": {
+   "kind": "hz",
+   "tol": 25.794,
+   "value": 515.888
+  },
+  "p0.n36.decay_ms": {
+   "kind": "ms",
+   "tol": 72.6,
+   "value": 484.0
+  },
+  "p0.n36.h2_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -6.198
+  },
+  "p0.n36.h3_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -10.02
+  },
+  "p0.n36.h4_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -12.938
+  },
+  "p0.n36.h5_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -15.421
+  },
+  "p0.n36.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.989
+  },
+  "p0.n36.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": 3.858
+  },
+  "p0.n36.release_ms": {
+   "kind": "ms",
+   "tol": 9.6,
+   "value": 64.0
+  },
+  "p0.n36.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -1.581
+  },
+  "p0.n60.attack_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 4.0
+  },
+  "p0.n60.release_ms": {
+   "kind": "ms",
+   "tol": 8.7,
+   "value": 58.0
+  },
+  "p0.n60.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -0.007
+  },
+  "p0.n84.decay_ms": {
+   "kind": "ms",
+   "tol": 9.0,
+   "value": 60.0
+  },
+  "p0.n84.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -20.749
+  },
+  "p0.n84.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": -1.339
+  },
+  "p0.n84.release_ms": {
+   "kind": "ms",
+   "tol": 10.8,
+   "value": 72.0
+  },
+  "p0.n84.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -7.059
+  },
+  "p0.noise_floor_db": {
+   "kind": "floor_db",
+   "tol": 6.0,
+   "value": -120.0
+  },
+  "p0.vel32.level_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": 0.0
+  },
+  "p0.vel80.level_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -0.001
+  },
+  "p2.lr_corr": {
+   "kind": "corr",
+   "tol": 0.05,
+   "value": 1.0
+  },
+  "p2.n36.attack_ms": {
+   "kind": "ms",
+   "tol": 13.8,
+   "value": 92.0
+  },
+  "p2.n36.centroid_hz": {
+   "kind": "hz",
+   "tol": 20.0,
+   "value": 226.723
+  },
+  "p2.n36.decay_ms": {
+   "kind": "ms",
+   "tol": 43.2,
+   "value": 288.0
+  },
+  "p2.n36.h2_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -7.359
+  },
+  "p2.n36.h3_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -13.851
+  },
+  "p2.n36.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -20.469
+  },
+  "p2.n36.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": 11.109
+  },
+  "p2.n36.release_ms": {
+   "kind": "ms",
+   "tol": 6.6,
+   "value": 44.0
+  },
+  "p2.n36.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -2.937
+  },
+  "p2.n60.attack_ms": {
+   "kind": "ms",
+   "tol": 46.2,
+   "value": 308.0
+  },
+  "p2.n60.centroid_hz": {
+   "kind": "hz",
+   "tol": 20.0,
+   "value": 393.507
+  },
+  "p2.n60.decay_ms": {
+   "kind": "ms",
+   "tol": 21.3,
+   "value": 142.0
+  },
+  "p2.n60.h4_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -37.065
+  },
+  "p2.n60.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -20.878
+  },
+  "p2.n60.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": 2.16
+  },
+  "p2.n60.release_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 22.0
+  },
+  "p2.n84.attack_ms": {
+   "kind": "ms",
+   "tol": 41.7,
+   "value": 278.0
+  },
+  "p2.n84.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -21.972
+  },
+  "p2.noise_floor_db": {
+   "kind": "floor_db",
+   "tol": 6.0,
+   "value": -120.0
+  },
+  "p2.vel80.level_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -0.315
+  },
+  "p5.lr_corr": {
+   "kind": "corr",
+   "tol": 0.05,
+   "value": 1.0
+  },
+  "p5.n36.attack_ms": {
+   "kind": "ms",
+   "tol": 31.5,
+   "value": 210.0
+  },
+  "p5.n36.centroid_hz": {
+   "kind": "hz",
+   "tol": 51.862,
+   "value": 1037.24
+  },
+  "p5.n36.decay_ms": {
+   "kind": "ms",
+   "tol": 16.2,
+   "value": 108.0
+  },
+  "p5.n36.h2_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -0.892
+  },
+  "p5.n36.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -27.22
+  },
+  "p5.n36.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": -3.086
+  },
+  "p5.n36.release_ms": {
+   "kind": "ms",
+   "tol": 27.9,
+   "value": 186.0
+  },
+  "p5.n36.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -1.512
+  },
+  "p5.n60.attack_ms": {
+   "kind": "ms",
+   "tol": 44.1,
+   "value": 294.0
+  },
+  "p5.n60.centroid_hz": {
+   "kind": "hz",
+   "tol": 95.333,
+   "value": 1906.664
+  },
+  "p5.n60.decay_ms": {
+   "kind": "ms",
+   "tol": 23.4,
+   "value": 156.0
+  },
+  "p5.n60.h5_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -12.243
+  },
+  "p5.n60.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -20.466
+  },
+  "p5.n60.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": 8.467
+  },
+  "p5.n84.h5_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -16.122
+  },
+  "p5.n84.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.3
+  },
+  "p5.n84.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": 8.363
+  },
+  "p5.n84.release_ms": {
+   "kind": "ms",
+   "tol": 36.3,
+   "value": 242.0
+  },
+  "p5.noise_floor_db": {
+   "kind": "floor_db",
+   "tol": 6.0,
+   "value": -120.0
+  },
+  "p5.vel32.centroid_hz": {
+   "kind": "hz",
+   "tol": 96.942,
+   "value": 1938.849
+  },
+  "p5.vel80.centroid_hz": {
+   "kind": "hz",
+   "tol": 97.864,
+   "value": 1957.287
+  },
+  "p6.lr_corr": {
+   "kind": "corr",
+   "tol": 0.05,
+   "value": 0.954
+  },
+  "p6.n36.attack_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 10.0
+  },
+  "p6.n36.centroid_hz": {
+   "kind": "hz",
+   "tol": 20.0,
+   "value": 187.012
+  },
+  "p6.n36.decay_ms": {
+   "kind": "ms",
+   "tol": 70.5,
+   "value": 470.0
+  },
+  "p6.n36.h2_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -15.011
+  },
+  "p6.n36.h4_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -13.95
+  },
+  "p6.n36.h5_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -9.963
+  },
+  "p6.n36.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.951
+  },
+  "p6.n36.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": -1195.112
+  },
+  "p6.n36.release_ms": {
+   "kind": "ms",
+   "tol": 7.2,
+   "value": 48.0
+  },
+  "p6.n36.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -3.562
+  },
+  "p6.n60.attack_ms": {
+   "kind": "ms",
+   "tol": 51.6,
+   "value": 344.0
+  },
+  "p6.n60.centroid_hz": {
+   "kind": "hz",
+   "tol": 20.0,
+   "value": 321.516
+  },
+  "p6.n60.h2_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -13.99
+  },
+  "p6.n60.h4_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -25.443
+  },
+  "p6.n60.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -15.179
+  },
+  "p6.n60.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": -1195.235
+  },
+  "p6.n60.release_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 30.0
+  },
+  "p6.n60.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -0.135
+  },
+  "p6.n84.attack_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 4.0
+  },
+  "p6.n84.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": -1190.396
+  },
+  "p6.n84.release_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 22.0
+  },
+  "p6.noise_floor_db": {
+   "kind": "floor_db",
+   "tol": 6.0,
+   "value": -120.0
+  },
+  "p7.lr_corr": {
+   "kind": "corr",
+   "tol": 0.05,
+   "value": 1.0
+  },
+  "p7.n36.attack_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 14.0
+  },
+  "p7.n36.centroid_hz": {
+   "kind": "hz",
+   "tol": 21.351,
+   "value": 427.013
+  },
+  "p7.n36.decay_ms": {
+   "kind": "ms",
+   "tol": 24.6,
+   "value": 164.0
+  },
+  "p7.n36.h2_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -5.879
+  },
+  "p7.n36.h3_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -9.483
+  },
+  "p7.n36.h4_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -12.19
+  },
+  "p7.n36.h5_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -14.522
+  },
+  "p7.n36.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -20.796
+  },
+  "p7.n36.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": 1.775
+  },
+  "p7.n36.release_ms": {
+   "kind": "ms",
+   "tol": 12.0,
+   "value": 80.0
+  },
+  "p7.n36.sustain_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -21.011
+  },
+  "p7.n60.attack_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 4.0
+  },
+  "p7.n60.centroid_hz": {
+   "kind": "hz",
+   "tol": 55.079,
+   "value": 1101.576
+  },
+  "p7.n60.decay_ms": {
+   "kind": "ms",
+   "tol": 8.4,
+   "value": 56.0
+  },
+  "p7.n60.h3_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -3.047
+  },
+  "p7.n60.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -21.683
+  },
+  "p7.n60.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": -1.286
+  },
+  "p7.n60.release_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 40.0
+  },
+  "p7.n84.attack_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 2.0
+  },
+  "p7.n84.centroid_hz": {
+   "kind": "hz",
+   "tol": 108.609,
+   "value": 2172.189
+  },
+  "p7.n84.decay_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 22.0
+  },
+  "p7.n84.h2_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -6.721
+  },
+  "p7.n84.h3_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -17.402
+  },
+  "p7.n84.h4_db": {
+   "kind": "harmonic_db",
+   "tol": 1.5,
+   "value": -27.167
+  },
+  "p7.n84.pitch_cents": {
+   "kind": "cents",
+   "tol": 3.0,
+   "value": 4.975
+  },
+  "p7.n84.release_ms": {
+   "kind": "ms",
+   "tol": 90.0,
+   "value": 600.0
+  },
+  "p7.noise_floor_db": {
+   "kind": "floor_db",
+   "tol": 6.0,
+   "value": -120.0
+  }
+ },
+ "unsteady": [
+  "p0.n60.centroid_hz",
+  "p0.n60.decay_ms",
+  "p0.n60.h2_db",
+  "p0.n60.h3_db",
+  "p0.n60.h4_db",
+  "p0.n60.h5_db",
+  "p0.n60.peak_db",
+  "p0.n60.pitch_cents",
+  "p0.n84.attack_ms",
+  "p0.n84.centroid_hz",
+  "p0.n84.h2_db",
+  "p0.n84.h3_db",
+  "p0.n84.h4_db",
+  "p0.n84.h5_db",
+  "p0.vel32.centroid_hz",
+  "p0.vel80.centroid_hz",
+  "p2.n36.h4_db",
+  "p2.n36.h5_db",
+  "p2.n60.h2_db",
+  "p2.n60.h3_db",
+  "p2.n60.h5_db",
+  "p2.n60.sustain_db",
+  "p2.n84.centroid_hz",
+  "p2.n84.decay_ms",
+  "p2.n84.h2_db",
+  "p2.n84.h3_db",
+  "p2.n84.h4_db",
+  "p2.n84.h5_db",
+  "p2.n84.pitch_cents",
+  "p2.n84.release_ms",
+  "p2.n84.sustain_db",
+  "p2.vel32.centroid_hz",
+  "p2.vel32.level_db",
+  "p2.vel80.centroid_hz",
+  "p5.n36.h3_db",
+  "p5.n36.h4_db",
+  "p5.n36.h5_db",
+  "p5.n60.h2_db",
+  "p5.n60.h3_db",
+  "p5.n60.h4_db",
+  "p5.n60.release_ms",
+  "p5.n60.sustain_db",
+  "p5.n84.attack_ms",
+  "p5.n84.centroid_hz",
+  "p5.n84.decay_ms",
+  "p5.n84.h2_db",
+  "p5.n84.h3_db",
+  "p5.n84.h4_db",
+  "p5.n84.sustain_db",
+  "p5.vel32.level_db",
+  "p5.vel80.level_db",
+  "p6.n36.h3_db",
+  "p6.n60.decay_ms",
+  "p6.n60.h3_db",
+  "p6.n60.h5_db",
+  "p6.n84.centroid_hz",
+  "p6.n84.decay_ms",
+  "p6.n84.h2_db",
+  "p6.n84.h3_db",
+  "p6.n84.h4_db",
+  "p6.n84.h5_db",
+  "p6.n84.peak_db",
+  "p6.n84.sustain_db",
+  "p6.vel32.centroid_hz",
+  "p6.vel32.level_db",
+  "p6.vel80.centroid_hz",
+  "p6.vel80.level_db",
+  "p7.n60.h2_db",
+  "p7.n60.h4_db",
+  "p7.n60.h5_db",
+  "p7.n60.sustain_db",
+  "p7.n84.h5_db",
+  "p7.n84.peak_db",
+  "p7.n84.sustain_db",
+  "p7.vel32.centroid_hz",
+  "p7.vel32.level_db",
+  "p7.vel80.centroid_hz",
+  "p7.vel80.level_db"
+ ]
+}

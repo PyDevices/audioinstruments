@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vrack"
+version = "0.1.0"
+description = "A virtual Eurorack modular synthesizer in Python, on audiodsp, for CPython and MicroPython"
+readme = "README.md"
+authors = [{ name = "Brad Barnett" }]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Multimedia :: Sound/Audio :: Synthesis",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: MicroPython",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+keywords = ["eurorack", "synthesizer", "audio", "dsp", "micropython", "midi"]
+dependencies = [
+    "numpy>=1.20",
+    "omnipython-audiodsp>=0.6.11.dev8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["lib"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+lint.select = ["E", "F", "I", "W", "B", "SIM"]
+lint.ignore = ["E501", "SIM105"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["mpy"]
+pythonpath = ["lib", "."]
