@@ -501,11 +501,23 @@ class MonoSynth(VoicePatch):
     """The MonoSynth as a monophonic voice patch for ``vrack.adapter.create()``."""
 
     NAME = "mono_synth"
+    DISPLAY_NAME = "Mono Synth"
     MONO = True
     VOICES = 1
     LATENCY_SAMPLES = 0
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {
+        0: "BIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "BIPOLAR",
+        8: "UNIPOLAR",
+        9: "UNIPOLAR",
+    }
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))
