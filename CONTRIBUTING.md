@@ -142,3 +142,10 @@ format: bump `PATCH_FORMAT_VERSION` once a release has carried the old name.
 Ideas and planned work: `ROADMAP.md`, three lines at most each. Bugs and
 things a user should be able to do but cannot: issues. Docs are for people
 using vrack: second person, short paragraphs, say where a number came from.
+
+## Releasing
+
+A release is one pull request: set `VERSION` (`X.Y.Z`, or `X.Y.ZrcN` /
+`X.Y.Z.devN` for a pre-release), run `python tools/make_faces.py` so every
+face carries the new version, and merge it. The merge tags `vX.Y.Z` and
+publishes to TestPyPI; a final also goes to MIP and, once approved, to PyPI.

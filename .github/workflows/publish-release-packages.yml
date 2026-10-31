@@ -1,0 +1,111 @@
+name: Publish release packages
+
+# A published GitHub Release (made by tag-release.yml when VERSION changes on
+# main) builds omnipython-audioinstruments, uploads it to TestPyPI, and, for a
+# final release, asks MIP to publish lib/audioinstruments and uploads to PyPI
+# once the pypi environment's reviewer approves.
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      release-ref:
+        description: Exact vX.Y.Z tag to retry
+        required: true
+        type: string
+
+# The reusable publisher attaches release assets (contents:write) and the
+# pypi job uses Trusted Publishing (id-token:write); a called workflow may not
+# exceed the caller's grant, so the ceiling is set here.
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  gates:
+    # Everything CI checks, on the tagged commit: a release must not ship
+    # what CI would not pass.
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release-ref || github.ref }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install -q -i https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            "omnipython-audiodsp>=0.6.11.dev10" numpy pytest
+          python -m pip install -q --no-deps -e .
+      - name: The faces carry this version
+        run: |
+          python tools/make_faces.py
+          git diff --exit-code lib/audioinstruments
+      - run: python -m pytest tests -q -p no:cacheprovider
+
+  credentials:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm inherited TestPyPI credentials
+        env:
+          TESTPYPI_API_TOKEN: ${{ secrets.TESTPYPI_API_TOKEN }}
+        run: |
+          if [[ -z "$TESTPYPI_API_TOKEN" ]]; then
+            echo "TESTPYPI_API_TOKEN is unavailable; ensure the organization secret is visible to PyDevices/audioinstruments." >&2
+            exit 1
+          fi
+
+  publish:
+    needs:
+      - gates
+      - credentials
+    uses: PyDevices/.github/.github/workflows/reusable-publish-release-packages.yml@publishing-v17
+    with:
+      build-kind: pure-python
+      distribution-name: omnipython-audioinstruments
+      import-name: audioinstruments
+      install-dependencies: true
+      # MIP publishes lib/audioinstruments from the tag, not the wheel.
+      mip-profile: audioinstruments
+      pypi-publish: true
+      release-ref: ${{ inputs.release-ref }}
+    secrets: inherit
+
+  pypi:
+    # The upload runs in this file because PyPI matches its Trusted Publisher
+    # against the workflow that runs the upload job. The pypi environment
+    # requires a maintainer's approval and allows v* tags only.
+    needs: publish
+    if: >-
+      !cancelled() && needs.publish.outputs.pypi-publish == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the validated distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.publish.outputs.dist-artifact }}
+          path: dist
+      - name: Publish to PyPI via Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  report-pypi:
+    needs:
+      - publish
+      - pypi
+    if: >-
+      !cancelled() && needs.publish.outputs.pypi-publish == 'true'
+    uses: PyDevices/.github/.github/workflows/reusable-report-pypi-result.yml@publishing-v17
+    with:
+      distribution-name: omnipython-audioinstruments
+      version: ${{ needs.publish.outputs.version }}
+      pypi-result: ${{ needs.pypi.result }}
+    secrets: inherit
