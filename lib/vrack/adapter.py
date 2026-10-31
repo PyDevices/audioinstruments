@@ -81,6 +81,7 @@ _PATCH_VOICES = {
     "polyxa": ("polyxa", "PolyXa"),
     "reed_piano": ("reed_piano", "ReedPiano"),
     "reed_piano200a": ("reed_piano200a", "ReedPiano200A"),
+    "rhythm808": ("rhythm808", "Rhythm808"),
     "string_ensemble": ("string_ensemble", "StringEnsemble"),
     "tonewheel3": ("tonewheel3", "Tonewheel3"),
     "vocoder330": ("vocoder330", "Vocoder330"),
@@ -306,6 +307,41 @@ def _pull_is_native_only():
     return False
 
 
+#: The pad keys a kit fills from its nearest neighbour, as ``soundfont_drums`` does.
+PAD_LOW = 36
+PAD_HIGH = 51
+
+
+def kit_pads(patch, pad_map=None, strict_pads=False):
+    """The key-to-voice table a kit's pool plays from, or None for a keyboard
+    patch (one without ``PADS``). See ``Instrument`` for ``pad_map`` and
+    ``strict_pads``."""
+    from ._component import pad_table
+
+    own = getattr(patch, "PADS", None)
+    if own is None:
+        if pad_map is not None or strict_pads:
+            raise ValueError("pad_map and strict_pads are for a drum kit")
+        return None
+    own = dict(pad_table(own))
+    override = pad_table((), pad_map, strict_pads)  # checks the pair of options
+    if strict_pads:
+        return own
+    if pad_map is not None:
+        return {key: own[target] for key, target in override.items() if target in own}
+    table = dict(own)
+    for key in range(PAD_LOW, PAD_HIGH + 1):
+        if key in table:
+            continue
+        for distance in range(1, PAD_HIGH - PAD_LOW + 1):
+            near = [k for k in (key - distance, key + distance) if PAD_LOW <= k <= PAD_HIGH]
+            hit = [k for k in near if k in own]
+            if hit:
+                table[key] = own[hit[0]]
+                break
+    return table
+
+
 class Instrument:
     """A live polyphonic instrument implementing the audio component API.
 
@@ -336,6 +372,14 @@ class Instrument:
     instrument while it plays. It refuses ``voices`` or ``max_voices`` above
     1 and ``unison``, and the other patches refuse ``priority`` and
     ``retrigger``.
+
+    A drum kit (a patch with ``PADS``, the ``(key, voice)`` pairs it answers)
+    has one voice per sound and ``voices`` is how many sounds it has. Each
+    other pad key from 36 to 51 sounds the nearest key the kit has, the
+    lower on a tie, as ``soundfont_drums`` does. ``strict_pads=True`` turns
+    that off, so the kit answers only its own keys; ``pad_map=`` (a dict or
+    ``(key, key)`` pairs) replaces it with your own table, each key sounding
+    the kit key it names. The two cannot be combined.
     """
 
     def __init__(
@@ -359,6 +403,8 @@ class Instrument:
         priority="last",
         retrigger=False,
         engine="auto",
+        pad_map=None,
+        strict_pads=False,
     ):
         sample_rate = _positive_int(sample_rate, "sample_rate")
         if channel_count not in (1, 2) or isinstance(channel_count, bool):
@@ -376,6 +422,8 @@ class Instrument:
         if output == "graph" and engine == "rack":
             raise ValueError('output="graph" needs engine="graph" or "auto"')
         self.patch = voice_patch(voice) if isinstance(voice, str) else voice
+        self._pads = kit_pads(self.patch, pad_map, strict_pads)
+        self._strict_pads = bool(strict_pads)
         if voices is None:
             voices = getattr(self.patch, "VOICES", 8)
         voices = _positive_int(voices, "voices")
@@ -412,6 +460,8 @@ class Instrument:
             priority=priority,
             retrigger=retrigger,
             buses=getattr(self.patch, "BUSES", ()),
+            pads=self._pads,
+            chokes=getattr(self.patch, "CHOKE", ()),
         )
         self._pool.mix.set_param("level", level)
         self._midi = self._pool.midi
@@ -610,6 +660,16 @@ class Instrument:
         self._check_live()
         with self._lock:
             self._pool.retrigger = on
+
+    @property
+    def pads(self):
+        """A drum kit's table from each key it answers to its voice; None for a keyboard."""
+        return None if self._pads is None else dict(self._pads)
+
+    @property
+    def strict_pads(self):
+        """True when a kit answers only its own keys, with no nearest-pad fill."""
+        return self._strict_pads
 
     @property
     def voice_pool(self):

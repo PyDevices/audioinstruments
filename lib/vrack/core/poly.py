@@ -74,6 +74,15 @@ class VoiceAllocator:
 
     The owner tells the allocator when a releasing voice has gone quiet with
     ``silent(voice)``, which makes it free.
+
+    A drum kit sets ``pads`` (``set_pads``): a dict from each MIDI key to the
+    one voice that sounds it, as a drum machine has one circuit per sound.
+    Then ``order``, ``steal`` and ``unison`` are out of the way: a key the
+    table lacks is dropped, and a key whose voice is still sounding strikes
+    that same voice again (``on_start`` with ``stolen`` true, which is not
+    counted as a steal). ``chokes`` are groups of voices that silence each
+    other: striking one cuts the others in its group that still sound, as a
+    closed hi-hat stops an open one.
     """
 
     def __init__(
@@ -111,6 +120,9 @@ class VoiceAllocator:
         self._count = max_voices
         self._unison = 1
         self._cursor = -1  # the voice a "cycle" order gave last
+        #: A kit's key-to-voice table (``set_pads``), or None for a keyboard.
+        self.pads = None
+        self._chokes = {}
         self.detune = float(detune)
         self.spread = float(spread)
         self.set_steal(steal)
@@ -171,6 +183,29 @@ class VoiceAllocator:
         for v in range(count, old):
             self._cut(v)
 
+    def set_pads(self, pads, chokes=()):
+        """Play as a kit: ``pads`` maps each MIDI key to its voice (None to
+        stop being one); ``chokes`` is groups of voices that cut each other."""
+        if pads is None:
+            self.pads = None
+            self._chokes = {}
+            return
+        table = {}
+        for key, voice in pads.items():
+            voice = int(voice)
+            if not 0 <= voice < self.max_voices:
+                raise ValueError("pad %r names voice %d of %d" % (key, voice, self.max_voices))
+            table[int(key)] = voice
+        groups = {}
+        for group in chokes:
+            group = tuple(int(v) for v in group)
+            for v in group:
+                if not 0 <= v < self.max_voices:
+                    raise ValueError("choke group %r names voice %d" % (group, v))
+                groups[v] = tuple(u for u in group if u != v)
+        self.pads = table
+        self._chokes = groups
+
     def sounding(self):
         """How many voices are not free, releases included."""
         return self.max_voices - self.state.count(FREE)
@@ -181,6 +216,8 @@ class VoiceAllocator:
         """Start ``key`` (any hashable identity) at MIDI ``pitch``; return its voices."""
         self._clock += 1
         serial = self._clock
+        if self.pads is not None:
+            return self._strike(key, pitch, velocity, serial)
         for v in range(self.max_voices):
             if self.key[v] == key and self.state[v] in (HELD, SUSTAINED):
                 self._release(v)  # the same key again: the old note lets go
@@ -249,6 +286,28 @@ class VoiceAllocator:
             self._cut(v)
 
     # -- internals -------------------------------------------------------------
+
+    def _strike(self, key, pitch, velocity, serial):
+        """A kit's note: the pad's own voice, struck again if it still sounds."""
+        v = self.pads.get(pitch)
+        if v is None or v >= self._count:
+            self.dropped += 1
+            return []
+        for u in self._chokes.get(v, ()):
+            if self.state[u] != FREE:
+                self._cut(u)
+        sounding = self.state[v] != FREE
+        if sounding and self.key[v] != key and self.state[v] in (HELD, SUSTAINED):
+            # another key on the same pad was still down: it lets go first
+            self.state[v] = RELEASED
+            self.gated[v] = False
+        self.state[v] = HELD
+        self.key[v] = key
+        self.pitch[v] = pitch
+        self.serial[v] = serial
+        self.gated[v] = True
+        self.on_start(v, pitch, velocity, 0.0, 0.0, sounding)
+        return [v]
 
     def _release(self, v):
         self.state[v] = RELEASED
@@ -422,6 +481,14 @@ class VoicePool:
     without a click: the old note fades over one block, the voice's pitch and
     gate move while it is silent, and the new note fades in over the next.
 
+    ``pads`` makes the pool a drum kit: a dict from each MIDI key to the
+    voice that sounds it, and ``chokes`` groups of voices that cut each other
+    (see ``VoiceAllocator``). ``build_voice`` then builds a different circuit
+    for each ``voice.index``, one per sound, as a drum machine has. A pad
+    struck while its voice still sounds strikes that voice again, with no
+    fade: the gate drops for one block if it was still up and rises at the
+    next, and the circuit takes the new strike over its own ringing.
+
     ``mono=True`` makes a monophonic pool: one voice, which never fades, gaps
     or restarts for a second key. Keys go on a stack and ``priority`` says
     which one sounds (``"last"``, ``"low"``, ``"high"`` or ``"duo"``); letting go of the
@@ -457,6 +524,8 @@ class VoicePool:
         priority="last",
         retrigger=False,
         buses=(),
+        pads=None,
+        chokes=(),
     ):
         from ..modules import get_module_class
 
@@ -496,6 +565,10 @@ class VoicePool:
         self.alloc.set_unison(unison)
         self.alloc.set_steal(steal)
         self.alloc.set_order(order)
+        if pads is not None:
+            if mono:
+                raise ValueError("a drum kit's pool cannot be monophonic")
+            self.alloc.set_pads(pads, chokes)
         if build_global is not None:
             build_global(rack, midi)
         self.voices = []

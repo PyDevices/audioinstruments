@@ -42,12 +42,15 @@ def test_the_metadata_meets_the_contract():
 
 @pytest.mark.parametrize("name", audioinstruments.ALL)
 def test_create_by_name_plays(name):
-    voices = 1 if adapter.voice_patch(name).MONO else 2
+    patch = adapter.voice_patch(name)
+    # a drum kit has one voice per sound; the others are tried small
+    kit = bool(getattr(patch, "PADS", None))
+    voices = patch.VOICES if kit else (1 if patch.MONO else 2)
     inst = audioinstruments.create(name, 48000, voices=voices)
     try:
         check_contract(inst)
         assert inst.macro_labels == audioinstruments.load(name).MACRO_LABELS
-        inst.note_on(60, 100)
+        inst.note_on(36 if kit else 60, 100)  # a kit answers its pad keys
         assert peak(pull(inst, 40)) > 200, name
     finally:
         inst.deinit()

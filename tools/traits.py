@@ -335,6 +335,15 @@ SPECS = {
         "ring": 0.5,
         "tail": 0.3,
     },
+    "rhythm808": {
+        "patches": (0, 1),
+        "drums": True,
+        "notes": (36, 37, 38, 39, 42, 46, 41, 45, 48, 49, 56, 62, 63, 64, 75, 70),
+        "velocity": 100,
+        "velocities": (40, 100, 127),
+        "ring": 10.0,
+        "tail": 0.3,
+    },
 }
 
 #: Phrases for a reference that has no instrument spec of its own yet: the

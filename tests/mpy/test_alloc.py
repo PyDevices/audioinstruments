@@ -92,6 +92,62 @@ def test_cv_cores_are_flat():
         assert_flat(make, label)
 
 
+def test_drum_cores_are_flat():
+    from vrack.dsp.drums import (
+        BridgedTDrumCore,
+        CowbellCore,
+        HandClapCore,
+        MaracasCore,
+        OneShotEnvelopeCore,
+    )
+
+    def cb(n):
+        core = CowbellCore(48000, n)
+        gate = create_buffer(n)
+        gate[0] = 1.0
+        out = create_buffer(n)
+        return lambda: core.render(gate, out)
+
+    def ma(n):
+        core = MaracasCore(48000, n)
+        gate = create_buffer(n)
+        gate[0] = 1.0
+        out = create_buffer(n)
+        return lambda: core.render(gate, out)
+
+    def cp(n):
+        core = HandClapCore(48000, n)
+        gate = create_buffer(n)
+        gate[0] = 1.0
+        out = create_buffer(n)
+        return lambda: core.render(gate, out)
+
+    def bd(n):
+        core = BridgedTDrumCore(48000, n)
+        gate = create_buffer(n)
+        gate[0] = 1.0
+        out = create_buffer(n)
+        return lambda: core.render(gate, out)
+
+    def env(n):
+        core = OneShotEnvelopeCore(48000, n)
+        gate = create_buffer(n)
+        gate[0] = 1.0
+        out = create_buffer(n)
+        return lambda: core.render(gate, out)
+
+    for make, label in (
+        (cb, "CowbellCore"),
+        (ma, "MaracasCore"),
+        (cp, "HandClapCore"),
+        (bd, "BridgedTDrumCore"),
+        (env, "OneShotEnvelopeCore"),
+    ):
+        small = bytes_per_call(make(64))
+        large = bytes_per_call(make(256))
+        assert large <= small + SLACK, "%s: %d B at 64 frames, %d B at 256" % (label, small, large)
+
+
 def test_vector_modules_are_flat():
     def rack_with(cls):
         def make(n):
