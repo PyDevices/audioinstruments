@@ -68,6 +68,8 @@ MODULES = [
     vrack.DuoSynthVoice,
     vrack.DuoSynthLFO,
     vrack.DuoSynthOutput,
+    vrack.ElectricGrand70Voice,
+    vrack.ElectricGrand70Output,
     vrack.ElectricPianoVoice,
     vrack.ElectricPianoOutput,
     vrack.ClavichordVoice,

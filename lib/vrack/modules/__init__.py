@@ -26,6 +26,8 @@ _REGISTRY = (
     ("DuoSynthLFO", "DuoSynthLFO", "duosynth.lfo"),
     ("DuoSynthOutput", "DuoSynthOutput", "duosynth.output"),
     ("DuoSynthVoice", "DuoSynthVoice", "duosynth.voice"),
+    ("ElectricGrand70Output", "ElectricGrand70Output", "electric_grand70.output"),
+    ("ElectricGrand70Voice", "ElectricGrand70Voice", "electric_grand70.voice"),
     ("ElectricPianoOutput", "ElectricPianoOutput", "electric_piano.output"),
     ("ElectricPianoVoice", "ElectricPianoVoice", "electric_piano.voice"),
     ("FunctionGenerator", "FunctionGenerator", "function_generator"),
