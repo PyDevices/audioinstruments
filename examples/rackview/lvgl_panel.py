@@ -72,7 +72,7 @@ def _hex(color):
 
 
 class LVGLPanel:
-    def __init__(self, link, title="audioinstruments._rack"):
+    def __init__(self, link, title="rack"):
         self.panel = hmilink.Panel(link)
         self.panel.on_doc = _guarded(self._on_doc)
         self.panel.on_op = _guarded(self._on_op)
@@ -493,7 +493,7 @@ class LVGLPanel:
         return "%.3g" % float(v)
 
 
-def open_local_panel(link, title="audioinstruments._rack"):
+def open_local_panel(link, title="rack"):
     """The device's own screen, over an in-process link."""
     return LVGLPanel(link, title=title)
 

@@ -2242,7 +2242,8 @@ SRC = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "..",
     "lib",
-    "audioinstruments._rack",
+    "audioinstruments",
+    "_rack",
     "modules",
     "polya6",
 )

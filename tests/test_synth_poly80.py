@@ -2051,13 +2051,13 @@ def test_behaviour_23_the_patch_list():
         ):
             assert s[choice] in options, (name, choice)
     # no module names the original; the patch's docstring alone says what inspired it
-    root = os.path.join(ROOT, "lib", "audioinstruments._rack", "modules", "poly80")
+    root = os.path.join(ROOT, "lib", "audioinstruments", "_rack", "modules", "poly80")
     for f in os.listdir(root):
         if f.endswith(".py"):
             with open(os.path.join(root, f), encoding="utf-8") as fh:
                 assert not re.search(r"yamaha|cs-?80", fh.read(), re.I), f
     with open(
-        os.path.join(ROOT, "lib", "audioinstruments._rack", "instruments", "poly80.py"),
+        os.path.join(ROOT, "lib", "audioinstruments", "_rack", "instruments", "poly80.py"),
         encoding="utf-8",
     ) as fh:
         text = fh.read()

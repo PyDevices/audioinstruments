@@ -24,10 +24,7 @@ import numpy as np
 import pytest
 from audioinstruments._rack.core import Rack, signal
 
-LIB = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(audioinstruments._rack.__file__))),
-    "audioinstruments._rack",
-)
+LIB = os.path.dirname(os.path.abspath(audioinstruments._rack.__file__))
 BLOCK = 256
 THRESHOLD = 256
 
