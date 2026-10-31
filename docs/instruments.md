@@ -2715,7 +2715,9 @@ and `control_change(4, v)` is FILTER, each read as `v / 127`, and both read 1.0
 LOUDNESS is a 100 kOhm pot in series with 15 kOhm, so its gain at position `x`
 is `15 / (15 + 100 * (1 - x))` (`FOOT_LOUD_R301` (15.0) and `FOOT_LOUD_R302`
 (100.0)): 1.0 at the top and 0.13, 17.7 dB down, at the bottom. It never fades
-to silence. FILTER adds up to `FOOT_FILTER_OCT` (3.0) octaves to the cutoff.
+to silence. A new LOUDNESS value ramps in over one block, so a jump or a
+sweep on the pedal doesn't click or zipper. FILTER adds up to `FOOT_FILTER_OCT`
+(3.0) octaves to the cutoff.
 
 #### The panel
 
