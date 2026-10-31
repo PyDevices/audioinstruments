@@ -6,7 +6,7 @@
 NAME = "soundfont_drums"
 DISPLAY_NAME = "SoundFont Drums"
 CATEGORIES = ("Drum", "Sampler")
-VERSION = "0.5.0.dev2"
+VERSION = "0.5.0"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
