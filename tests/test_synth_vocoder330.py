@@ -1226,8 +1226,9 @@ def test_the_talker_phrase_fits_its_loop():
     x = talk(rack, 2 * mic_module.TALKER_PHRASE_S)
     n = int(mic_module.TALKER_PHRASE_S * RATE) // BLOCK * BLOCK
     loud = [rms(x[i : i + 480]) for i in range(0, 2 * n - 480, 480)]
-    half = len(loud) // 2
-    assert correlation(np.array(loud[:half]), np.array(loud[half : 2 * half])) > 0.95  # it repeats
+    half = n // 480  # whole frames in one pass, so the second pass lines up with the first
+    second = np.array(loud[half:])
+    assert correlation(np.array(loud[: len(second)]), second) > 0.95  # it repeats
 
 
 def test_attach_mic_refuses_stereo_and_the_wrong_rate_and_plays_a_mono_sample():
