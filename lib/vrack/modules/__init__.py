@@ -68,6 +68,8 @@ _REGISTRY = (
     ("PolyXaVoice", "PolyXaVoice", "polyxa.voice"),
     ("PolyrhythmSynth", "PolyrhythmSynth", "polyrhythm_synth"),
     ("RandomSequencer", "RandomSequencer", "random_sequencer"),
+    ("ReedPianoOutput", "ReedPianoOutput", "reed_piano.output"),
+    ("ReedPianoVoice", "ReedPianoVoice", "reed_piano.voice"),
     ("ReedPiano200AOutput", "ReedPiano200AOutput", "reed_piano200a.output"),
     ("ReedPiano200AVoice", "ReedPiano200AVoice", "reed_piano200a.voice"),
     ("RotarySpeaker", "RotarySpeaker", "rotary_speaker"),
