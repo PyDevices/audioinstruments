@@ -806,6 +806,47 @@ class Instrument:
         self._output = None
         self._ring = None
 
+    # -- changing the patch while it plays ----------------------------------------------
+
+    def connect(self, source, dest, sample_position=0):
+        """Plug a cable from ``source`` to ``dest`` (jacks, or names such as
+        ``"vcf.cv"``) while the instrument plays. On a graph the patch is
+        compiled again beside the running one and swapped in at the block
+        ``sample_position`` falls in, with every voice, envelope and filter
+        carrying on where it was."""
+        self._live(sample_position, self.rack.connect, source, dest)
+
+    def disconnect(self, dest, sample_position=0):
+        """Pull the cable into ``dest`` (the jack, its name or the cable) while
+        the instrument plays, as ``connect()`` plugs one."""
+        self._live(sample_position, self.rack.disconnect, dest)
+
+    def add_module(self, module, sample_position=0):
+        """Install ``module`` in the rack while the instrument plays. Patch its
+        cables with ``connect()``; until then it sits unpatched. It runs in no
+        voice: it is always on, as a shared effect is."""
+        self._live(sample_position, self.rack.add_module, module)
+
+    def remove_module(self, module, sample_position=0):
+        """Take ``module`` and its cables out of the rack while the instrument plays."""
+        self._live(sample_position, self.rack.remove_module, module)
+
+    def _live(self, sample_position, change, *args):
+        self._check_live()
+        if self._attached:
+            raise RuntimeError(
+                'an instrument with output="graph" cannot change its patch while it plays yet'
+            )
+        self._at(_sample_position(sample_position), self._swap, change, args)
+
+    def _swap(self, change, args):
+        """Change the rack, then compile it beside the running graph and swap that in."""
+        change(*args)
+        if self._compiled is not None:
+            self._compiled = self._compiled.recompile(
+                groups=[voice.members for voice in self._pool.voices]
+            )
+
     # -- rendering ----------------------------------------------------------------------
 
     def _run_events(self, frames):
@@ -824,12 +865,12 @@ class Instrument:
         int16 views per block, when the rack renders; the graph writes ``raw``)."""
         rack = self.rack
         size = self._block_size
-        compiled = self._compiled
-        if compiled is not None:
+        if self._compiled is not None:
             for k in range(self._blocks):
                 if self._events:
                     self._run_events(size)
-                compiled.step(raw, k)
+                # read each block: an event may have swapped in a recompiled graph
+                self._compiled.step(raw, k)
             return
         conv = self._conv
         mono = self._channel_count == 1

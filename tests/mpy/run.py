@@ -35,6 +35,7 @@ MODULES = (
     "test_poly6",
     "test_graph_poly6",
     "test_graph_pump",
+    "test_graph_live_patch",
     "test_graph_mono_duo_a6",
     "test_graph_west_coast",
     "test_graph_modal_resonator",
