@@ -4,10 +4,6 @@ audioinstruments is a set of playable instruments, each a patch of modules
 on a virtual rack, rendered a block at a time on audiodsp.
 Planned work, in rough order:
 
-- Every instrument by name: `audioinstruments.create("poly106", 48000)`, with
-  each instrument's macros and patches readable from its module.
-- The rack moves to `audioinstruments._rack` before 0.5.0. Instruments are the
-  public surface; the rack's modules and jacks stay free to change.
 - The MicroPython tests in CI, on a unix build with audiodsp and ulab; today
   they are run by hand before a merge.
 - The docs in the shared five sections: Get started, Guides, Reference, How it
@@ -45,7 +41,7 @@ Planned work, in rough order:
 - An arpeggiator. A note source in front of a `VoicePool` that holds the keys you play
   and steps through them as a pattern (up, down, random, over several octaves), so any
   polyphonic instrument can arpeggiate; a voice patch has no hook on incoming notes today.
-- A tempo that follows the host's transport in `vrack.adapter`.
+- A tempo that follows the host's transport in `audioinstruments._rack.adapter`.
 - The trait tool for fixed-sound instruments: render a SoundFont preset
   through the sampler with the same phrase and measure it the same way, so an
   electric piano or a drum kit can be set beside a reference.

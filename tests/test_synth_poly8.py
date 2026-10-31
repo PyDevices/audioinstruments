@@ -3,10 +3,10 @@
 """Poly8: the instrument plays, and each control does what its name says."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import poly8
+from audioinstruments._rack.instruments import poly8
 
 CLIP = 27000
 RATE = 48000
@@ -1280,8 +1280,8 @@ def test_velocity_moves_level_and_brightness_only_when_asked():
 
 def test_the_oscillator_and_ladder_cores_are_audiodsp_nodes_and_the_cutoff_is_per_sample():
     import audioladder
-    from vrack.dsp.ladder import LadderCore
-    from vrack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.dsp.ladder import LadderCore
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
 
     inst = make(voices=1)
     v = voice(inst)
@@ -1367,8 +1367,8 @@ def test_any_setting_of_any_control_plays_finite_audio():
 
 
 def test_the_instrument_creates_no_arrays_while_it_plays_steals_glides_and_modulates():
+    from audioinstruments._rack.core import signal
     from test_allocation import EVENTS, TRACING, traced_zeros
-    from vrack.core import signal
 
     signal.set_buffer_factory(traced_zeros)
     try:

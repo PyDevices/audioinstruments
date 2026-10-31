@@ -4,7 +4,7 @@
 
 import struct
 
-from vrack.core.signal import INT16_DTYPE, np
+from audioinstruments._rack.core.signal import INT16_DTYPE, np
 
 
 def test_bytearray_frombuffer_mapping():

@@ -36,16 +36,16 @@ import os
 import subprocess
 import tempfile
 
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.core.bridge as bridge
+import audioinstruments._rack.core.signal as signal
+import audioinstruments._rack.dsp.ladder as ladder
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-import vrack.core.bridge as bridge
-import vrack.core.signal as signal
-import vrack.dsp.ladder as ladder
-from vrack.modules.duosynth.lfo import DuoSynthLFO
-from vrack.modules.duosynth.output import DuoSynthOutput
-from vrack.modules.duosynth.voice import DuoSynthVoice
-from vrack.modules.poly_midi_cv import PolyMidiCV
+from audioinstruments._rack.modules.duosynth.lfo import DuoSynthLFO
+from audioinstruments._rack.modules.duosynth.output import DuoSynthOutput
+from audioinstruments._rack.modules.duosynth.voice import DuoSynthVoice
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
 from tools import graph_phrase, traits
 

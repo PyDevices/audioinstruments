@@ -4,9 +4,9 @@
 
 import math
 
-from vrack.core import Rack, np
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.semi32 import Semi32
+from audioinstruments._rack.core import Rack, np
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.semi32 import Semi32
 
 
 def test_semi32_standalone():

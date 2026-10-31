@@ -4,9 +4,9 @@
 
 import math
 
-from vrack.core import Rack, np
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.west_coast_synth import WestCoastSynth
+from audioinstruments._rack.core import Rack, np
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.west_coast_synth import WestCoastSynth
 
 
 def test_west_coast_synth_standalone():

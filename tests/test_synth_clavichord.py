@@ -6,10 +6,10 @@ import os
 import sys
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import clavichord
+from audioinstruments._rack.instruments import clavichord
 
 sys.path.insert(
     0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")
@@ -264,7 +264,7 @@ def test_released_key_damped_in_about_thirty_ms():
 
 
 def test_the_release_pluck_sounds_about_15_db_under_the_note(monkeypatch):
-    from vrack.modules.clavichord import voice
+    from audioinstruments._rack.modules.clavichord import voice
 
     def release(note):
         inst = dry(6)

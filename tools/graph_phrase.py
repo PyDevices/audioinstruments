@@ -23,7 +23,7 @@ ROOT = "/".join(_parts[:-2]) or "."
 if ROOT + "/lib" not in sys.path:
     sys.path.insert(0, ROOT + "/lib")
 
-import vrack.adapter as adapter  # noqa: E402
+import audioinstruments._rack.adapter as adapter  # noqa: E402
 
 SAMPLE_RATE = 48000
 BUFFER = 256

@@ -4,9 +4,9 @@
 
 import math
 
-from vrack.core import Rack, np
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.mono_one import MonoOne
+from audioinstruments._rack.core import Rack, np
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.mono_one import MonoOne
 
 
 def test_mono_one_standalone():

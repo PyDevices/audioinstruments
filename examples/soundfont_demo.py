@@ -5,11 +5,11 @@
     python examples/soundfont_demo.py                    # writes wav_exports/soundfont_demo.wav
     python examples/soundfont_demo.py bank.sf2 out.wav   # a bank of your choosing, and where to write
 
-The bank is the one `vrack.soundfont.find_bank()` finds: `$SOUNDFONT`, or the
+The bank is the one `audioinstruments._rack.soundfont.find_bank()` finds: `$SOUNDFONT`, or the
 first `.sf2` in `~/soundfonts/`. A bank is never part of this repository; with
 none found the script says so and exits.
 
-The piano and the kit are two instruments made with `vrack.adapter.create()`
+The piano and the kit are two instruments made with `audioinstruments._rack.adapter.create()`
 on one shared pool of voices, and a `MidiDispatcher` plays them: channel 10
 goes to the kit, every other channel to the piano. The first two bars are
 drums alone, so any sound there came through channel 10. The script checks
@@ -25,9 +25,9 @@ if "lib" not in sys.path:
     sys.path.insert(0, "lib")
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.midi_dispatch import MidiDispatcher
-from vrack.soundfont import Voices, find_bank
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.midi_dispatch import MidiDispatcher
+from audioinstruments._rack.soundfont import Voices, find_bank
 
 RATE = 48000
 BUFFER = 256

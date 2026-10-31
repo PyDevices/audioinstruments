@@ -29,7 +29,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 import modal_phrase as phrase  # noqa: E402
-from vrack.modules.modal_resonator import ModalResonator  # noqa: E402
+from audioinstruments._rack.modules.modal_resonator import ModalResonator  # noqa: E402
 
 from tools import traits  # noqa: E402
 

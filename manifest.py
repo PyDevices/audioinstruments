@@ -10,5 +10,4 @@ audiodsp's audiocore, audiofilters, audiobiquad, audioecho, audiopump and
 audiograph.
 """
 
-package("vrack", base_path="lib", opt=3)
 package("audioinstruments", base_path="lib", opt=3)

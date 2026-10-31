@@ -8,11 +8,11 @@ test reads can be added up by hand. Every test plays a note first and reads
 the main sum to show the pool was sounding.
 """
 
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType, VoicePool
-from vrack.modules.voice_mix import VoiceMix
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.modules.voice_mix import VoiceMix
 
 BLOCK = 64
 #: voice index -> (a, b); the main jack carries a + b

@@ -3,7 +3,7 @@
 """The macros these modules took from the instruments they replaced move the parameters they name."""
 
 import pytest
-from vrack.modules import get_module_class
+from audioinstruments._rack.modules import get_module_class
 
 MERGED = {
     "Duo20": ("lpf_eg2_depth", "eg2_release", "volume"),

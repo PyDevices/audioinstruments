@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""An LVGL front panel for a vrack rack over hmilink: the device's own screen.
+"""An LVGL front panel for a rack over hmilink: the device's own screen.
 
     micropython examples/rackview/lvgl_panel.py [host [port]]   # over TCP; on a desktop, a window
     micropython examples/hmi_instrument.py --screen             # in-process, the device's own LCD
@@ -72,7 +72,7 @@ def _hex(color):
 
 
 class LVGLPanel:
-    def __init__(self, link, title="vrack"):
+    def __init__(self, link, title="rack"):
         self.panel = hmilink.Panel(link)
         self.panel.on_doc = _guarded(self._on_doc)
         self.panel.on_op = _guarded(self._on_op)
@@ -493,7 +493,7 @@ class LVGLPanel:
         return "%.3g" % float(v)
 
 
-def open_local_panel(link, title="vrack"):
+def open_local_panel(link, title="rack"):
     """The device's own screen, over an in-process link."""
     return LVGLPanel(link, title=title)
 
@@ -516,7 +516,7 @@ def main(argv):
             port = int(arg)
         else:
             host = arg
-    panel = LVGLPanel(tcp.connect(host, port), title="vrack @ %s:%d" % (host, port))
+    panel = LVGLPanel(tcp.connect(host, port), title="rack @ %s:%d" % (host, port))
     if record:
         try:
             display_drv.open_frame_recorder(record, fps=10)

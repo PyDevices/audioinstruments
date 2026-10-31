@@ -4,10 +4,10 @@
 
 import numpy as np
 import pytest
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.dsp.glide import GlideCore
 from poly_support import build_sine_voice, render, worst_step
 from test_poly_pool import slope
-from vrack.core import Module, Rack, SignalType, VoicePool
-from vrack.dsp.glide import GlideCore
 
 BLOCK = 64
 

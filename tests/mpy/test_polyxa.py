@@ -6,12 +6,12 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import signal
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.polyxa.lfo import PolyXaLFO
-from vrack.modules.polyxa.voice import PolyXaVoice
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import signal
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.polyxa.lfo import PolyXaLFO
+from audioinstruments._rack.modules.polyxa.voice import PolyXaVoice
 
 SLACK = 64
 
@@ -131,9 +131,9 @@ def test_the_noise_the_random_lfo_and_the_12_db_slope_play():
 
 
 def test_cores_are_nodes():
-    from vrack.dsp.ladder import LadderCore, audioladder
-    from vrack.dsp.oscillator import OscillatorCore
-    from vrack.modules.polyxa.output import PolyXaOutput
+    from audioinstruments._rack.dsp.ladder import LadderCore, audioladder
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.modules.polyxa.output import PolyXaOutput
 
     assert OscillatorCore.__name__ == "NodeOscillatorCore"
     assert LadderCore.__name__ == "NodeLadderCore"

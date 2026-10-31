@@ -14,16 +14,16 @@ import pathlib
 import sys
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import pytest
-import vrack.adapter as adapter
 from test_adapter import check_contract, peak, pull
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "support"))
 
+import audioinstruments._rack.soundfont as soundfont  # noqa: E402
 import sf2_builder  # noqa: E402
-import vrack.soundfont as soundfont  # noqa: E402
-from vrack.midi_dispatch import MidiDispatcher  # noqa: E402
+from audioinstruments._rack.midi_dispatch import MidiDispatcher  # noqa: E402
 
 SR = 48000
 

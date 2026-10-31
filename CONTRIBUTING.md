@@ -1,9 +1,10 @@
 # Contributing to audioinstruments
 
-Every instrument here is a patch on `vrack`, a virtual Eurorack modular
-synthesizer in Python, built on [audiodsp](https://github.com/PyDevices/audiodsp). Twenty modules inspired by
-classic instruments live in `lib/vrack/modules/`, their DSP in `lib/vrack/dsp/`, the
-rack and its kernels in `lib/vrack/core/`. These are the rules of the repo.
+Every instrument here is a patch on the rack in `lib/audioinstruments/_rack/`,
+a virtual Eurorack modular synthesizer in Python, built on
+[audiodsp](https://github.com/PyDevices/audiodsp). Twenty modules inspired by
+classic instruments live in `_rack/modules/`, their DSP in `_rack/dsp/`, the
+rack and its kernels in `_rack/core/`. These are the rules of the repo.
 
 ## Run the tests
 
@@ -72,9 +73,10 @@ control (sync, linear FM, PWM, cutoff under a fast envelope), a model
 audiodsp lacks, or a feedback loop inside the module.
 [docs/audiodsp.md](docs/audiodsp.md) lists what is on which side and why.
 Do not write a pure-Python copy of a node audiodsp has. Nothing under
-`lib/vrack` imports `audioinstruments` or `audioeffects`: vrack depends on
-audiodsp alone. The `audioinstruments` package in this repo is the public
-face over vrack, so it imports vrack and never the other way round.
+`lib/audioinstruments/_rack` imports the faces or `audioeffects`: the rack
+depends on audiodsp alone. The faces, `lib/audioinstruments/<name>.py`, are
+the public side over the rack, so they import the rack and never the other way
+round.
 
 The face is generated. Each `lib/audioinstruments/<name>.py` is written by
 `tools/make_faces.py` from the instrument's class, so change `MACRO_LABELS`,
@@ -109,7 +111,7 @@ the bend, for a glide. It is all in
 
 An instrument in `adapter.ALL` follows the Poly106
 ([docs/instruments.md](docs/instruments.md)): a family of modules, a voice
-patch with its presets in `lib/vrack/instruments/`, a built-in effect as a
+patch with its presets in `lib/audioinstruments/_rack/instruments/`, a built-in effect as a
 core in `dsp/`, a spec in `tools/traits.py` and a trait file, and tests on
 both interpreters. Its sound is built from the original's controls; there is
 nothing to match.
@@ -141,7 +143,7 @@ format: bump `PATCH_FORMAT_VERSION` once a release has carried the old name.
 
 Ideas and planned work: `ROADMAP.md`, three lines at most each. Bugs and
 things a user should be able to do but cannot: issues. Docs are for people
-using vrack: second person, short paragraphs, say where a number came from.
+using the rack: second person, short paragraphs, say where a number came from.
 
 ## Releasing
 

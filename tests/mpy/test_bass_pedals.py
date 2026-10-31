@@ -6,11 +6,11 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import signal
-from vrack.core.rack import Rack
-from vrack.modules.bass_pedals.voice import BassPedalsVoice
-from vrack.modules.midi_cv import MidiCVModule
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import signal
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.bass_pedals.voice import BassPedalsVoice
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
 SLACK = 64
 
@@ -136,8 +136,8 @@ def test_the_loudness_foot_slider_is_17_7_db_down():
 
 
 def test_cores_are_nodes():
-    from vrack.dsp.ladder import LadderCore
-    from vrack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.dsp.ladder import LadderCore
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
 
     assert OscillatorCore.__name__ == "NodeOscillatorCore"
     assert LadderCore.__name__ == "NodeLadderCore"

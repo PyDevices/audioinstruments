@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Tests for JSON patch files and vrack.load_rack()."""
+"""Tests for JSON patch files and audioinstruments._rack.load_rack()."""
 
 import json
 
+import audioinstruments._rack
 import pytest
-import vrack
-from vrack.core.rack import PATCH_FORMAT_VERSION, Rack
-from vrack.modules.modular100 import Modular100VCF, Modular100VCO
+from audioinstruments._rack.core.rack import PATCH_FORMAT_VERSION, Rack
+from audioinstruments._rack.modules.modular100 import Modular100VCF, Modular100VCO
 
 
 def test_patch_file_round_trip(tmp_path):
@@ -31,7 +31,7 @@ def test_patch_file_round_trip(tmp_path):
     assert raw["format"] == PATCH_FORMAT_VERSION
     assert raw["name"] == "Round Trip"
 
-    loaded = vrack.load_rack(path)
+    loaded = audioinstruments._rack.load_rack(path)
     assert loaded is not rack
     assert loaded.sample_rate == 44100
     assert loaded.block_size == 128
@@ -74,7 +74,7 @@ def test_patch_file_unknown_module_type(tmp_path):
         json.dump(bad_patch, f)
 
     with pytest.raises(ValueError, match="Unknown module type 'NonExistentModule'"):
-        vrack.load_rack(path)
+        audioinstruments._rack.load_rack(path)
 
     with pytest.raises(ValueError, match="Unknown module type 'NonExistentModule'"):
         Rack().load_patch_file(path)
@@ -94,7 +94,7 @@ def test_patch_file_future_format_version(tmp_path):
         json.dump(future_patch, f)
 
     with pytest.raises(ValueError, match="newer than supported version"):
-        vrack.load_rack(path)
+        audioinstruments._rack.load_rack(path)
 
     with pytest.raises(ValueError, match="newer than supported version"):
         Rack().load_patch_file(path)
@@ -110,7 +110,7 @@ def test_patch_file_keeps_master_cables(tmp_path):
     rack.connect(vco.vco1_saw_out, rack.master_right_in)
     rack.save_patch_file(path)
 
-    loaded = vrack.load_rack(path)
+    loaded = audioinstruments._rack.load_rack(path)
     dests = sorted(c.dest.qualified_name for c in loaded.cables)
     assert dests == ["master_l", "master_r"]
 
@@ -129,7 +129,7 @@ def test_patch_format_version_1_is_refused(tmp_path):
         json.dump(old_patch, f)
 
     with pytest.raises(ValueError, match="version 1 is no longer supported"):
-        vrack.load_rack(path)
+        audioinstruments._rack.load_rack(path)
 
     with pytest.raises(ValueError, match="version 1 is no longer supported"):
         Rack().load_patch_file(path)

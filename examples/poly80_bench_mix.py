@@ -18,7 +18,7 @@ if "lib" not in sys.path:
 
 import time
 
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 try:
     _now = time.perf_counter

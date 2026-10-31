@@ -36,9 +36,12 @@ def peak(x):
 def test_every_instrument_plays_by_name():
     for name in audioinstruments.ALL:
         face = audioinstruments.load(name)
-        inst = audioinstruments.create(name, 48000, voices=1)
+        # a drum kit has one voice per sound and answers only its pad keys
+        kit = name in audioinstruments.DRUM_MACHINES
+        options = {} if kit else {"voices": 1}
+        inst = audioinstruments.create(name, 48000, **options)
         assert inst.macro_labels == face.MACRO_LABELS, name
-        inst.note_on(60, 100)
+        inst.note_on(face.NOTE_MAP[0][0] if kit else 60, 100)
         assert peak(pulled(inst, 20)) > 200, name
         inst.deinit()
 

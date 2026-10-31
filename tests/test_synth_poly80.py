@@ -11,14 +11,14 @@ import os
 import re
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Rack
-from vrack.instruments import poly80
-from vrack.modules.mono101.lfo import Mono101LFO
-from vrack.modules.poly80 import mod, output, voice
-from vrack.modules.poly80.output import Poly80Output
+from audioinstruments._rack.core import Rack
+from audioinstruments._rack.instruments import poly80
+from audioinstruments._rack.modules.mono101.lfo import Mono101LFO
+from audioinstruments._rack.modules.poly80 import mod, output, voice
+from audioinstruments._rack.modules.poly80.output import Poly80Output
 
 CLIP = 27000
 RATE = 48000
@@ -2051,13 +2051,14 @@ def test_behaviour_23_the_patch_list():
         ):
             assert s[choice] in options, (name, choice)
     # no module names the original; the patch's docstring alone says what inspired it
-    root = os.path.join(ROOT, "lib", "vrack", "modules", "poly80")
+    root = os.path.join(ROOT, "lib", "audioinstruments", "_rack", "modules", "poly80")
     for f in os.listdir(root):
         if f.endswith(".py"):
             with open(os.path.join(root, f), encoding="utf-8") as fh:
                 assert not re.search(r"yamaha|cs-?80", fh.read(), re.I), f
     with open(
-        os.path.join(ROOT, "lib", "vrack", "instruments", "poly80.py"), encoding="utf-8"
+        os.path.join(ROOT, "lib", "audioinstruments", "_rack", "instruments", "poly80.py"),
+        encoding="utf-8",
     ) as fh:
         text = fh.read()
     assert re.findall(r"yamaha|cs-?80", text, re.I) == [

@@ -1,12 +1,12 @@
 # SoundFont instruments
 
 `soundfont` plays a SoundFont 2 bank's melodic presets, and `soundfont_drums`
-plays its kits. Both go through `vrack.adapter.create()` like the synths, and
+plays its kits. Both go through `audioinstruments._rack.adapter.create()` like the synths, and
 both answer the audio component contract, so a host that plays one plays
 the other.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 piano = adapter.create(48000, voice="soundfont", bank="/path/to/bank.sf2")
 kit = adapter.create(48000, voice="soundfont_drums", bank="/path/to/bank.sf2")
@@ -15,7 +15,7 @@ piano.program_change(48)        # Strings, in a General MIDI bank
 piano.note_on(60, 100)
 ```
 
-vrack does not ship a bank, and nothing here downloads one. Without `bank=`
+the rack does not ship a bank, and nothing here downloads one. Without `bank=`
 the instrument looks at `$SOUNDFONT`, then at the first `.sf2` in
 `~/soundfonts/` (`%USERPROFILE%\soundfonts` on Windows), and raises an
 `OSError` that names all three when it finds none. Two instruments made from
@@ -35,7 +35,7 @@ For room to grow, make the pool yourself and share it, which is also how a
 General MIDI module's sixteen parts share one sampler:
 
 ```python
-from vrack.soundfont import Voices
+from audioinstruments._rack.soundfont import Voices
 
 pool = Voices(48000, 2, voice_count=16, max_voice_count=128)
 piano = adapter.create(48000, voice="soundfont", bank=path, voice_pool=pool)
@@ -73,14 +73,14 @@ cannot be combined, and `kit.strict_pads` reports which you have.
 
 ## Playing from MIDI
 
-`vrack.midi_dispatch.MidiDispatcher` turns MIDI bytes, `adafruit_midi`
+`audioinstruments._rack.midi_dispatch.MidiDispatcher` turns MIDI bytes, `adafruit_midi`
 messages or a Standard MIDI File into calls on instruments, by channel.
 General MIDI's percussion channel is channel 10 (9 when counted from 0), and
 `drums=` takes that channel; nothing treats a controller's default channel
 specially.
 
 ```python
-from vrack.midi_dispatch import MidiDispatcher, read_midi_file
+from audioinstruments._rack.midi_dispatch import MidiDispatcher, read_midi_file
 
 midi = MidiDispatcher(piano, drums=kit)   # channel 10 to the kit, the rest to the piano
 midi.feed(buf, n)                          # raw bytes, as a port's readinto() leaves them
@@ -92,17 +92,17 @@ for seconds, status, data1, data2 in read_midi_file("song.mid"):
 `examples/soundfont_demo.py` plays two bars of drums on channel 10 and then
 brings a piano in, and writes `wav_exports/soundfont_demo.wav`.
 
-`vrack.midi_cc` holds a scaler for each of the 128 Control Change codes, from
+`audioinstruments._rack.midi_cc` holds a scaler for each of the 128 Control Change codes, from
 the host's 0.0 to 1.0 to the control's own terms: floats for magnitudes,
 exactly 0.0 at the middle for bipolar controls, booleans for switches and
 integers for bank and program numbers.
 
 ## Step sequencing
 
-`vrack.sequencer.Sequencer` keeps a pattern's time in frames on an
+`audioinstruments._rack.sequencer.Sequencer` keeps a pattern's time in frames on an
 `audiopump.Events` queue, so the groove does not move when your timer is late.
 It plays instruments that can put a note on a frame (`inst.schedulable`), and
-none of vrack's can yet: the SoundFont instruments and the synths take
+none of the rack's can yet: the SoundFont instruments and the synths take
 their notes at a block boundary, through `sample_position`. The sequencer's
 tests run against a stand-in that answers the same calls.
 

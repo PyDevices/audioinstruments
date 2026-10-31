@@ -5,9 +5,9 @@
 import array
 import math
 
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool, np
+from audioinstruments._rack.dsp.glide import GlideCore
 from test_poly import SineVoice, render, worst_step
-from vrack.core import Module, Rack, SignalType, VoicePool, np
-from vrack.dsp.glide import GlideCore
 
 BLOCK = 64
 LEVEL_SLOPE = 0.3 * 0.5 * 2.0 * math.pi / 48000.0  # a SineVoice at the mix level, per Hz

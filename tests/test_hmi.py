@@ -26,7 +26,7 @@ if hmilink is None:
     pytest.skip("hmilink not on the path", allow_module_level=True)
 
 import play_audio  # noqa: E402
-from vrack.hmi import RackModel  # noqa: E402
+from audioinstruments._rack.hmi import RackModel  # noqa: E402
 
 
 def pump(device, panels, rounds=3):
@@ -173,8 +173,8 @@ def test_save_and_load(tmp_path=None):
 
 
 def test_instrument_patch_and_macros_reach_every_panel():
-    import vrack.adapter as adapter
-    from vrack.hmi import InstrumentModel
+    import audioinstruments._rack.adapter as adapter
+    from audioinstruments._rack.hmi import InstrumentModel
 
     on_cpython = sys.implementation.name == "cpython"
     inst = adapter.create(

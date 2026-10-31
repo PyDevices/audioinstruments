@@ -6,8 +6,8 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import signal
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import signal
 
 SLACK = 64
 CASTS = 0 if getattr(signal, "_cast_into", None) is not None else 0

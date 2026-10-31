@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""`vrack.midi_cc`: every Control Change code has a scaler, and the scalers keep their promises."""
+"""`audioinstruments._rack.midi_cc`: every Control Change code has a scaler, and the scalers keep their promises."""
 
-import vrack.midi_cc as cc
+import audioinstruments._rack.midi_cc as cc
 
 
 def test_every_code_has_a_scaler():
@@ -38,7 +38,7 @@ def test_numbers_are_seven_bit_integers():
 
 
 def test_the_instruments_own_pan_matches_the_scaler_at_the_ends():
-    import vrack.soundfont as soundfont
+    import audioinstruments._rack.soundfont as soundfont
 
     for midi in (0, 32, 64, 100, 127):
         assert abs(soundfont._bipolar(midi / 127.0)) <= 1.0

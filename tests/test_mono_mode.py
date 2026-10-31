@@ -4,12 +4,12 @@
 
 import numpy as np
 import pytest
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.dsp.glide import GlideCore
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 from poly_support import SineVoice, build_sine_voice, render, sine_pool, worst_step
 from test_poly_pool import slope
-from vrack.core import Module, Rack, SignalType, VoicePool
-from vrack.dsp.glide import GlideCore
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.poly_midi_cv import PolyMidiCV
 
 BLOCK = 64
 
@@ -689,7 +689,7 @@ def test_returning_to_a_held_key_glides_in_auto_and_the_bend_is_not_slid():
 
 
 def mono_patch():
-    from vrack.adapter import VoicePatch
+    from audioinstruments._rack.adapter import VoicePatch
 
     class Patch(VoicePatch):
         NAME = "mono_test"
@@ -706,7 +706,7 @@ def mono_patch():
 
 
 def test_an_instrument_with_a_mono_patch_builds_one_voice_and_takes_the_options():
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice=mono_patch(), priority="low", retrigger=True)
     assert inst.voices == 1 and inst.priority == "low" and inst.retrigger is True
@@ -722,7 +722,7 @@ def test_an_instrument_with_a_mono_patch_builds_one_voice_and_takes_the_options(
 
 
 def test_a_mono_instrument_refuses_voices_unison_and_the_poly_patches_refuse_priority():
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     for options in ({"voices": 2}, {"max_voices": 4}, {"unison": 2}):
         with pytest.raises(ValueError, match="monophonic"):

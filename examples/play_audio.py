@@ -36,7 +36,7 @@ except ImportError:  # CPython
         time.sleep(ms / 1000.0)
 
 
-from vrack import (  # noqa: E402
+from audioinstruments._rack import (  # noqa: E402
     Acid303,
     DrumSynth,
     Duo20,
@@ -66,7 +66,7 @@ from vrack import (  # noqa: E402
     WestCoast0,
     WestCoastSynth,
 )
-from vrack.core.signal import INT16_DTYPE, np  # noqa: E402
+from audioinstruments._rack.core.signal import INT16_DTYPE, np  # noqa: E402
 
 SAMPLE_RATE = 48000
 BLOCK_SIZE = 64

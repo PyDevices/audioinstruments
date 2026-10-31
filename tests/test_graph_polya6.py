@@ -54,23 +54,23 @@ What matches to how many counts, and why:
 import array
 import math
 
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.core.bridge as bridge
+import audioinstruments._rack.core.signal as signal
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-import vrack.core.bridge as bridge
-import vrack.core.signal as signal
-from vrack.core.graph import UNIT
-from vrack.instruments.polya6 import PRESETS
-from vrack.modules.polya6.noise import PolyA6Noise
-from vrack.modules.polya6.output import DC_HZ, PolyA6Output
-from vrack.modules.polya6.voice import PolyA6Voice
+from audioinstruments._rack.core.graph import UNIT
+from audioinstruments._rack.instruments.polya6 import PRESETS
+from audioinstruments._rack.modules.polya6.noise import PolyA6Noise
+from audioinstruments._rack.modules.polya6.output import DC_HZ, PolyA6Output
+from audioinstruments._rack.modules.polya6.voice import PolyA6Voice
 
 
 def keeps_every_wire(fn):
     """Run ``fn`` with buffer sharing off: it reads a wire by its id after a block."""
     import functools
 
-    import vrack.core.graph as vgraph
+    import audioinstruments._rack.core.graph as vgraph
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
@@ -115,8 +115,8 @@ TONE_HZ = 97.3
 def tone_noise(monkeypatch):
     """A saw for the shared white noise on both sides, through the same oscillator
     kernel, so whatever holds or mixes the noise compares sample for sample."""
-    from vrack.core.bridge import OSC_LEVEL, PITCH_OCTAVES
-    from vrack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.core.bridge import OSC_LEVEL, PITCH_OCTAVES
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
 
     def process(self, block_size):
         if getattr(self, "_tone", None) is None:
@@ -867,7 +867,7 @@ def test_auto_stays_on_the_rack_without_overdrive():
         "fake.__dict__.update({k: v for k, v in audiograph.__dict__.items()"
         " if not k.startswith('OVERDRIVE')})\n"
         "sys.modules['audiograph'] = fake\n"
-        "from vrack import adapter\n"
+        "from audioinstruments._rack import adapter\n"
         "print(adapter.create(48000, voice='polya6', engine='auto').engine)\n"
     )
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

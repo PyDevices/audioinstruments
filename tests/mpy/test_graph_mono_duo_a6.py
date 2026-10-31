@@ -10,7 +10,7 @@ byte.
 import array
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 try:
     import audiograph

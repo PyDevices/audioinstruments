@@ -6,12 +6,12 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import signal
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.poly80.mod import Poly80Mod
-from vrack.modules.poly80.voice import Poly80Voice
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import signal
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.poly80.mod import Poly80Mod
+from audioinstruments._rack.modules.poly80.voice import Poly80Voice
 
 SLACK = 64
 

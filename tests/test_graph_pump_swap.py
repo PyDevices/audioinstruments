@@ -58,7 +58,7 @@ def test_the_pump_keeps_pulling_the_same_graph():
 
 
 def test_an_instrument_patched_while_the_pump_plays():
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice="poly6", output="graph")
     pump = ps._Pump(inst.output, 0x7FFFFFFF)
@@ -92,7 +92,7 @@ def test_an_instrument_patched_while_the_pump_plays():
 
 
 def test_a_module_that_runs_in_python_is_refused_and_the_patch_plays_on():
-    from vrack.core import Module, SignalType
+    from audioinstruments._rack.core import Module, SignalType
 
     class Slow(Module):
         NAME = "PSSlow"

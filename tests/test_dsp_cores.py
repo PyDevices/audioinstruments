@@ -7,8 +7,8 @@ sound."""
 import math
 
 import pytest
-from vrack.core import DEFAULT_SAMPLE_RATE, create_buffer
-from vrack.dsp import (
+from audioinstruments._rack.core import DEFAULT_SAMPLE_RATE, create_buffer
+from audioinstruments._rack.dsp import (
     AmplifierCore,
     BiquadFilter,
     EnvelopeCore,
@@ -23,7 +23,7 @@ from vrack.dsp import (
     WavefolderCore,
     resonance_to_q,
 )
-from vrack.dsp.ladder import PRESETS, NodeLadderCore, PythonLadderCore
+from audioinstruments._rack.dsp.ladder import PRESETS, NodeLadderCore, PythonLadderCore
 
 N = 64
 SR = DEFAULT_SAMPLE_RATE
@@ -224,7 +224,7 @@ def test_a_loud_input_at_full_resonance_stays_finite_at_either_slope(model, pole
 
 
 def _per_sample_ladder():
-    from vrack.dsp.ladder import NodeLadderCore
+    from audioinstruments._rack.dsp.ladder import NodeLadderCore
 
     if LadderCore is not NodeLadderCore:
         pytest.skip("no audioladder node")
@@ -258,7 +258,7 @@ def test_ladder_cutoff_cv_is_the_cutoff_it_names(poles):
 
 
 def test_ladder_cutoff_cv_past_the_rail_holds_at_the_top():
-    # vrack#14: a cutoff CV past +2.0 (32768 counts on the int16 wire) used
+    # A cutoff CV past +2.0 (32768 counts on the int16 wire) used
     # to wrap to a large negative count and shut the filter. It clamps now,
     # so +2.5 and +3.0 render exactly what the rail itself does.
     core = _per_sample_ladder()
@@ -281,7 +281,7 @@ def test_ladder_cutoff_cv_past_the_rail_holds_at_the_top():
 
 
 def test_to_int16_clamps_at_the_rails():
-    from vrack.core.signal import create_int16_buffer, to_int16
+    from audioinstruments._rack.core.signal import create_int16_buffer, to_int16
 
     src = create_buffer(6)
     for i, v in enumerate((2.0, -2.0, 2.5, -2.5, 1e9, -1e9)):
@@ -292,11 +292,11 @@ def test_to_int16_clamps_at_the_rails():
 
 
 def _signal_without_cast_into(monkeypatch):
-    """A fresh copy of vrack.core.signal as an audiodsp without cast_into sees it."""
+    """A fresh copy of audioinstruments._rack.core.signal as an audiodsp without cast_into sees it."""
     import importlib.util
     import sys
 
-    from vrack.core import signal
+    from audioinstruments._rack.core import signal
 
     monkeypatch.setitem(sys.modules, "audiomath", None)
     spec = importlib.util.spec_from_file_location("_signal_fallback", signal.__file__)
@@ -308,7 +308,7 @@ def _signal_without_cast_into(monkeypatch):
 
 @pytest.mark.parametrize("cast", ["cast_into", "fallback"])
 def test_to_int16_rounds_half_away_from_zero(cast, monkeypatch):
-    from vrack.core import signal
+    from audioinstruments._rack.core import signal
 
     if cast == "fallback":
         signal = _signal_without_cast_into(monkeypatch)

@@ -12,8 +12,8 @@ import math
 
 import numpy as np
 import pytest
-from vrack.core import create_buffer
-from vrack.dsp.ensemble import (
+from audioinstruments._rack.core import create_buffer
+from audioinstruments._rack.dsp.ensemble import (
     LATENCY_FRAMES,
     VIB_CENTRE_MS,
     AlignCore,

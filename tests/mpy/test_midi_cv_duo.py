@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """MidiCV's ``"duo"`` priority on MicroPython: the two lines and the trig rule."""
 
-from vrack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
 BLOCK = 64
 

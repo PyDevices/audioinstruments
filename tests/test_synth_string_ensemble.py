@@ -3,15 +3,15 @@
 """StringEnsemble: polyphony, the paraphonic envelope, bass, ensemble, controls and routing."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core.jack import SignalType
-from vrack.core.module import Module
-from vrack.core.rack import Rack
-from vrack.instruments import string_ensemble
-from vrack.instruments.string_ensemble import PRESETS, SETTINGS
-from vrack.modules.string_ensemble import (
+from audioinstruments._rack.core.jack import SignalType
+from audioinstruments._rack.core.module import Module
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.instruments import string_ensemble
+from audioinstruments._rack.instruments.string_ensemble import PRESETS, SETTINGS
+from audioinstruments._rack.modules.string_ensemble import (
     bass,
     envelope,
     output,
@@ -506,7 +506,7 @@ def test_route_choke():
 
 def test_route_last_release():
     """Rule 5: the last key let go rings for the release: -40 dB at 1.15 times the slider's time."""
-    from vrack.modules.string_ensemble.envelope import SUSTAIN_RANGE, slider_time
+    from audioinstruments._rack.modules.string_ensemble.envelope import SUSTAIN_RANGE, slider_time
 
     inst = make(voices=1)
     ctl(inst, **clean(sustain_length=4.0, crescendo=0.0, ensemble=False, violin=False))
@@ -653,7 +653,7 @@ def test_route_bass_bypass():
 
 def test_route_bass_envelope():
     """Rule 8: the bass's attack follows crescendo; its release is BASS_RELEASE_S whatever sustain says."""
-    from vrack.modules.string_ensemble.bass import BASS_RELEASE_S
+    from audioinstruments._rack.modules.string_ensemble.bass import BASS_RELEASE_S
 
     def attack_level(crescendo):
         inst = make(voices=1)
@@ -772,7 +772,7 @@ class Level(Module):
 )
 def test_the_output_is_the_ensembles_latency_late_on_or_off(path, ensemble):
     """The bass and the strings both come out LATENCY_FRAMES late, with the ensemble on or off."""
-    from vrack.dsp.ensemble import LATENCY_FRAMES
+    from audioinstruments._rack.dsp.ensemble import LATENCY_FRAMES
 
     rack = Rack(sample_rate=RATE, block_size=BLOCK)
     src = rack.add_module(Impulse("src", sample_rate=RATE, block_size=BLOCK))
@@ -1270,7 +1270,7 @@ def test_docs_and_code_agree():
     import re
     from pathlib import Path
 
-    from vrack.dsp import ensemble
+    from audioinstruments._rack.dsp import ensemble
 
     text = Path("docs/instruments.md").read_text()
     section_match = re.search(r"## Playing the StringEnsemble.*?(?=\n## |\Z)", text, re.DOTALL)

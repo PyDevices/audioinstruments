@@ -7,9 +7,9 @@ into both sides with a gain and a pan each. Without it, the mix is a ``MIX`` nod
 whose gains carry the balance. Both render the same samples, unison's spread included.
 """
 
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
 
 pytestmark = pytest.mark.skipif(
     not adapter.graph_available(), reason="the compiled form needs audiograph"
@@ -85,7 +85,7 @@ def test_pan_sounds_as_two_mixers(voice, patch, monkeypatch):
 
 @needs_pan
 def test_a_pan_the_wrong_way_round_fails(monkeypatch):
-    from vrack.modules.voice_mix import VoiceMix
+    from audioinstruments._rack.modules.voice_mix import VoiceMix
 
     real = VoiceMix._graph_block
 

@@ -4,10 +4,10 @@
 balance, tone tilt, accent, guiro scrapes, and no hard clipping on 14 simultaneous strikes."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import rhythm78
+from audioinstruments._rack.instruments import rhythm78
 
 
 def make(preset=0, **options):

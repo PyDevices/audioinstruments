@@ -3,8 +3,8 @@
 """The struck-key cores and the tremolo: what each one models, measured on its own."""
 
 import numpy as np
-from vrack.core.signal import create_buffer
-from vrack.dsp.keys import (
+from audioinstruments._rack.core.signal import create_buffer
+from audioinstruments._rack.dsp.keys import (
     HammerExciter,
     PickupCore,
     StruckBarCore,
@@ -12,7 +12,7 @@ from vrack.dsp.keys import (
     pickup_weight,
     pickup_weights,
 )
-from vrack.dsp.tremolo import TremoloCore
+from audioinstruments._rack.dsp.tremolo import TremoloCore
 
 SR = 48000
 N = 128

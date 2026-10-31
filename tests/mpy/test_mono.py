@@ -4,11 +4,11 @@
 
 import array
 
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool, np
+from audioinstruments._rack.dsp.glide import GlideCore
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 from test_poly import SineVoice, render, worst_step
-from vrack.core import Module, Rack, SignalType, VoicePool, np
-from vrack.dsp.glide import GlideCore
-from vrack.modules.midi_cv import MidiCVModule
 
 BLOCK = 64
 

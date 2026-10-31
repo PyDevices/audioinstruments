@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """The kernels give the same answers under ulab as under numpy."""
 
-from vrack.core import (
+from audioinstruments._rack.core import (
     add_scaled,
     copy_into,
     create_buffer,

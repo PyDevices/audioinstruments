@@ -4,9 +4,9 @@
 
 import math
 
-from vrack.core import Rack, np
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.state_variable_mono import StateVariableMono
+from audioinstruments._rack.core import Rack, np
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.state_variable_mono import StateVariableMono
 
 
 def test_state_variable_mono_standalone():

@@ -6,11 +6,11 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import Rack, signal
-from vrack.modules.compact_organ.vibrato import CompactOrganVibrato
-from vrack.modules.compact_organ.voice import CompactOrganVoice
-from vrack.modules.midi_cv import MidiCVModule
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import Rack, signal
+from audioinstruments._rack.modules.compact_organ.vibrato import CompactOrganVibrato
+from audioinstruments._rack.modules.compact_organ.voice import CompactOrganVoice
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
 SLACK = 64
 CASTS = 0 if getattr(signal, "_cast_into", None) is not None else 0

@@ -6,10 +6,10 @@ import math
 
 import numpy as np
 import pytest
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
+from audioinstruments._rack.modules.voice_mix import VoiceMix
 from poly_support import SineVoice, build_sine_voice, render, sine_pool, worst_step
-from vrack.core import Module, Rack, SignalType, VoicePool
-from vrack.modules.poly_midi_cv import PolyMidiCV
-from vrack.modules.voice_mix import VoiceMix
 
 LEVEL = 0.5  # VoiceMix's default level
 AMPLITUDE = 0.3 * LEVEL
@@ -446,7 +446,7 @@ def test_all_notes_off_controllers_release_everything():
 
 
 def test_poly_midi_cv_is_a_registered_module():
-    from vrack.modules import get_module_class
+    from audioinstruments._rack.modules import get_module_class
 
     assert get_module_class("PolyMidiCV") is PolyMidiCV
     assert get_module_class("VoiceMix") is VoiceMix
@@ -516,7 +516,7 @@ def test_reset_silences_the_pool_and_leaves_it_playable():
 
 def test_a_saved_pool_loads_back_as_a_playable_rack(tmp_path):
     """The patch file holds the voice modules and cables; the pool object is not saved."""
-    from vrack.core import load_rack
+    from audioinstruments._rack.core import load_rack
 
     rack = Rack(48000, 64)
 

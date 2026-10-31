@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Voice buses on MicroPython: sums, the steal's ramp, parking, build_shared, the engine."""
 
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType, VoicePool
-from vrack.modules.voice_mix import VoiceMix
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.modules.voice_mix import VoiceMix
 
 BLOCK = 64
 VALUES = ((0.1, 0.2), (0.3, 0.4))

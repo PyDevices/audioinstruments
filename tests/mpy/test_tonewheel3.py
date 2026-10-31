@@ -6,11 +6,11 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import Rack, signal
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.tonewheel3.percussion import Tonewheel3Percussion
-from vrack.modules.tonewheel3.voice import Tonewheel3Voice
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import Rack, signal
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.tonewheel3.percussion import Tonewheel3Percussion
+from audioinstruments._rack.modules.tonewheel3.voice import Tonewheel3Voice
 
 SLACK = 64
 CASTS = 0 if getattr(signal, "_cast_into", None) is not None else 0

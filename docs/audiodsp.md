@@ -1,8 +1,8 @@
-# vrack and audiodsp
+# The rack and audiodsp
 
-vrack depends on [audiodsp](https://github.com/PyDevices/audiodsp), the
+the rack depends on [audiodsp](https://github.com/PyDevices/audiodsp), the
 PyDevices port of CircuitPython's audio nodes plus its own, and on nothing
-else beyond numpy or ulab. This page says what vrack runs on audiodsp, what
+else beyond numpy or ulab. This page says what the rack runs on audiodsp, what
 it keeps in Python and why, and what it would still like audiodsp to have.
 Everything here was checked against audiodsp 0.6.7 on CPython 3.12 and on
 the unix build of MicroPython 1.29 with the same modules compiled in.
@@ -10,10 +10,10 @@ the unix build of MicroPython 1.29 with the same modules compiled in.
 ## How the two fit together
 
 audiodsp nodes pull signed 16-bit PCM from a source and hand out a block of
-their own. vrack's jacks carry blocks of floats, because control voltage,
+their own. The rack's jacks carry blocks of floats, because control voltage,
 gates and audio share one scale and get added and multiplied freely. The
 `NodeBridge` in `core/bridge.py` joins the two: a looping
-`audiocore.RawSample` over an int16 array the size of one vrack block, a
+`audiocore.RawSample` over an int16 array the size of one block, a
 passthrough `audiofilters.Filter` so no node sees the RawSample's
 end-of-sample flag, then the nodes. Per block it converts the float input
 in, pulls one block from the last node and converts back. With every node's
@@ -24,7 +24,7 @@ pull goes through `audiopump.pull` and `drain` and allocates nothing.
 Two things decide what can live on audiodsp:
 
 - **Block size.** The CircuitPython-ported effects take a `buffer_size`, so
-  they run at vrack's 64 frames, and so do `audioladder.Ladder` and
+  they run at the rack's 64 frames, and so do `audioladder.Ladder` and
   `audiooscillator.Oscillator` from audiodsp 0.6.8. synthio and the rest of
   audiodsp's own nodes (`audioshaper`, `audioverb`, `audiomodal`,
   `audiomath`, `audioecho`) always hand out 256 frames. `ChunkedBridge` runs those by
@@ -37,7 +37,7 @@ Two things decide what can live on audiodsp:
 
 ## What runs on audiodsp
 
-| vrack core | audiodsp | Used by |
+| Rack core | audiodsp | Used by |
 | --- | --- | --- |
 | `OscillatorCore`, the PolyBLEP VCO (saw, pulse, triangle, sine) | `audiooscillator.Oscillator` through `OscillatorBridge`: pitch, linear FM, PWM and sync go in as audio and are read per sample; one stereo node gives two waveforms from one phase | Patch2600, Modular100 VCO, Modular55 VCO, StateVariableMono, Duo20, WestCoastSynth, PinMatrix3, MonoOne, HybridMono, Semi32, DrumSynth, PolyrhythmSynth, Acid303 |
 | `LadderCore` (transistor, clean, Curtis, diode) | `audioladder.Ladder` at the rack's block size; the cutoff CV goes into the node's cutoff input and is read per sample (a node without that input, audiodsp 0.6.8 and earlier, moves the cutoff once a block); the clean preset's high-pass is a biquad in front; `render(poles=2)` takes the output two stages in, a 12 dB slope that still self-oscillates | Semi32, DrumSynth, PolyrhythmSynth, Modular55 low-pass, Patch2600, Modular100, PinMatrix3, MonoOne |
@@ -53,7 +53,7 @@ Two things decide what can live on audiodsp:
 
 ## What stays in Python, and why
 
-| vrack core | Why not a node |
+| Rack core | Why not a node |
 | --- | --- |
 | The wave blender (`dsp/oscillator.py`) | Its morph between shapes has no node. |
 | The acid filter (`dsp/ladder.py`) | Its feedback is high-passed inside the loop, which `audioladder.Ladder` has no place for. |
@@ -66,7 +66,7 @@ Two things decide what can live on audiodsp:
 | Granular engine | `audiodelays.GranularPitchShift` shifts live input; it has no buffer position, size or freeze. |
 | MacroOscillator's other six models, the WestCoast0 triangle core | Per-sample phase arithmetic (FM, folding, formants, a kick's pitch drop). |
 
-## What vrack still lacks in audiodsp
+## What the rack still lacks in audiodsp
 
 The ladder at the caller's buffer size and the band-limited oscillator were
 the first two asks; both are in audiodsp 0.6.8. With an older audiodsp, or a
@@ -101,4 +101,4 @@ imported: its West Coast instrument drives a vactrol-style gate from a synthio
 envelope and a one-shot LFO; its chorus and vibrato model a clocked
 bucket-brigade line, which is where `BBDDelayCore`'s use of `Echo`'s
 `freq_shift` comes from; `acoustickit` is a modal synthesizer like ModalResonator's
-model 0. vrack depends on audiodsp alone.
+model 0. The rack depends on audiodsp alone.

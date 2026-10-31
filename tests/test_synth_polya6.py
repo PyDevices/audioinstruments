@@ -6,12 +6,12 @@ import os
 import re
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import polya6
-from vrack.modules.polya6 import output as polya6_output_module
-from vrack.modules.polya6 import voice as polya6_voice_module
+from audioinstruments._rack.instruments import polya6
+from audioinstruments._rack.modules.polya6 import output as polya6_output_module
+from audioinstruments._rack.modules.polya6 import voice as polya6_voice_module
 
 CLIP = 27000
 RATE = 48000
@@ -2210,11 +2210,11 @@ def test_render_only_what_is_heard():
 
 
 def test_allocation_clean():
+    from audioinstruments._rack.core import Rack
+    from audioinstruments._rack.modules.midi_cv import MidiCVModule
+    from audioinstruments._rack.modules.polya6.noise import PolyA6Noise
+    from audioinstruments._rack.modules.polya6.voice import PolyA6Voice
     from test_allocation import EVENTS, TRACING
-    from vrack.core import Rack
-    from vrack.modules.midi_cv import MidiCVModule
-    from vrack.modules.polya6.noise import PolyA6Noise
-    from vrack.modules.polya6.voice import PolyA6Voice
 
     rack = Rack(block_size=128)
     midi = rack.add_module(MidiCVModule("midi", block_size=128))
@@ -2239,7 +2239,13 @@ def test_allocation_clean():
 
 DOCS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "instruments.md")
 SRC = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "lib", "vrack", "modules", "polya6"
+    os.path.dirname(os.path.abspath(__file__)),
+    "..",
+    "lib",
+    "audioinstruments",
+    "_rack",
+    "modules",
+    "polya6",
 )
 
 

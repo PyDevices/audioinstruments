@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for FunctionGenerator."""
 
-from vrack.core.rack import Rack
-from vrack.modules.function_generator import FunctionGenerator
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.function_generator import FunctionGenerator
 
 
 def test_function_generator_instantiation():

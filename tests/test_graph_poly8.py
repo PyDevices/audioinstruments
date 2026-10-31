@@ -33,17 +33,17 @@ import os
 import subprocess
 import tempfile
 
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.core.bridge as bridge
+import audioinstruments._rack.core.signal as signal
+import audioinstruments._rack.dsp.ladder as ladder
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-import vrack.core.bridge as bridge
-import vrack.core.signal as signal
-import vrack.dsp.ladder as ladder
-from vrack.core import Module, Rack, SignalType, compile_rack, fill
-from vrack.core.graph import UNIT, TooManyGroups
-from vrack.modules._util import knob_hz
-from vrack.modules.poly8.lfo import RATE_RANGE, Poly8LFO
-from vrack.modules.poly8.voice import Poly8Voice
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, fill
+from audioinstruments._rack.core.graph import UNIT, TooManyGroups
+from audioinstruments._rack.modules._util import knob_hz
+from audioinstruments._rack.modules.poly8.lfo import RATE_RANGE, Poly8LFO
+from audioinstruments._rack.modules.poly8.voice import Poly8Voice
 
 from tools import graph_phrase, traits
 

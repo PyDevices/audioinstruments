@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""A synth is imported when it is used, not when vrack is.
+"""A synth is imported when it is used, not when the rack is.
 
 The checks live in ``tests/mpy/test_lazy.py`` so MicroPython runs them too.
 Here they run in a fresh interpreter: pytest has already imported every synth

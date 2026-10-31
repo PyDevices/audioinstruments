@@ -4,10 +4,10 @@
 accent brightens and scales level, presets load, and every control moves its circuit."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import rhythm808
+from audioinstruments._rack.instruments import rhythm808
 
 
 def make(preset=0, **options):

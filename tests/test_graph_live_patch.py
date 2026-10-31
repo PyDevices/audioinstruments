@@ -65,7 +65,7 @@ def test_a_change_at_a_sample_position_lands_on_its_block():
 
 
 def test_a_module_added_and_removed_while_it_plays():
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice="poly6")
     inst.note_on(60, 100)

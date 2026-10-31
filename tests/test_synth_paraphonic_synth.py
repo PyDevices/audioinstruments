@@ -4,10 +4,10 @@
 
 import math
 
-from vrack.core.cable import Cable
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.paraphonic_synth import ParaphonicSynth
+from audioinstruments._rack.core.cable import Cable
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.paraphonic_synth import ParaphonicSynth
 
 
 def test_paraphonic_synth_zero_cable_playability():

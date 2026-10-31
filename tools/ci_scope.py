@@ -3,7 +3,7 @@
 """Say what CI has to check for a change, so a typical change costs a few minutes.
 
     python tools/ci_scope.py --base origin/main          # a branch against main
-    python tools/ci_scope.py --files lib/vrack/dsp/chorus.py tests/test_x.py
+    python tools/ci_scope.py --files lib/audioinstruments/_rack/dsp/chorus.py tests/test_x.py
     python tools/ci_scope.py --all                       # check everything
     python tools/ci_scope.py --base BASE --get pytest    # one item per line
     python tools/ci_scope.py --base BASE --out scope.json   # keep the answer
@@ -70,15 +70,19 @@ FULL_FILES = ("pyproject.toml", "tools/ci_scope.py", "tests/test_ci_scope.py")
 FULL_PREFIXES = (".github/",)
 #: A change to any of these is a change to the shared core: every test runs
 #: and every instrument is checked, whatever imports what.
-SHARED_PREFIXES = ("lib/vrack/core/",)
-SHARED_FILES = ("lib/vrack/__init__.py", "lib/vrack/_lazy.py", "tests/conftest.py")
+SHARED_PREFIXES = ("lib/audioinstruments/_rack/core/",)
+SHARED_FILES = (
+    "lib/audioinstruments/_rack/__init__.py",
+    "lib/audioinstruments/_rack/_lazy.py",
+    "tests/conftest.py",
+)
 #: A test that mentions one of these goes through every module or instrument.
 SWEEP = re.compile(
     r"\b(ALL|MODULE_TYPES|get_module_class|_REGISTRY|_PATCH_VOICES|_MODULE_VOICES)\b"
 )
 #: Found by parsing, not importing, so the tool needs no dependencies.
-ADAPTER = "lib/vrack/adapter.py"
-REGISTRY = "lib/vrack/modules/__init__.py"
+ADAPTER = "lib/audioinstruments/_rack/adapter.py"
+REGISTRY = "lib/audioinstruments/_rack/modules/__init__.py"
 TRAITS_TOOL = "tools/traits.py"
 TRAITS_DIR = "tests/traits"
 TRAITS_TEST = "tests/test_traits.py"
@@ -87,7 +91,7 @@ TRAITS_TEST = "tests/test_traits.py"
 TABLES = {
     ADAPTER: ("_MODULE_VOICES", "_PATCH_VOICES", "SAMPLERS"),
     REGISTRY: ("_REGISTRY", "__all__"),
-    "lib/vrack/__init__.py": ("__all__",),
+    "lib/audioinstruments/_rack/__init__.py": ("__all__",),
     TRAITS_TOOL: ("SPECS",),
 }
 
@@ -194,7 +198,7 @@ class Graph:
         #: Both a module's class name and its patch NAME lead to its submodule.
         self.by_name = {}
         for cls, name, sub in registry:
-            self.by_name[cls] = self.by_name[name] = "vrack.modules." + sub
+            self.by_name[cls] = self.by_name[name] = "audioinstruments._rack.modules." + sub
         self._exported = {}
         self.direct = {rel: self._imports(rel) for rel in self.files}
         self._reach = {}
@@ -259,7 +263,7 @@ class Graph:
             elif (
                 isinstance(node, ast.Constant)
                 and isinstance(node.value, str)
-                and node.value.startswith("vrack.")
+                and node.value.startswith("audioinstruments._rack.")
                 and self._is_module(node.value)
             ):
                 # A module named by its dotted path in a string is loaded by
@@ -347,14 +351,18 @@ class Graph:
         patch_voices = _literal(self.root, ADAPTER, "_PATCH_VOICES") or {}
         samplers = _literal(self.root, ADAPTER, "SAMPLERS") or ()
         out = {}
-        for name in samplers:  # a module of vrack that has its own create()
-            out[name] = self._with_adapter(self.resolve("vrack." + name), through_inits)
+        for name in samplers:  # a module of the rack that has its own create()
+            out[name] = self._with_adapter(
+                self.resolve("audioinstruments._rack." + name), through_inits
+            )
         for name, entry in module_voices.items():
-            entries = self.resolve(self.by_name.get(entry[0], "vrack.modules." + name))
+            entries = self.resolve(
+                self.by_name.get(entry[0], "audioinstruments._rack.modules." + name)
+            )
             out[name] = self._with_adapter(entries, through_inits)
         for name, entry in patch_voices.items():
             out[name] = self._with_adapter(
-                self.resolve("vrack.instruments." + entry[0]), through_inits
+                self.resolve("audioinstruments._rack.instruments." + entry[0]), through_inits
             )
         return out
 
@@ -403,12 +411,12 @@ def _registered(graph, rows):
             return None
     for name, entry in rows.get("_PATCH_VOICES", {}).items():
         names.add(name)
-        own("vrack.instruments." + entry[0])
+        own("audioinstruments._rack.instruments." + entry[0])
     for name in rows.get("SAMPLERS", ()):
         names.add(name)
-        own("vrack." + name)
+        own("audioinstruments._rack." + name)
     for _cls, _name, sub in rows.get("_REGISTRY", ()):
-        own("vrack.modules." + sub)
+        own("audioinstruments._rack.modules." + sub)
     for cls in rows.get("__all__", ()):
         if not module(cls):
             return None

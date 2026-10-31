@@ -19,7 +19,7 @@ if "lib" not in sys.path:
     sys.path.insert(0, "lib")
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 from demo_check import Audible, section_ok
 
 RATE = 48000
@@ -27,7 +27,7 @@ BUFFER = 256
 CLIP = 27000
 BEAT = 0.5  # 120 bpm
 
-# Patches, by number: see vrack.instruments.poly106.PRESETS.
+# Patches, by number: see audioinstruments._rack.instruments.poly106.PRESETS.
 WARM_PAD, BRASS, BRASS_STAB, PLUCK_BASS, LEAD = 1, 3, 4, 6, 7
 
 

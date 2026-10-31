@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>vrack panel</title>
+<title>Rack panel</title>
 <style>
   :root { --bg:#14161a; --panel:#1f232a; --ink:#e6e6e6; --dim:#8a93a0; --led:#39d353; --arm:#f1c40f; --line:#2b313a; }
   * { box-sizing: border-box; }
@@ -36,7 +36,7 @@
 </head>
 <body>
 <header>
-  <span class="name" id="name">vrack</span>
+  <span class="name" id="name">rack</span>
   <span class="st" id="status">connecting</span>
   <span class="st" id="rtt"></span>
   <button id="save">Save</button>
@@ -47,7 +47,7 @@
 <div id="rack"><svg id="cables"></svg></div>
 <div id="log"></div>
 <script>
-// A front panel for a vrack rack over hmilink. It draws from the device's
+// A front panel for a rack over hmilink. It draws from the device's
 // description and document, sends ops as you move things, and follows every
 // op the device echoes, whoever made it. Layout is this page's choice: the
 // contract carries none.
