@@ -370,3 +370,22 @@ def test_decay_sets_how_long_a_held_note_rings():
 
     short, fresh, long = fall(0.0), fall(5.0), fall(10.0)
     assert short > fresh * 2.5 and fresh > long * 1.6, (short, fresh, long)
+
+
+def test_a_full_bend_moves_a_note_by_the_bend_range_and_no_more():
+    def fundamental(bend):
+        inst = make(0)
+        inst.pitch_bend(bend)
+        x = play(inst, (57,), buffers=100)[4800:, 0]
+        mag = np.abs(np.fft.rfft(x * np.hanning(len(x))))
+        freqs = np.fft.rfftfreq(len(x), 1.0 / 48000)
+        # the strongest bin, wherever it lands
+        near = (freqs > 50.0) & (freqs < 8000.0)
+        i = int(np.argmax(np.where(near, mag, 0.0)))
+        a, b, c = np.log(mag[i - 1 : i + 2] + 1e-12)
+        return float(freqs[i] + 0.5 * (a - c) / (a - 2.0 * b + c) * (freqs[1] - freqs[0]))
+
+    centre = fundamental(8192)
+    full = fundamental(16383)
+    cents = 1200.0 * np.log2(full / centre)
+    assert abs(cents - 200.0) < 10.0, cents
