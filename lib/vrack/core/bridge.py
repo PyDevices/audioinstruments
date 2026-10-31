@@ -35,6 +35,7 @@ import audiofilters
 
 from .signal import (
     INT16_DTYPE,
+    copy_into,
     create_buffer,
     from_int16,
     np,
@@ -232,12 +233,19 @@ class ChunkedBridge(NodeBridge):
         self._in_f = create_buffer(self.FRAMES)
         self._out_f = create_buffer(self.FRAMES)
         self._steps = self.FRAMES // block_size
+        # a view of each block's place in the chunk, made once: slicing in
+        # process would make a copy (ulab) or a view object every block
+        self._in_at = [
+            self._in_f[i * block_size : (i + 1) * block_size] for i in range(self._steps)
+        ]
+        self._out_at = [
+            self._out_f[i * block_size : (i + 1) * block_size] for i in range(self._steps)
+        ]
 
     def process(self, src, dst):
-        bs = self.block_size
-        start = self._pos * bs
-        self._in_f[start : start + bs] = src
-        dst[:] = self._out_f[start : start + bs]
+        pos = self._pos
+        copy_into(self._in_at[pos], src)
+        copy_into(dst, self._out_at[pos])
         self._pos += 1
         if self._pos == self._steps:
             self._pos = 0
