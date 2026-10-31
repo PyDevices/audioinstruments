@@ -475,3 +475,67 @@ def test_guiro_core_short_and_long_modes():
     span = int(0.03 * SAMPLE_RATE)
     assert np.max(np.abs(audio_long[mid_idx : mid_idx + span])) > 0.05
     assert np.max(np.abs(audio_short[mid_idx : mid_idx + span])) < 0.005
+
+
+def test_swept_oscillator_drum_tone_mix_and_noise_filter():
+    # Setting tone_mix to 0 mutes the tone completely
+    drum = SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK)
+    drum.tone_mix = 0.0
+    drum.click_level = 0.0
+    drum.noise_mix = 0.0
+    audio = render_blocks(drum, 20, strike_at=0)
+    assert np.max(np.abs(audio)) == 0.0
+
+    # Low-pass noise filter mode
+    drum_lp = SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK, noise_filter_mode="LP")
+    drum_lp.tone_mix = 0.0
+    drum_lp.click_level = 0.0
+    drum_lp.noise_mix = 0.5
+    drum_lp.set_noise_filter(1000.0, mode="LP")
+    audio_lp = render_blocks(drum_lp, 40, strike_at=0)
+    fft_lp = np.abs(np.fft.rfft(audio_lp))
+    freqs = np.fft.rfftfreq(len(audio_lp), 1.0 / SAMPLE_RATE)
+    hi_lp = np.sum(fft_lp[freqs > 5000])
+
+    drum_bright = SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK, noise_filter_mode="LP")
+    drum_bright.tone_mix = 0.0
+    drum_bright.click_level = 0.0
+    drum_bright.noise_mix = 0.5
+    drum_bright.set_noise_filter(8000.0, mode="LP")
+    audio_bright = render_blocks(drum_bright, 40, strike_at=0)
+    fft_bright = np.abs(np.fft.rfft(audio_bright))
+    hi_bright = np.sum(fft_bright[freqs > 5000])
+
+    assert hi_bright > hi_lp * 3.0
+
+
+def test_swept_oscillator_drum_defaults_keep_the_earlier_machines_sound():
+    # The tone level and the noise filter are additions: a core that leaves them
+    # alone must render exactly what it did before they existed (tone at unity,
+    # noise through the 2 kHz high-pass).
+    drum = SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK)
+    assert drum.tone_mix == 1.0
+    assert drum.noise_filter_mode == "HP"
+    assert drum.noise_cutoff_hz == 2000.0
+
+    def run(core):
+        core.noise_mix = 0.3
+        core.pitch_drop_cents = 1200.0
+        return render_blocks(core, 30, strike_at=0)
+
+    plain = run(SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK))
+    spelled = SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK, noise_filter_mode="HP")
+    spelled.tone_mix = 1.0
+    spelled.set_noise_filter(2000.0)
+    assert np.array_equal(plain, run(spelled))
+
+    # And the tone level scales the tone alone, exactly.
+    quiet = SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK)
+    quiet.tone_mix = 0.5
+    loud = SweptOscillatorDrumCore(SAMPLE_RATE, BLOCK)
+    for core in (quiet, loud):
+        core.click_level = 0.0
+        core.noise_mix = 0.0
+    assert np.allclose(
+        render_blocks(quiet, 20, strike_at=0) * 2.0, render_blocks(loud, 20, strike_at=0)
+    )
