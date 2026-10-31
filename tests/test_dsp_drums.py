@@ -9,9 +9,12 @@ from vrack.dsp.drums import (
     BitDepthRateCore,
     BridgedTDrumCore,
     CowbellCore,
+    GuiroCore,
     HandClapCore,
+    JingleCore,
     MaracasCore,
     MetallicBankCore,
+    NoiseHatCore,
     NoiseSnareCore,
     OneShotEnvelopeCore,
     RimShotCore,
@@ -93,6 +96,25 @@ def test_bridged_t_drum_frequency_and_decay():
     audio_short = render_blocks(drum_short, 80, strike_at=0)
     idx = int(0.08 * SAMPLE_RATE)
     assert np.abs(audio[idx]) > np.abs(audio_short[idx]) * 3.0
+
+
+def test_bridged_t_drum_pitch_rise():
+    drum = BridgedTDrumCore(SAMPLE_RATE, BLOCK)
+    drum.frequency = 300.0
+    drum.pitch_drop_cents = -1200.0  # rises an octave over bend_time_sec
+    drum.bend_time_sec = 0.03
+    drum.decay = 0.2
+    drum.click_level = 0.0
+    drum.noise_mix = 0.0
+
+    audio = render_blocks(drum, 40, strike_at=0)
+    # Pitch rises from ~150 Hz to 300 Hz
+    early_seg = audio[int(0.005 * SAMPLE_RATE) : int(0.025 * SAMPLE_RATE)]
+    late_seg = audio[int(0.05 * SAMPLE_RATE) : int(0.07 * SAMPLE_RATE)]
+    early_crossings = np.sum(np.diff(np.sign(early_seg) >= 0) != 0)
+    late_crossings = np.sum(np.diff(np.sign(late_seg) >= 0) != 0)
+    # Late crossings should be higher frequency than early crossings
+    assert late_crossings > early_crossings
 
 
 def test_bridged_t_drum_retrigger_without_click():
@@ -391,3 +413,65 @@ def test_bit_depth_rate_core_leaves_no_offset_on_a_decaying_tail():
     tail = -0.004 * np.ones((6, BLOCK))
     out = run_crusher(crusher, tail)
     assert np.max(np.abs(out[BLOCK * 2 :])) == 0.0
+
+
+def test_noise_hat_core_decay_and_retrigger():
+    hat = NoiseHatCore(SAMPLE_RATE, BLOCK)
+    hat.set_params(decay_sec=0.040, bp_hz=7500.0, bp_q=4.0, hp_hz=6500.0)
+
+    # Closed hat decays quickly (< 100 ms)
+    audio_closed = render_blocks(hat, 40, strike_at=0)
+    assert np.max(np.abs(audio_closed[:BLOCK])) > 0.1
+    # Check that it decays below 0.01 within 80 ms
+    assert np.max(np.abs(audio_closed[int(0.08 * SAMPLE_RATE) :])) < 0.01
+
+    # Open hat with longer decay
+    hat.reset()
+    hat.set_params(decay_sec=0.300, bp_hz=8200.0, hp_hz=6500.0)
+    audio_open = render_blocks(hat, 60, strike_at=0)
+    # Energy at 100 ms should still be prominent
+    idx = int(0.10 * SAMPLE_RATE)
+    assert np.abs(audio_open[idx]) > np.abs(audio_closed[idx]) * 5.0
+
+    # Retriggering re-raises the level
+    hat.reset()
+    gate = create_buffer(BLOCK)
+    dst = create_buffer(BLOCK)
+    gate[:] = 1.0
+    hat.render(gate, dst)
+    gate[:] = 0.0
+    for _ in range(5):
+        hat.render(gate, dst)
+    level_before = hat.level
+    gate[0:] = 1.0
+    hat.render(gate, dst, velocity=1.0)
+    assert hat.level > level_before
+
+
+def test_jingle_core_burst_and_decay():
+    jingle = JingleCore(SAMPLE_RATE, BLOCK)
+    audio = render_blocks(jingle, 160, strike_at=0)
+    # Peak should sound clearly
+    assert np.max(np.abs(audio)) > 0.1
+    # Multiple bursts over first ~50 ms
+    early = audio[: int(0.05 * SAMPLE_RATE)]
+    assert np.max(np.abs(early)) > 0.1
+    # Rings out over ~250 ms, silent by 350 ms
+    assert np.max(np.abs(audio[int(0.35 * SAMPLE_RATE) :])) < 0.01
+
+
+def test_guiro_core_short_and_long_modes():
+    # Short guiro: 6 spikes over 80 ms
+    short_g = GuiroCore(mode="short", sample_rate=SAMPLE_RATE, block_size=BLOCK)
+    audio_short = render_blocks(short_g, 60, strike_at=0)
+    assert np.max(np.abs(audio_short[: int(0.08 * SAMPLE_RATE)])) > 0.1
+    assert np.max(np.abs(audio_short[int(0.12 * SAMPLE_RATE) :])) < 0.01
+
+    # Long guiro: 12 spikes over 250 ms
+    long_g = GuiroCore(mode="long", sample_rate=SAMPLE_RATE, block_size=BLOCK)
+    audio_long = render_blocks(long_g, 120, strike_at=0)
+    # At 150 ms, long guiro is still scraping while short is silent
+    mid_idx = int(0.15 * SAMPLE_RATE)
+    span = int(0.03 * SAMPLE_RATE)
+    assert np.max(np.abs(audio_long[mid_idx : mid_idx + span])) > 0.05
+    assert np.max(np.abs(audio_short[mid_idx : mid_idx + span])) < 0.005

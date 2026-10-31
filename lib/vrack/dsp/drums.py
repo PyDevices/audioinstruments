@@ -16,6 +16,9 @@ This module provides reusable building blocks for analog drum machines:
 - SweptOscillatorDrumCore: A swept-oscillator analog drum (triangle shaped toward
   a sine) with pitch envelope, strike click, and noise mix.
 - BitDepthRateCore: A bit-depth and sample-rate reduction stage using SampleHold.
+- NoiseHatCore: White noise through a ringing resonant band-pass filter and high-pass filter.
+- JingleCore: White noise through narrow ringing band-pass filters shaken by burst spikes.
+- GuiroCore: A run of scraped clicks through a band-pass filter for short and long guiro.
 """
 
 import math
@@ -227,7 +230,7 @@ class BridgedTDrumCore:
         r = math.exp(-4.60517 / (sr * max(0.01, self.decay)))
         f0 = max(10.0, min(sr * 0.45, self.frequency))
 
-        if self.pitch_drop_cents > 0.0 and self.bend_env > 1e-4:
+        if self.pitch_drop_cents != 0.0 and self.bend_env > 1e-4:
             bend_r = math.exp(-1.0 / (sr * max(0.001, self.bend_time_sec)))
             self.bend_env = exp_segment(self._bend_buf, self.bend_env, 0.0, bend_r, self.ramp)
             scaled_into(self._pitch_cv, self._bend_buf, self.pitch_drop_cents / 12000.0)
@@ -1235,3 +1238,369 @@ class BitDepthRateCore:
 
     def render(self, src, dst):
         self.process(src, dst)
+
+
+class NoiseHatCore:
+    """A noise hat and cymbal synthesis core.
+
+    Generates white noise passed through a resonant band-pass filter that rings,
+    followed by a high-pass filter, shaped by a retriggerable exponential decay envelope.
+    """
+
+    def __init__(self, sample_rate=DEFAULT_SAMPLE_RATE, block_size=DEFAULT_BLOCK_SIZE):
+        self.sample_rate = sample_rate
+        self.block_size = block_size
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.noise_gen = NoiseGenerator()
+
+        self.bp_hz = 7500.0
+        self.bp_q = 4.0
+        self.hp_hz = 6500.0
+        self.decay_sec = 0.040
+
+        self.bp_filter = BiquadFilter(block_size, sample_rate, mode="BP", stages=1, q=self.bp_q)
+        self.bp_filter.set(self.bp_hz, self.bp_q)
+        self.hp_filter = BiquadFilter(block_size, sample_rate, mode="HP", stages=1, q=1.0)
+        self.hp_filter.set(self.hp_hz)
+
+        self.ringing = False
+        self.level = 0.0
+
+        sr = float(sample_rate)
+        self._decay_coeff = math.exp(-4.60517 / (sr * max(0.005, self.decay_sec)))
+
+        self._white = create_buffer(block_size)
+        self._bp_buf = create_buffer(block_size)
+        self._hp_buf = create_buffer(block_size)
+        self._env = create_buffer(block_size)
+
+    def set_block_size(self, block_size):
+        self.block_size = block_size
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.bp_filter = BiquadFilter(
+            block_size, self.sample_rate, mode="BP", stages=1, q=self.bp_q
+        )
+        self.bp_filter.set(self.bp_hz, self.bp_q)
+        self.hp_filter = BiquadFilter(block_size, self.sample_rate, mode="HP", stages=1, q=1.0)
+        self.hp_filter.set(self.hp_hz)
+        self._white = create_buffer(block_size)
+        self._bp_buf = create_buffer(block_size)
+        self._hp_buf = create_buffer(block_size)
+        self._env = create_buffer(block_size)
+
+    def set_params(self, decay_sec=None, bp_hz=None, bp_q=None, hp_hz=None):
+        if decay_sec is not None:
+            self.decay_sec = max(0.005, float(decay_sec))
+            self._decay_coeff = math.exp(-4.60517 / (float(self.sample_rate) * self.decay_sec))
+        if bp_hz is not None or bp_q is not None:
+            if bp_hz is not None:
+                self.bp_hz = float(bp_hz)
+            if bp_q is not None:
+                self.bp_q = float(bp_q)
+            self.bp_filter.set(self.bp_hz, self.bp_q)
+        if hp_hz is not None:
+            self.hp_hz = float(hp_hz)
+            self.hp_filter.set(self.hp_hz)
+
+    def reset(self):
+        self.bp_filter.reset()
+        self.hp_filter.reset()
+        self.edges.high = False
+        self.ringing = False
+        self.level = 0.0
+
+    def trigger(self, velocity=1.0):
+        self.ringing = True
+        self.level = velocity
+
+    def render(self, gate, dst, velocity=1.0):
+        rising = -1
+        if gate is not None:
+            rising, _ = self.edges.scan(gate)
+        if rising >= 0:
+            self.trigger(velocity)
+
+        if not self.ringing and rising < 0:
+            clear_buffer(dst)
+            return
+
+        self.noise_gen.white(self._white)
+        self.bp_filter.process(self._white, self._bp_buf)
+        self.hp_filter.process(self._bp_buf, self._hp_buf)
+
+        self.level = exp_segment(self._env, self.level, 0.0, self._decay_coeff, self.ramp)
+        copy_into(dst, self._hp_buf)
+        mul(dst, self._env)
+        scale(dst, 2.5)
+
+        if self.level < 1e-4:
+            self.level = 0.0
+            self.ringing = False
+
+
+class JingleCore:
+    """A tambourine jingle synthesis core.
+
+    Generates white noise passed through multiple narrow, ringing band-pass filters,
+    shaken by a short burst of spikes followed by a diffuse decay tail.
+    """
+
+    def __init__(self, sample_rate=DEFAULT_SAMPLE_RATE, block_size=DEFAULT_BLOCK_SIZE):
+        self.sample_rate = sample_rate
+        self.block_size = block_size
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.noise_gen = NoiseGenerator()
+
+        self.bp1 = BiquadFilter(block_size, sample_rate, mode="BP", stages=1, q=5.0)
+        self.bp1.set(5500.0)
+        self.bp2 = BiquadFilter(block_size, sample_rate, mode="BP", stages=1, q=6.0)
+        self.bp2.set(9200.0)
+
+        self.ringing = False
+        self.sample_idx = 0
+        self.spike_samples = (
+            0,
+            int(0.016 * sample_rate),
+            int(0.032 * sample_rate),
+            int(0.048 * sample_rate),
+        )
+        self.level = 0.0
+        self.velocity = 1.0
+
+        sr = float(sample_rate)
+        self._decay_burst = math.exp(-1.0 / (sr * 0.005))
+        self._decay_tail = math.exp(-4.60517 / (sr * 0.220))
+
+        self._white = create_buffer(block_size)
+        self._bp1_buf = create_buffer(block_size)
+        self._bp2_buf = create_buffer(block_size)
+        self._env = create_buffer(block_size)
+
+    def set_block_size(self, block_size):
+        self.block_size = block_size
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.bp1 = BiquadFilter(block_size, self.sample_rate, mode="BP", stages=1, q=5.0)
+        self.bp1.set(5500.0)
+        self.bp2 = BiquadFilter(block_size, self.sample_rate, mode="BP", stages=1, q=6.0)
+        self.bp2.set(9200.0)
+        self.spike_samples = (
+            0,
+            int(0.016 * self.sample_rate),
+            int(0.032 * self.sample_rate),
+            int(0.048 * self.sample_rate),
+        )
+        self._white = create_buffer(block_size)
+        self._bp1_buf = create_buffer(block_size)
+        self._bp2_buf = create_buffer(block_size)
+        self._env = create_buffer(block_size)
+
+    def reset(self):
+        self.bp1.reset()
+        self.bp2.reset()
+        self.edges.high = False
+        self.ringing = False
+        self.sample_idx = 0
+        self.level = 0.0
+
+    def trigger(self, velocity=1.0):
+        self.ringing = True
+        self.sample_idx = 0
+        self.level = velocity
+        self.velocity = velocity
+
+    def render(self, gate, dst, velocity=1.0):
+        n = len(dst)
+        rising = -1
+        if gate is not None:
+            rising, _ = self.edges.scan(gate)
+        if rising >= 0:
+            self.trigger(velocity)
+
+        if not self.ringing and rising < 0:
+            clear_buffer(dst)
+            return
+
+        self.noise_gen.white(self._white)
+        self.bp1.process(self._white, self._bp1_buf)
+        self.bp2.process(self._white, self._bp2_buf)
+        add(self._bp1_buf, self._bp2_buf)
+
+        spikes = self.spike_samples
+        level = self.level
+        idx = self.sample_idx
+        v = self.velocity
+        d_burst = self._decay_burst
+        d_tail = self._decay_tail
+
+        pos = 0
+        while pos < n:
+            cur = idx + pos
+            if cur in spikes:
+                level = v * (1.0 if cur == spikes[-1] else 0.8)
+                self._env[pos] = level
+                pos += 1
+                cur += 1
+                if pos == n:
+                    break
+
+            next_spike = -1
+            for s in spikes:
+                if s > cur:
+                    next_spike = s
+                    break
+
+            end = next_spike - idx if (0 <= next_spike < idx + n) else n
+            coeff = d_tail if cur > spikes[-1] else d_burst
+            level = exp_segment(self._env[pos:end], level, 0.0, coeff, self.ramp)
+            pos = end
+
+        copy_into(dst, self._bp1_buf)
+        mul(dst, self._env)
+        scale(dst, 2.4)
+
+        self.sample_idx = idx + n
+        self.level = level
+
+        if (idx + n) > spikes[-1] and level < 1e-4:
+            self.level = 0.0
+            self.ringing = False
+
+
+class GuiroCore:
+    """A guiro scraper synthesis core.
+
+    Generates a run of short scraped clicks through a resonant band-pass filter near 2.5 kHz.
+    Supports short mode (6 spikes over 80 ms) and long mode (12 spikes over 250 ms).
+    """
+
+    def __init__(
+        self, mode="short", sample_rate=DEFAULT_SAMPLE_RATE, block_size=DEFAULT_BLOCK_SIZE
+    ):
+        self.sample_rate = sample_rate
+        self.block_size = block_size
+        self.mode = mode
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.noise_gen = NoiseGenerator()
+
+        self.filter = BiquadFilter(block_size, sample_rate, mode="BP", stages=1, q=2.5)
+        self.filter.set(2500.0)
+
+        self.ringing = False
+        self.sample_idx = 0
+        self.level = 0.0
+        self.velocity = 1.0
+
+        self._update_spikes()
+
+        self._white = create_buffer(block_size)
+        self._filtered = create_buffer(block_size)
+        self._env = create_buffer(block_size)
+
+    def _update_spikes(self):
+        sr = float(self.sample_rate)
+        if self.mode == "long":
+            count = 12
+            duration = 0.250
+            interval = duration / 11.0
+            self.spike_samples = tuple(int(round(i * interval * sr)) for i in range(count))
+            self._decay_click = math.exp(-1.0 / (sr * 0.0040))
+            self._decay_tail = math.exp(-1.0 / (sr * 0.0100))
+        else:
+            count = 6
+            duration = 0.080
+            interval = duration / 5.0
+            self.spike_samples = tuple(int(round(i * interval * sr)) for i in range(count))
+            self._decay_click = math.exp(-1.0 / (sr * 0.0035))
+            self._decay_tail = math.exp(-1.0 / (sr * 0.0080))
+
+    def set_mode(self, mode):
+        if mode != self.mode:
+            self.mode = mode
+            self._update_spikes()
+
+    def set_block_size(self, block_size):
+        self.block_size = block_size
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.filter = BiquadFilter(block_size, self.sample_rate, mode="BP", stages=1, q=2.5)
+        self.filter.set(2500.0)
+        self._update_spikes()
+        self._white = create_buffer(block_size)
+        self._filtered = create_buffer(block_size)
+        self._env = create_buffer(block_size)
+
+    def reset(self):
+        self.filter.reset()
+        self.edges.high = False
+        self.ringing = False
+        self.sample_idx = 0
+        self.level = 0.0
+
+    def trigger(self, velocity=1.0):
+        self.ringing = True
+        self.sample_idx = 0
+        self.level = velocity
+        self.velocity = velocity
+
+    def render(self, gate, dst, velocity=1.0):
+        n = len(dst)
+        rising = -1
+        if gate is not None:
+            rising, _ = self.edges.scan(gate)
+        if rising >= 0:
+            self.trigger(velocity)
+
+        if not self.ringing and rising < 0:
+            clear_buffer(dst)
+            return
+
+        self.noise_gen.white(self._white)
+        self.filter.process(self._white, self._filtered)
+
+        spikes = self.spike_samples
+        level = self.level
+        idx = self.sample_idx
+        v = self.velocity
+        d_click = self._decay_click
+        d_tail = self._decay_tail
+
+        pos = 0
+        while pos < n:
+            cur = idx + pos
+            if cur in spikes:
+                # Scrapes get slightly louder across the scrape stroke
+                k = spikes.index(cur)
+                progress = float(k) / float(len(spikes) - 1)
+                level = v * (0.6 + 0.4 * progress)
+                self._env[pos] = level
+                pos += 1
+                cur += 1
+                if pos == n:
+                    break
+
+            next_spike = -1
+            for s in spikes:
+                if s > cur:
+                    next_spike = s
+                    break
+
+            end = next_spike - idx if (0 <= next_spike < idx + n) else n
+            coeff = d_tail if cur > spikes[-1] else d_click
+            level = exp_segment(self._env[pos:end], level, 0.0, coeff, self.ramp)
+            pos = end
+
+        copy_into(dst, self._filtered)
+        mul(dst, self._env)
+        scale(dst, 3.0)
+
+        self.sample_idx = idx + n
+        self.level = level
+
+        if (idx + n) > spikes[-1] and level < 1e-4:
+            self.level = 0.0
+            self.ringing = False
