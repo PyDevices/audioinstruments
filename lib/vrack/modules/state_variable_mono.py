@@ -30,6 +30,16 @@ class StateVariableMono(Module):
         "env2_decay",
         "lfo_rate",
     )
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "BIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "UNIPOLAR",
+    }
 
     def _build(self):
         sr, n = self.sample_rate, self.block_size

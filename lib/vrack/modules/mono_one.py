@@ -32,6 +32,16 @@ class MonoOne(Module):
         "filter_env_amt",
         "volume",
     )
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "BIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "UNIPOLAR",
+    }
 
     def _build(self):
         sr, n = self.sample_rate, self.block_size

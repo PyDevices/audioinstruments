@@ -101,6 +101,7 @@ note that goes in between turns. A rack with a module that still runs in Python
 cannot be attached, because nothing would run that module between blocks.
 """
 
+import gc
 from array import array
 
 from .jack import InputJack, OutputJack
@@ -1090,10 +1091,15 @@ class CompiledRack:
             if module.enabled:
                 mask |= module._fragment.bits
         new.graph.enable(mask)
+        plan = None
+        if carry:
+            plan = new._plan_state(self)
+            new._set_controls(plan)
+        gc.collect()  # so a collection does not land while the pump stands still
         resume = _park()
         try:
             if carry:
-                new.take_state(self)
+                new._apply_state(self, plan, controls=False)
             frame = g.sounding()[1]
             g.swap(new.graph)
         except BaseException:
@@ -1132,8 +1138,17 @@ class CompiledRack:
         buffer a module keeps), controls keep their values, and a ``watch``
         does not fire again for a value it has seen.
         """
-        g, og = self.graph, old.graph
+        self._apply_state(old, self._plan_state(old))
+
+    def _plan_state(self, old):
+        """Which node, wire and control of ``old`` each of this graph's takes over.
+
+        Only the matching, no state: it runs before the pump is parked, so the
+        time the pump stands still is the copying alone.
+        """
         mine = {f.module: f for f in old.fragments}
+        nodes = []
+        wires = []
         for f in self.fragments:
             o = mine.get(f.module)
             if o is None:
@@ -1143,27 +1158,50 @@ class CompiledRack:
                 seen.setdefault(kind, []).append(node)
             taken = {}
             for kind, node in zip(f.kinds, f.nodes):
-                nodes = seen.get(kind)
+                was = seen.get(kind)
                 i = taken.get(kind, 0)
-                if nodes is None or i >= len(nodes):
+                if was is None or i >= len(was):
                     continue
                 taken[kind] = i + 1
-                try:
-                    g.carry(node, og, nodes[i])
-                except ValueError:
-                    pass  # built differently (a delay of another length): fresh
-            for a, b in zip(o.own, f.own):
-                self._copy_wire(old, a, b)
+                nodes.append((node, was[i]))
+            wires.extend(zip(o.own, f.own))
         for jack, buf in self.buffers.items():
             src = old.buffers.get(jack)
             if src is not None:
-                self._copy_wire(old, src, buf)
+                wires.append((src, buf))
+        controls = []
         for jack, control in self.controls.items():
             was = old.controls.get(jack)
             if was is not None:
-                control.set(was.value)
-                if control.node is not None and was.node is not None:
-                    g.carry(control.node, og, was.node)
+                controls.append((control, was))
+        return nodes, wires, controls
+
+    def _set_controls(self, plan):
+        """Give this graph's controls the values of ``old``'s (see ``_plan_state``).
+
+        Values only, which the old patch keeps until the swap, so this too runs
+        before the pump is parked."""
+        for control, was in plan[2]:
+            control.set(was.value)
+
+    def _apply_state(self, old, plan, controls=True):
+        """Copy the state ``_plan_state`` matched from ``old`` into this graph.
+
+        ``controls=False``: ``_set_controls`` has given the controls their values."""
+        if controls:
+            self._set_controls(plan)
+        nodes, wires, controls = plan
+        g, og = self.graph, old.graph
+        for node, was in nodes:
+            try:
+                g.carry(node, og, was)
+            except ValueError:
+                pass  # built differently (a delay of another length): fresh
+        for src, dst in wires:
+            self._copy_wire(old, src, dst)
+        for control, was in controls:
+            if control.node is not None and was.node is not None:
+                g.carry(control.node, og, was.node)
         g.carry(self.out_node, og, old.out_node)
         lasts = {}
         for jack, (_, _, last) in zip(old._watch_jacks, old._watch_buffers):

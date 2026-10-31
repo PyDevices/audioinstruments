@@ -166,7 +166,7 @@ class ComboOrgan(VoicePatch):
     LATENCY_SAMPLES = LATENCY_SAMPLES
     BUSES = BUSES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {i: ("TOGGLE" if m == "vibrato" else "UNIPOLAR") for i, m in enumerate(MACROS)}
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))
