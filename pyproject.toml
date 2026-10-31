@@ -12,7 +12,7 @@ license = { text = "MIT" }
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Topic :: Multimedia :: Sound/Audio :: Synthesis",
+    "Topic :: Multimedia :: Sound/Audio :: Sound Synthesis",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: Implementation :: MicroPython",
     "Programming Language :: Python :: Implementation :: CPython",
