@@ -6,7 +6,7 @@
 NAME = "compact_organ"
 DISPLAY_NAME = "Compact Organ"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.0.dev2"
+VERSION = "0.5.0"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
