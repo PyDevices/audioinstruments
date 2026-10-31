@@ -4,7 +4,14 @@
 
 import numpy as np
 from vrack.core.signal import create_buffer
-from vrack.dsp.keys import HammerExciter, PickupCore, StruckBarCore, key_curve
+from vrack.dsp.keys import (
+    HammerExciter,
+    PickupCore,
+    StruckBarCore,
+    key_curve,
+    pickup_weight,
+    pickup_weights,
+)
 from vrack.dsp.tremolo import TremoloCore
 
 SR = 48000
@@ -21,6 +28,19 @@ def test_key_curve_runs_through_its_anchors_by_a_constant_ratio():
     assert key_curve(28, points) == 12.0 and key_curve(10, points) == 12.0
     assert abs(key_curve(44, points) - 12.0 * 0.5**0.5) < 1e-9
     assert abs(key_curve(100, points) - 1.5) < 1e-9 and key_curve(120, points) == 1.5
+
+
+def test_pickup_weights_sample_string_nodes():
+    # At the string center (0.5), even harmonics have a node (zero)
+    w_mid = pickup_weights(4, 0.5)
+    assert abs(w_mid[0] - 1.0) < 1e-6
+    assert abs(w_mid[1]) < 1e-6
+    assert abs(w_mid[2] - (-1.0)) < 1e-6
+    assert abs(w_mid[3]) < 1e-6
+
+    # Pickup at 1/12 sees partial 12 at zero (node at bridge)
+    assert abs(pickup_weight(12, 1.0 / 12.0)) < 1e-6
+    assert abs(pickup_weight(6, 1.0 / 12.0) - 1.0) < 1e-6
 
 
 def test_a_harder_blow_is_shorter_with_the_same_push():
@@ -157,3 +177,20 @@ def test_a_depth_change_glides_instead_of_stepping():
     trem.set(rate_hz=2.0, depth=1.0, mode="pan")
     trem.render(one, left, right)
     assert abs(float(left[0]) - last) < 0.05
+
+
+def test_a_negative_mode_gain_rings_the_mode_inverted():
+    def ring(gain):
+        bar = StruckBarCore(SR, N, modes=1)
+        bar.tune(200.0, ((1.0, 1.0, gain),))
+        gate = create_buffer(N)
+        gate[:] = 1.0
+        out, chunks = create_buffer(N), []
+        for _ in range(40):
+            bar.render(gate, out, hardness=1.0, level=0.5)
+            chunks.append(np.array(out))
+        return np.concatenate(chunks)
+
+    up, down = ring(0.5), ring(-0.5)
+    assert np.max(np.abs(up)) > 1e-3
+    assert np.allclose(down, -up, atol=1e-6 * np.max(np.abs(up)))

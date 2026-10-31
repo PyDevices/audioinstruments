@@ -41,6 +41,19 @@ class WestCoastSynth(Module):
         "func1_fall",
         "volume",
     )
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "BIPOLAR",
+        5: "TOGGLE",
+        6: "UNIPOLAR",
+        7: "UNIPOLAR",
+        8: "UNIPOLAR",
+        9: "UNIPOLAR",
+        10: "UNIPOLAR",
+    }
 
     def _build(self):
         sr, n = self.sample_rate, self.block_size
