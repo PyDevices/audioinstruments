@@ -21,6 +21,14 @@ MACRO_LABELS = (
 )
 
 MACRO_MODES = {
+    0: "UNIPOLAR",
+    1: "UNIPOLAR",
+    2: "UNIPOLAR",
+    3: "TOGGLE",
+    4: "TOGGLE",
+    5: "TOGGLE",
+    6: "TOGGLE",
+    7: "UNIPOLAR",
 }
 
 PATCHES = {
