@@ -38,15 +38,30 @@ class Patch2600(Module):
         "vcf_in4_lvl",
         "vca_init_gain",
         "vca_audio_lvl",
-        "vca_exp_lvl",
         "adsr_attack",
         "adsr_decay",
         "adsr_sustain",
         "adsr_release",
-        "ar_attack",
-        "ar_release",
         "reverb_mix",
     )
+    MACRO_MODES = {
+        0: "BIPOLAR",
+        1: "BIPOLAR",
+        2: "BIPOLAR",
+        3: "UNIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "UNIPOLAR",
+        8: "UNIPOLAR",
+        9: "UNIPOLAR",
+        10: "UNIPOLAR",
+        11: "UNIPOLAR",
+        12: "UNIPOLAR",
+        13: "UNIPOLAR",
+        14: "UNIPOLAR",
+        15: "UNIPOLAR",
+    }
 
     def _build(self):
         sr, n = self.sample_rate, self.block_size

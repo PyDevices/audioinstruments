@@ -153,7 +153,7 @@ class ElectricGrand70(VoicePatch):
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {i: "UNIPOLAR" for i in range(len(MACROS))}
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))

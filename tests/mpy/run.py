@@ -4,6 +4,7 @@
 
     micropython tests/mpy/run.py            # all
     micropython tests/mpy/run.py alloc      # one module, tests/mpy/test_alloc.py
+    micropython tests/mpy/run.py --frozen   # against the copies frozen in
 
 Each test module defines ``test_*`` functions that assert. There is no
 pytest on MicroPython, so this runner stands in for it. Run it from the
@@ -13,7 +14,11 @@ repository root with the interpreter's path set to ``lib``, or let it add
 
 import sys
 
-if "lib" not in sys.path:
+# --frozen: test the copies frozen into this interpreter, never lib/.
+FROZEN = "--frozen" in sys.argv
+if FROZEN:
+    sys.argv.remove("--frozen")
+elif "lib" not in sys.path:
     sys.path.insert(0, "lib")
 if "tests/mpy" not in sys.path:
     sys.path.insert(0, "tests/mpy")
@@ -50,6 +55,7 @@ MODULES = (
     "test_duosynth",
     "test_electric_grand70",
     "test_electric_piano",
+    "test_clavichord",
     "test_reed_piano",
     "test_reed_piano200a",
     "test_midi_cv_duo",
@@ -62,6 +68,7 @@ MODULES = (
     "test_tonewheel3",
     "test_vocoder330",
     "test_rhythm808",
+    "test_face",
 )
 
 
@@ -85,7 +92,22 @@ def run(names):
     return failures
 
 
+def check_frozen():
+    """Fail unless vrack and audioinstruments come from the firmware."""
+    import audioinstruments
+    import vrack
+
+    for package in (vrack, audioinstruments):
+        # A frozen package's file is its path in the firmware, with no folder before it.
+        path = getattr(package, "__file__", "")
+        if path != package.__name__ + "/__init__.py":
+            raise SystemExit("--frozen, but %s comes from %r" % (package.__name__, path))
+    print("vrack and audioinstruments are frozen")
+
+
 if __name__ == "__main__":
+    if FROZEN:
+        check_frozen()
     wanted = sys.argv[1:]
     names = ["test_" + w if not w.startswith("test_") else w for w in wanted] or list(MODULES)
     sys.exit(1 if run(names) else 0)
