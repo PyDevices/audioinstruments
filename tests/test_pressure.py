@@ -12,11 +12,11 @@ cannot pass.
 """
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import pytest
-import vrack.adapter as adapter
-from vrack.midi_dispatch import MidiDispatcher
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.poly_midi_cv import PolyMidiCV
+from audioinstruments._rack.midi_dispatch import MidiDispatcher
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
 BLOCK = 64
 PRESS = 64 / 127

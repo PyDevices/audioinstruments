@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for WestCoast0."""
 
-from vrack.core.rack import Rack
-from vrack.modules.west_coast0 import WestCoast0
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.west_coast0 import WestCoast0
 
 
 def test_west_coast0_instantiation():

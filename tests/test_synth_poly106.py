@@ -6,10 +6,10 @@ import os
 import sys
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import poly106
+from audioinstruments._rack.instruments import poly106
 
 sys.path.insert(
     0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")
@@ -213,8 +213,8 @@ def test_a_bend_and_the_mod_lever_reach_the_voices():
 
 
 def test_the_instrument_creates_no_arrays_while_it_plays_and_steals():
+    from audioinstruments._rack.core import signal
     from test_allocation import EVENTS, TRACING, traced_zeros
-    from vrack.core import signal
 
     signal.set_buffer_factory(traced_zeros)
     try:

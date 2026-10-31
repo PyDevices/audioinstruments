@@ -11,8 +11,8 @@ fragment, the rack where either is missing, and ``engine="graph"`` says so
 when it cannot be had.
 """
 
+import audioinstruments._rack.adapter as adapter
 import pytest
-import vrack.adapter as adapter
 
 HAVE_AUDIOGRAPH = adapter.graph_available()
 
@@ -78,12 +78,12 @@ def test_a_mono_pool_runs_its_midi_beside_the_graph():
 # early. Before the voices scattered their DCOs as the rack's do, these were 4,000 to 25,000
 # counts apart; now they agree to a few counts.
 
+import audioinstruments._rack.core.bridge as bridge  # noqa: E402
+import audioinstruments._rack.core.signal as signal  # noqa: E402
+import audioinstruments._rack.dsp.ladder as ladder  # noqa: E402
 import numpy as np  # noqa: E402
-import vrack.core.bridge as bridge  # noqa: E402
-import vrack.core.signal as signal  # noqa: E402
-import vrack.dsp.ladder as ladder  # noqa: E402
-from vrack.core import Module, Rack, SignalType, compile_rack, fill  # noqa: E402
-from vrack.modules.poly106.voice import Poly106Voice  # noqa: E402
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, fill  # noqa: E402
+from audioinstruments._rack.modules.poly106.voice import Poly106Voice  # noqa: E402
 
 BUFFER = 256
 START = 20  # buffers before the first note
@@ -253,7 +253,7 @@ def test_a_cable_on_the_envelope_output_reads_the_racks_envelope():
 
 
 def graph_unit():
-    from vrack.core.graph import UNIT
+    from audioinstruments._rack.core.graph import UNIT
 
     return UNIT
 

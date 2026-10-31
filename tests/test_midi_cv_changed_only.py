@@ -15,13 +15,13 @@ import math
 import random
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import pytest
-import vrack.adapter as adapter
-from vrack.core.signal import copy_into, create_buffer
-from vrack.dsp.blocks import exp_segment
-from vrack.dsp.sequencers import PulseTrain
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.poly_midi_cv import PolyMidiCV
+from audioinstruments._rack.core.signal import copy_into, create_buffer
+from audioinstruments._rack.dsp.blocks import exp_segment
+from audioinstruments._rack.dsp.sequencers import PulseTrain
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
 BLOCK = 64
 

@@ -4,9 +4,9 @@
 
 import math
 
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.pin_matrix3 import PinMatrix3
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.pin_matrix3 import PinMatrix3
 
 
 def test_pin_matrix3_standalone():

@@ -23,14 +23,14 @@ if "examples" not in sys.path:
     sys.path.insert(0, "examples")
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 from demo_check import section_ok, shares
 
 RATE = 48000
 BUFFER = 256
 CLIP = 27000
 
-# Macros: vrack.instruments.tonewheel3.MACROS:
+# Macros: audioinstruments._rack.instruments.tonewheel3.MACROS:
 # 6: rotary (0=stop, 64=slow, 127=fast), 8: expression
 ROTARY = 6
 EXPRESSION = 8

@@ -3,7 +3,7 @@
 A module in the rack plays one note. To play chords you build the voice once
 and let `VoicePool` copy it: it makes N copies, hands each note to a free
 copy, adds the copies together and sends the sum through a section that
-exists once, for effects and the master output. `vrack.adapter` wraps that
+exists once, for effects and the master output. `audioinstruments._rack.adapter` wraps that
 pool as an audio component, so anything that drives an instrument through
 `note_on()`, `set_macro()` and `output` can drive a rack.
 
@@ -14,7 +14,7 @@ them from the voice's own `pitch`, `gate` and `velocity` jacks, and returns
 the jack that carries the voice's audio.
 
 ```python
-from vrack import Rack, VoicePool
+from audioinstruments._rack import Rack, VoicePool
 
 rack = Rack(sample_rate=48000, block_size=128)
 
@@ -71,7 +71,7 @@ their sum as two jacks, adds whatever modules it likes to the rack, and
 returns the two jacks to patch to the master:
 
 ```python
-from vrack import Modular55LowPass
+from audioinstruments._rack import Modular55LowPass
 
 def build_shared(rack, left, right):
     lowpass = rack.add_module(Modular55LowPass("shared_lowpass"))
@@ -276,7 +276,7 @@ other voice.
 
 Portamento is a voice-side control: the pool does not slide anything, because
 what the oscillator should do during a glide is the voice's business.
-`vrack.dsp.glide.GlideCore` is the slide, for a voice module to hold:
+`audioinstruments._rack.dsp.glide.GlideCore` is the slide, for a voice module to hold:
 
 ```python
 glide = GlideCore(sample_rate, block_size)
@@ -366,7 +366,7 @@ skipped by `Rack.step()`, which is how parking works.
 
 ## An audio component
 
-`vrack.adapter.create(sample_rate, channel_count=2, transport=None, **options)`
+`audioinstruments._rack.adapter.create(sample_rate, channel_count=2, transport=None, **options)`
 returns an `Instrument` with the surface audiocomponents' instruments have:
 `output`, `sample_rate`, `channel_count`, `latency_samples` (0),
 `tail_samples` (None), `capabilities`, `patch_index`, `note_on()`,
@@ -378,7 +378,7 @@ returns an `Instrument` with the surface audiocomponents' instruments have:
 note off; macros take 0 to 127.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="mono_one", voices=8)
 audio_out.play(inst.output)

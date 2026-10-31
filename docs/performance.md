@@ -76,7 +76,7 @@ predate.
 Measured on 2026-10-19 on a Waveshare ESP32-P4-WIFI6-DEV-KIT: the P4 at
 400 MHz, a 32 MB MicroPython heap in PSRAM, MicroPython 1.30.0-preview
 (single-precision floats) built with ulab and audiodsp (0.6.7 plus five
-commits) compiled in. vrack's `lib/` and `examples/` ran as source files
+commits) compiled in. The rack's `lib/` and `examples/` ran as source files
 from the board's flash, after a soft reset that skipped `main.py`, so
 nothing else was running. The oscillator and ladder cases below are the
 Python cores, as they were named then `OscillatorCore` and `LadderCore`;
@@ -117,7 +117,7 @@ with the collector off.
 
 Cases (a), (b) and (c) repeat: further runs, each with a fresh core or
 rack, agreed with these to within 1%. Two results did not. The first run of (a),
-taken straight after importing vrack, gave 14 936, 4 932 and 47 195 µs.
+taken straight after importing the rack, gave 14 936, 4 932 and 47 195 µs.
 And whole movements vary from one build of the rack to the next: two builds
 of movement 4 at 64 frames in the same session had medians of 27 ms and
 48 ms, each steady across 1 000 blocks and allocating a different amount
@@ -193,5 +193,5 @@ blocks of both speeds.
 ## A polyphonic instrument
 
 [polyphony.md](polyphony.md#what-it-costs) has what eight MonoOne voices cost
-through `vrack.adapter`, at 64, 128 and 256 frames, on both interpreters.
+through `audioinstruments._rack.adapter`, at 64, 128 and 256 frames, on both interpreters.
 `examples/poly_bench.py` measures it on yours.

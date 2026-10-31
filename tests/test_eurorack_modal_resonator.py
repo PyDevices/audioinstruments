@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for ModalResonator."""
 
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.modal_resonator import ModalResonator
 from conftest import Source
-from vrack.core.rack import Rack
-from vrack.modules.modal_resonator import ModalResonator
 
 
 def test_modal_resonator_instantiation():

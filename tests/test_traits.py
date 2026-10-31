@@ -23,8 +23,8 @@ from tools import traits
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / "support"))
 
+import audioinstruments._rack._sf2 as sf2  # noqa: E402
 import sf2_builder  # noqa: E402
-import vrack._sf2 as sf2  # noqa: E402
 
 NAMES = sorted(n[:-5] for n in os.listdir(traits.TRAITS_DIR) if n.endswith(".json"))
 

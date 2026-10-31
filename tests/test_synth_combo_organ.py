@@ -3,10 +3,10 @@
 """ComboOrgan: the instrument plays, and each control does what its name says."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import combo_organ
+from audioinstruments._rack.instruments import combo_organ
 
 SR = 48000
 CLIP = 27000

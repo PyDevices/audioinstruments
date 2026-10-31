@@ -5,10 +5,10 @@
 import array
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Module, SignalType
+from audioinstruments._rack.core import Module, SignalType
 
 COMMON_METHODS = (
     "set_macro",

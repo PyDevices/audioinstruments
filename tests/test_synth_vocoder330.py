@@ -17,18 +17,18 @@ import math
 import struct
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType
-from vrack.instruments import vocoder330
-from vrack.instruments.vocoder330 import SETTINGS, attach_mic
-from vrack.modules.vocoder330 import bank as bank_module
-from vrack.modules.vocoder330 import keys as keys_module
-from vrack.modules.vocoder330 import mic as mic_module
-from vrack.modules.vocoder330 import output as output_module
-from vrack.modules.vocoder330 import voice as voice_module
-from vrack.modules.vocoder330.output import Vocoder330Output
+from audioinstruments._rack.core import Module, Rack, SignalType
+from audioinstruments._rack.instruments import vocoder330
+from audioinstruments._rack.instruments.vocoder330 import SETTINGS, attach_mic
+from audioinstruments._rack.modules.vocoder330 import bank as bank_module
+from audioinstruments._rack.modules.vocoder330 import keys as keys_module
+from audioinstruments._rack.modules.vocoder330 import mic as mic_module
+from audioinstruments._rack.modules.vocoder330 import output as output_module
+from audioinstruments._rack.modules.vocoder330 import voice as voice_module
+from audioinstruments._rack.modules.vocoder330.output import Vocoder330Output
 
 RATE = 48000
 BLOCK = 128
@@ -1550,9 +1550,9 @@ def test_docs_and_code_agree():
     import re
     from pathlib import Path
 
-    from vrack.dsp import ensemble
-    from vrack.modules import voice_mix
-    from vrack.modules.vocoder330 import filters
+    from audioinstruments._rack.dsp import ensemble
+    from audioinstruments._rack.modules import voice_mix
+    from audioinstruments._rack.modules.vocoder330 import filters
 
     root = Path(__file__).resolve().parent.parent
     text = (root / "docs" / "instruments.md").read_text()

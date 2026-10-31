@@ -10,8 +10,8 @@ exact tests, so the two interpreters are held to the same bank.
 
 import sys
 
+import audioinstruments._rack._sf2 as sf2
 import sf2_builder
-import vrack._sf2 as sf2
 
 
 def _close(a, b, tol=1e-6):

@@ -22,8 +22,8 @@ On MicroPython call ``inst.fill()`` every 10 to 20 ms while it plays: that is
 when notes and knobs reach the sound. Where the patch compiles to an
 ``audiograph`` graph, ``inst.output`` is the graph and renders as it is
 pulled; otherwise it is a ring that ``fill()`` keeps topped up. The options
-are those of ``vrack.adapter.Instrument`` (``voices``, ``block_size``,
-``output``, ``engine`` and the rest), or of ``vrack.soundfont.create`` for the
+are those of ``audioinstruments._rack.adapter.Instrument`` (``voices``, ``block_size``,
+``output``, ``engine`` and the rest), or of ``audioinstruments._rack.soundfont.create`` for the
 SAMPLERS.
 """
 
@@ -49,7 +49,7 @@ def create(name, sample_rate, channel_count=2, transport=None, **options):
 
 
 def _build(name, sample_rate, channel_count, transport, options):
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     options["voice"] = name
     if name not in adapter.SAMPLERS and "output" not in options and adapter._pull_is_native_only():

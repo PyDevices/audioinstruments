@@ -4,9 +4,9 @@
 
 import math
 
-from vrack.core import Rack, np
-from vrack.modules.duo20 import Duo20
-from vrack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.core import Rack, np
+from audioinstruments._rack.modules.duo20 import Duo20
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
 
 def test_duo20_standalone():

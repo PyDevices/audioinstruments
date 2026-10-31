@@ -5,9 +5,9 @@
 import math
 
 import pytest
-from vrack.core import Cable, Rack, np
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.modular55 import (
+from audioinstruments._rack.core import Cable, Rack, np
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.modular55 import (
     Modular55Envelope,
     Modular55HighPass,
     Modular55LowPass,

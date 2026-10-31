@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for Acid303."""
 
-from vrack.core.rack import Rack
-from vrack.modules.acid303 import Acid303
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.acid303 import Acid303
 
 
 def test_acid303_instantiation():

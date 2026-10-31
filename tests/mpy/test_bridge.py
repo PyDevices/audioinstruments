@@ -8,7 +8,7 @@ import math
 import audiofilters
 import micropython
 import synthio
-from vrack.core import NodeBridge, create_buffer, effect_kwargs
+from audioinstruments._rack.core import NodeBridge, create_buffer, effect_kwargs
 
 N = 64
 SR = 48000
@@ -44,7 +44,7 @@ def test_pull_allocates_nothing():
 
 def _ulab_cast(src):
     """The cast to_int16 made before audiomath.cast_into: scale, then ulab's."""
-    from vrack.core.signal import BRIDGE_SCALE, create_int16_buffer, scaled_into
+    from audioinstruments._rack.core.signal import BRIDGE_SCALE, create_int16_buffer, scaled_into
 
     tmp = create_buffer(len(src))
     out = create_int16_buffer(len(src))
@@ -54,7 +54,7 @@ def _ulab_cast(src):
 
 
 def _cast(src):
-    from vrack.core.signal import create_int16_buffer, to_int16
+    from audioinstruments._rack.core.signal import create_int16_buffer, to_int16
 
     out = create_int16_buffer(len(src))
     to_int16(out, src, create_buffer(len(src)))
@@ -62,7 +62,7 @@ def _cast(src):
 
 
 def test_to_int16_is_audiodsp_cast_into():
-    from vrack.core import signal
+    from audioinstruments._rack.core import signal
 
     assert signal._cast_into is not None, "this build's audiodsp has no audiomath.cast_into"
 
@@ -109,7 +109,7 @@ def test_to_int16_clamps_past_the_rails():
 
 
 def test_to_int16_allocates_nothing():
-    from vrack.core.signal import create_int16_buffer, to_int16
+    from audioinstruments._rack.core.signal import create_int16_buffer, to_int16
 
     src = create_buffer(N, 0.3)
     tmp = create_buffer(N)

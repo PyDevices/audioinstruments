@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Front panels for a vrack rack, on hmilink.
+"""Front panels for a rack, on hmilink.
 
 - ``index.html``: the panel a phone's browser gets from the device.
 - ``lvgl_panel.py``: the same panel in LVGL, for the device's own screen

@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Write the ``audioinstruments`` face of every vrack instrument from its class.
+"""Write the ``audioinstruments`` face of every instrument from its class.
 
     python tools/make_faces.py           # write lib/audioinstruments/
     python tools/make_faces.py --check   # exit 1 if any face is out of date
 
-Each instrument ``vrack.adapter.create(voice=name)`` plays gets a module
+Each instrument ``audioinstruments._rack.adapter.create(voice=name)`` plays gets a module
 ``audioinstruments/<name>.py`` holding its metadata at module level, written
 out as literals (a host such as a plug-in scanner reads the file as text, and
-a frozen build reads it without importing vrack), and a ``create()`` that
+a frozen build reads it without importing the rack), and a ``create()`` that
 builds it. The class is the source: change ``MACRO_MODES``, ``PATCHES`` or
 ``DISPLAY_NAME`` there and run this again. ``_names.py`` lists them.
 """
@@ -20,7 +20,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "lib"))
 
-from vrack import adapter  # noqa: E402
+from audioinstruments._rack import adapter  # noqa: E402
 
 FACES = os.path.join(ROOT, "lib", "audioinstruments")
 HEADER = (
@@ -64,7 +64,7 @@ def summary(module):
 def source(name):
     """(metadata holder, where it comes from, the module whose doc describes it)."""
     if name in adapter.SAMPLERS:
-        module = "vrack." + name
+        module = "audioinstruments._rack." + name
         __import__(module)
         return sys.modules[module], module, module
     patch = (
@@ -119,7 +119,7 @@ def names_module(faces, metas):
     melodic = [n for n in instruments if n not in drums]
     return "".join(
         [
-            HEADER % "vrack.adapter",
+            HEADER % "audioinstruments._rack.adapter",
             '"""Which instruments the package has, written out so nothing lists a directory."""\n\n',
             "#: Every instrument.\nALL = %s\n\n" % strings(instruments),
             "#: The ones with a ``NOTE_MAP``: a drum machine.\nDRUM_MACHINES = %s\n\n"

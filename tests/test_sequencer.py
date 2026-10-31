@@ -1,4 +1,4 @@
-"""`vrack.sequencer.Sequencer`, driven by a clock a test moves.
+"""`audioinstruments._rack.sequencer.Sequencer`, driven by a clock a test moves.
 
 The sequencer's whole claim is that the groove does not depend on when
 `tick()` is called. So every test here calls `tick()` from a loop that also
@@ -8,7 +8,7 @@ the queue *applied*, not what the sequencer meant to do.
 The queue is `tests/support/fake_pump.Events`, and the instrument is its
 `Kit`: a stand-in that answers the scheduling seam (`schedulable`,
 `scheduled()`, `refused`) and presses a few voices for a note. Neither of
-vrack's instruments can be put on a frame yet, so the seam is tested on the
+the rack's instruments can be put on a frame yet, so the seam is tested on the
 stand-in; the docstring of `fake_pump` says what a Python queue cannot
 prove. Everything below is about which frames the sequencer writes and which
 ones survive an edit, a tempo change or a stop, and none of that is the C's
@@ -22,9 +22,9 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "support"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import audioinstruments._rack.adapter as adapter  # noqa: E402
 import fake_pump  # noqa: E402
-import vrack.adapter as adapter  # noqa: E402
-from vrack.sequencer import Sequencer  # noqa: E402
+from audioinstruments._rack.sequencer import Sequencer  # noqa: E402
 
 RATE = 48000
 BLOCK = 256
@@ -334,7 +334,7 @@ class HealthSeparatesTheTwoWaysANoteIsLost(unittest.TestCase):
 
 class ATrackHasToBeSchedulable(unittest.TestCase):
     """The subject is an instrument that declares `schedulable=False`: any
-    of vrack's, today."""
+    of the rack's, today."""
 
     def unschedulable(self):
         inst = adapter.create(RATE, voice="mono_one", voices=2)

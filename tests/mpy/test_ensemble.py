@@ -10,8 +10,8 @@ impulse arrivals show the sweep moving the line.
 
 import math
 
-from vrack.core import create_buffer
-from vrack.dsp.ensemble import (
+from audioinstruments._rack.core import create_buffer
+from audioinstruments._rack.dsp.ensemble import (
     CENTRE_MS,
     FAST_DEPTH_MS,
     FAST_RATIO,

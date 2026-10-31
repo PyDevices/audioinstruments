@@ -3,9 +3,9 @@
 """MidiCV's ``expr`` (CC 11) and ``foot`` (CC 4) jacks on MicroPython."""
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.poly_midi_cv import PolyMidiCV
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
 BLOCK = 64
 

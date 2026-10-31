@@ -34,14 +34,14 @@ import os
 import subprocess
 import tempfile
 
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType, compile_rack, fill
-from vrack.core.graph import UNIT
-from vrack.modules.poly6.lfo import Poly6LFO
-from vrack.modules.poly6.output import Poly6Output
-from vrack.modules.poly6.voice import Poly6Voice
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, fill
+from audioinstruments._rack.core.graph import UNIT
+from audioinstruments._rack.modules.poly6.lfo import Poly6LFO
+from audioinstruments._rack.modules.poly6.output import Poly6Output
+from audioinstruments._rack.modules.poly6.voice import Poly6Voice
 
 from tools import graph_phrase, traits
 
@@ -652,7 +652,7 @@ def test_an_mg_delay_that_never_moves_fails_the_generator_comparison(monkeypatch
 
 def test_a_mono_switch_that_stays_silent_fails_the_chord_patch(monkeypatch):
     # the compiled MIDI module used to play poly voices only: a chord patch was silent
-    from vrack.modules.poly_midi_cv import PolyMidiCV
+    from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
     monkeypatch.setattr(PolyMidiCV, "_graph_mono_block", lambda self, bend: None)
     graph, _ = render("graph", 4, chord_with_steals())

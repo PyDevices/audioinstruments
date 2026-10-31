@@ -3,7 +3,7 @@
 """VoiceAllocator: which voice plays which note."""
 
 import pytest
-from vrack.core.poly import FREE, HELD, RELEASED, SUSTAINED, VoiceAllocator
+from audioinstruments._rack.core.poly import FREE, HELD, RELEASED, SUSTAINED, VoiceAllocator
 
 
 class Log:

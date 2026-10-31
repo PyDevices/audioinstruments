@@ -3,7 +3,7 @@
 The whole tour: what is in the rack, how a patch is rendered, and where each part
 is documented. The [README](../README.md) has the short version.
 
-Every instrument in audioinstruments is a patch on `vrack`, a virtual Eurorack
+Every instrument in audioinstruments is a patch on `audioinstruments._rack`, a virtual Eurorack
 modular synthesizer in Python. Twenty modules
 inspired by classic instruments, with their panels, patch cables between them,
 and a rack that renders a block at a time on
@@ -15,7 +15,7 @@ an ESP32-P4; the Poly106, the Poly5 and the Poly6 do today
 ([docs/architecture.md](architecture.md#a-graph-fragment)).
 
 ```python
-from vrack import MidiCVModule, Modular100VCO, Modular100VCF, Modular100VCA, Modular100EnvLFO, Rack
+from audioinstruments._rack import MidiCVModule, Modular100VCO, Modular100VCF, Modular100VCA, Modular100EnvLFO, Rack
 
 rack = Rack(sample_rate=48000, block_size=64)
 midi = rack.add_module(MidiCVModule("midi"))
@@ -43,12 +43,12 @@ for _ in range(100):
 
 `VoicePool` copies a voice patch N times, gives each note a free copy (it
 steals one without a click when none is free), and sums the copies into a
-section that exists once. `vrack.adapter` wraps the pool as an audio
+section that exists once. `audioinstruments._rack.adapter` wraps the pool as an audio
 component with `note_on()`, `set_macro()`, a settable `voices` and an `output`
 that `audio_out.play()` takes:
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="mono_one", voices=8)
 audio_out.play(inst.output)
@@ -87,13 +87,13 @@ from a bank in `~/soundfonts/`.
 
 ## Loading only what you use
 
-`import vrack` loads the rack and its core and nothing else. A synth is
-imported the first time you name it, whether as `from vrack import PinMatrix3`,
-`from vrack.modules.pin_matrix3 import PinMatrix3` or `vrack.modules.PinMatrix3`, and
+`import audioinstruments._rack` loads the rack and its core and nothing else. A synth is
+imported the first time you name it, whether as `from audioinstruments._rack import PinMatrix3`,
+`from audioinstruments._rack.modules.pin_matrix3 import PinMatrix3` or `audioinstruments._rack.modules.PinMatrix3`, and
 `load_rack()` imports only the modules a patch contains. On a board that keeps
-the others out of RAM. `dir(vrack)` lists every name on CPython; on
-MicroPython it lists the ones loaded so far, and `vrack.__all__` always has
-them all. `vrack.modules.MODULE_TYPES` is the one thing that loads every synth.
+the others out of RAM. `dir(audioinstruments._rack)` lists every name on CPython; on
+MicroPython it lists the ones loaded so far, and `audioinstruments._rack.__all__` always has
+them all. `audioinstruments._rack.modules.MODULE_TYPES` is the one thing that loads every synth.
 
 ## What is in the rack
 
@@ -151,7 +151,7 @@ and fall back to Python cores on an older one. The wave blender, the acid
 filter and a few other cores stay in Python because they need control inside
 the block or a model audiodsp does not have; the CV generators are vector
 code. [docs/audiodsp.md](audiodsp.md) says what
-is where and what vrack would still like from audiodsp. Nothing allocates in
+is where and what the rack would still like from audiodsp. Nothing allocates in
 a block path, in the sense [docs/allocation.md](allocation.md) spells
 out for each interpreter, and the tests enforce it.
 [docs/performance.md](performance.md) has measured block times, and

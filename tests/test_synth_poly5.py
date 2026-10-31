@@ -3,10 +3,10 @@
 """Poly5: the instrument plays, and each control does what its name says."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import poly5
+from audioinstruments._rack.instruments import poly5
 
 CLIP = 27000
 RATE = 48000
@@ -892,8 +892,8 @@ def test_volume_vel_vca_and_vel_vcf():
 
 
 def test_the_instrument_creates_no_arrays_while_it_plays_steals_and_glides():
+    from audioinstruments._rack.core import signal
     from test_allocation import EVENTS, TRACING, traced_zeros
-    from vrack.core import signal
 
     signal.set_buffer_factory(traced_zeros)
     try:

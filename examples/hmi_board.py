@@ -22,8 +22,7 @@ if "/lib" not in sys.path:
     sys.path.append("/lib")
 
 import hmilink  # noqa: E402
-from hmilink import local, tcp  # noqa: E402
-from vrack import (  # noqa: E402
+from audioinstruments._rack import (  # noqa: E402
     MidiCVModule,
     Modular55Envelope,
     Modular55LowPass,
@@ -31,8 +30,9 @@ from vrack import (  # noqa: E402
     Modular55VCO,
     Rack,
 )
-from vrack.core.signal import INT16_DTYPE, np  # noqa: E402
-from vrack.hmi import RackModel  # noqa: E402
+from audioinstruments._rack.core.signal import INT16_DTYPE, np  # noqa: E402
+from audioinstruments._rack.hmi import RackModel  # noqa: E402
+from hmilink import local, tcp  # noqa: E402
 
 SAMPLE_RATE = 48000
 BLOCK_SIZE = 64

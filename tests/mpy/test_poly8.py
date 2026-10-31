@@ -5,7 +5,7 @@
 import array
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 
 def pulled(inst, buffers):
@@ -100,9 +100,9 @@ def test_the_noise_the_random_lfo_the_hpf_and_the_12_db_slope_play():
 
 def test_cores_are_nodes():
     import audiobiquad
-    from vrack.core.bridge import NodeBridge
-    from vrack.dsp.ladder import LadderCore
-    from vrack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.core.bridge import NodeBridge
+    from audioinstruments._rack.dsp.ladder import LadderCore
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
 
     assert OscillatorCore.__name__ == "NodeOscillatorCore"
     assert LadderCore.__name__ == "NodeLadderCore"

@@ -6,13 +6,13 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import signal
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.polya6.noise import PolyA6Noise
-from vrack.modules.polya6.output import PolyA6Output
-from vrack.modules.polya6.voice import PolyA6Voice
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import signal
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.polya6.noise import PolyA6Noise
+from audioinstruments._rack.modules.polya6.output import PolyA6Output
+from audioinstruments._rack.modules.polya6.voice import PolyA6Voice
 
 SLACK = 64
 
@@ -147,8 +147,8 @@ def test_assign_modes():
 
 
 def test_cores_are_nodes():
-    from vrack.dsp.ladder import LadderCore, audioladder
-    from vrack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.dsp.ladder import LadderCore, audioladder
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
 
     assert OscillatorCore.__name__ == "NodeOscillatorCore"
     assert LadderCore.__name__ == "NodeLadderCore"

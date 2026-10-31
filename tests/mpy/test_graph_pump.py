@@ -10,7 +10,7 @@ through ``_pull()``. Needs an ``audiograph`` with a queue; skips (returns) witho
 import sys
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 try:
     import audiograph

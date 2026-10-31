@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Unit tests for vrack core: Jacks, Cables, Normaling, Fan-out, and Rack."""
+"""Unit tests for the rack core: Jacks, Cables, Normaling, Fan-out, and Rack."""
 
 import pytest
-from vrack.core.cable import Cable
-from vrack.core.module import Module
-from vrack.core.rack import Rack
+from audioinstruments._rack.core.cable import Cable
+from audioinstruments._rack.core.module import Module
+from audioinstruments._rack.core.rack import Rack
 
 
 class DummyModule(Module):

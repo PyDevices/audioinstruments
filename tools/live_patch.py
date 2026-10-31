@@ -42,8 +42,8 @@ if sys.argv and sys.argv[0].endswith("live_patch.py"):
 from array import array  # noqa: E402
 
 import audiograph as ag  # noqa: E402
-from vrack.core import Module, Rack, SignalType, compile_rack  # noqa: E402
-from vrack.core.graph import UNIT, CompiledRack  # noqa: E402
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack  # noqa: E402
+from audioinstruments._rack.core.graph import UNIT, CompiledRack  # noqa: E402
 
 try:
     from time import ticks_diff, ticks_us
@@ -237,7 +237,7 @@ def _rendered(inst, buffers, into):
 
 def same(voice, swap, fault=None):
     """A chord on ``voice`` with a recompile mid-note (``swap``) or none; the PCM as bytes."""
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice=voice)
     inst.program_change(1)
@@ -258,7 +258,7 @@ def boundary(per_buffer):
     """The master's left cable pulled mid-note, two blocks into the phrase's 21st block,
     with ``per_buffer`` blocks a buffer; the PCM as bytes. One block a buffer pulls it
     between buffers; two a buffer, by ``sample_position`` inside one."""
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice="poly6", block_size=128, buffer_frames=128 * per_buffer)
     for note in (48, 60, 64, 67):
@@ -278,7 +278,7 @@ def boundary(per_buffer):
 
 def cost(voice):
     """What a recompile beside a playing ``voice`` costs: (compile ms, carry ms, nodes)."""
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice=voice)
     for note in (48, 60, 64, 67):

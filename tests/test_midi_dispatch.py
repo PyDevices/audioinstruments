@@ -1,4 +1,4 @@
-"""`vrack.midi_dispatch`: MIDI in, instrument methods out.
+"""`audioinstruments._rack.midi_dispatch`: MIDI in, instrument methods out.
 
 A recording instrument checks what each kind of input becomes: bytes with
 running status split across reads and real-time bytes inside a message,
@@ -20,9 +20,9 @@ import tempfile
 import unittest
 
 import audiocore
-import vrack.adapter as adapter
-import vrack.soundfont as soundfont
-from vrack.midi_dispatch import MidiDispatcher, read_midi_file
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.soundfont as soundfont
+from audioinstruments._rack.midi_dispatch import MidiDispatcher, read_midi_file
 
 SUPPORT = pathlib.Path(__file__).resolve().parent / "support"
 if str(SUPPORT) not in sys.path:

@@ -3,7 +3,7 @@
 """Shared test helpers."""
 
 import pytest
-from vrack.core import Module, SignalType
+from audioinstruments._rack.core import Module, SignalType
 
 
 class Source(Module):

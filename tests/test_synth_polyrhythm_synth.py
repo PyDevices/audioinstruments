@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for PolyrhythmSynth."""
 
-from vrack.core.rack import Rack
-from vrack.modules.polyrhythm_synth import PolyrhythmSynth
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.polyrhythm_synth import PolyrhythmSynth
 
 
 def test_polyrhythm_synth_instantiation():

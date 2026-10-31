@@ -7,9 +7,9 @@ import struct
 import tempfile
 import wave
 
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.patch2600 import Patch2600
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.patch2600 import Patch2600
 
 from examples.play_audio import WavWriter, render_rack_to_wav
 

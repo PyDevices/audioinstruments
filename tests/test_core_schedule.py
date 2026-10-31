@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Processing order follows the cables; a loop's closing cable is late."""
 
-from vrack.core import Module, Rack, SignalType, copy_into, fill
+from audioinstruments._rack.core import Module, Rack, SignalType, copy_into, fill
 
 
 class Counter(Module):

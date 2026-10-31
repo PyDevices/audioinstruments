@@ -3,7 +3,7 @@
 """A cheap voice for the polyphony tests, and the click measurement they share."""
 
 import numpy as np
-from vrack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
 
 
 class SineVoice(Module):

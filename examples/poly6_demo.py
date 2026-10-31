@@ -18,7 +18,7 @@ if "lib" not in sys.path:
     sys.path.insert(0, "lib")
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 from demo_check import Section, feed_sections, open_wav, section_ok
 
 RATE = 48000

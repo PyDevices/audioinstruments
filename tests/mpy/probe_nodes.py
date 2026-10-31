@@ -8,7 +8,7 @@ Run it from the repository root on MicroPython:
 
 It also runs under CPython, with the repository's own Python. It prints which
 audiodsp modules import, whether the ladder and the oscillator nodes read a CV
-every sample, and which core each vrack core is on this build.
+every sample, and which core each core is on this build.
 Edit the part under "your questions" to ask the interpreter something else; a
 script file is the way to ask, because ``micropython -c`` is not a command an
 unattended run may use. Do not stage your edits.
@@ -42,13 +42,13 @@ import audiooscillator  # noqa: E402
 print("Ladder reads a cutoff CV every sample:", hasattr(audioladder.Ladder, "modulate"))
 print("Oscillator reads CVs every sample:", hasattr(audiooscillator.Oscillator, "modulate"))
 
-import vrack.dsp.ladder as ladder  # noqa: E402
-from vrack.core import signal  # noqa: E402
-from vrack.dsp.envelope import EnvelopeCore  # noqa: E402
-from vrack.dsp.glide import GlideCore  # noqa: E402
-from vrack.dsp.ladder import LadderCore  # noqa: E402
-from vrack.dsp.noise import NoiseGenerator  # noqa: E402
-from vrack.dsp.oscillator import OscillatorCore  # noqa: E402
+import audioinstruments._rack.dsp.ladder as ladder  # noqa: E402
+from audioinstruments._rack.core import signal  # noqa: E402
+from audioinstruments._rack.dsp.envelope import EnvelopeCore  # noqa: E402
+from audioinstruments._rack.dsp.glide import GlideCore  # noqa: E402
+from audioinstruments._rack.dsp.ladder import LadderCore  # noqa: E402
+from audioinstruments._rack.dsp.noise import NoiseGenerator  # noqa: E402
+from audioinstruments._rack.dsp.oscillator import OscillatorCore  # noqa: E402
 
 print("ladder presets", sorted(ladder.PRESETS))
 print("OscillatorCore is", type(OscillatorCore(48000)).__name__)

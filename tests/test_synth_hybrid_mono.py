@@ -4,9 +4,9 @@
 
 import math
 
-from vrack.core import Rack, np
-from vrack.modules.hybrid_mono import HybridMono
-from vrack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.core import Rack, np
+from audioinstruments._rack.modules.hybrid_mono import HybridMono
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
 
 def test_hybrid_mono_standalone():

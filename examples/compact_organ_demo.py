@@ -22,7 +22,7 @@ if "examples" not in sys.path:
     sys.path.insert(0, "examples")
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 from demo_check import section_ok, shares
 
 RATE = 48000

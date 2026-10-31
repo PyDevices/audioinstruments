@@ -5,7 +5,7 @@
 import array
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 
 def pulled(inst, buffers):
@@ -66,8 +66,8 @@ def test_unison_and_sync_patches():
 
 
 def test_cores_are_nodes():
-    from vrack.dsp.ladder import LadderCore
-    from vrack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.dsp.ladder import LadderCore
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
 
     assert OscillatorCore.__name__ == "NodeOscillatorCore"
     assert LadderCore.__name__ == "NodeLadderCore"

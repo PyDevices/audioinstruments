@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Example: Headless Modular100 modular synthesizer in vrack.
+"""Example: Headless Modular100 modular synthesizer in the rack.
 
 Demonstrates:
 - Creating a virtual Eurorack frame (Rack).
@@ -13,8 +13,8 @@ Demonstrates:
 
 import math
 
-from vrack import Rack
-from vrack.modules import (
+from audioinstruments._rack import Rack
+from audioinstruments._rack.modules import (
     MidiCVModule,
     Modular100EnvLFO,
     Modular100Utility,
@@ -25,7 +25,7 @@ from vrack.modules import (
 
 
 def main():
-    print("=== vrack: Virtual Eurorack Synthesizer ===")
+    print("=== audioinstruments: Virtual Eurorack Synthesizer ===")
     rack = Rack(sample_rate=48000, block_size=64)
 
     # 1. Install Modules into the Rack
@@ -91,7 +91,7 @@ def main():
     # 5. Serialize patch
     saved_state = rack.save_patch("Modular100 Lead")
     print("\nPatch state serialized successfully (%d bytes in dict)" % len(str(saved_state)))
-    print("=== vrack demo completed successfully ===")
+    print("=== audioinstruments demo completed successfully ===")
 
 
 if __name__ == "__main__":

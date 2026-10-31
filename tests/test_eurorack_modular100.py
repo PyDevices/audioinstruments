@@ -5,9 +5,9 @@
 import math
 
 import pytest
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.modular100 import (
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.modular100 import (
     Modular100EnvLFO,
     Modular100Utility,
     Modular100VCA,

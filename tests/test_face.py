@@ -7,8 +7,8 @@ import subprocess
 import sys
 
 import audioinstruments
+import audioinstruments._rack.adapter as adapter
 import pytest
-import vrack.adapter as adapter
 from test_adapter import check_contract, peak, pull
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,9 +56,9 @@ def test_create_by_name_plays(name):
 def test_the_carried_over_modules_keep_their_names():
     from audioinstruments import midi_cc, midi_dispatch, sequencer
 
-    assert sequencer.Sequencer is __import__("vrack.sequencer").sequencer.Sequencer
+    assert sequencer.Sequencer is __import__("audioinstruments._rack.sequencer").sequencer.Sequencer
     assert (
         midi_dispatch.MidiDispatcher
-        is __import__("vrack.midi_dispatch").midi_dispatch.MidiDispatcher
+        is __import__("audioinstruments._rack.midi_dispatch").midi_dispatch.MidiDispatcher
     )
     assert midi_cc.__doc__

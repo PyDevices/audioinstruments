@@ -10,8 +10,8 @@ byte what ``engine="graph"`` renders through ``_pull()`` on the same phrase.
 """
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import pytest
-import vrack.adapter as adapter
 
 from tools import graph_phrase
 

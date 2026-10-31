@@ -46,8 +46,8 @@ if sys.argv and sys.argv[0].endswith("pump_swap.py"):
 from array import array  # noqa: E402
 
 import audiopump  # noqa: E402
-from vrack.core import compile_rack  # noqa: E402
-from vrack.core import graph as graph_mod  # noqa: E402
+from audioinstruments._rack.core import compile_rack  # noqa: E402
+from audioinstruments._rack.core import graph as graph_mod  # noqa: E402
 
 try:
     from tools import live_patch as lp  # noqa: E402
@@ -229,7 +229,7 @@ def same(voice, swap):
     """A chord on ``voice`` played by the pump, recompiled mid-note with nothing changed
     (``swap``) or not; the PCM as bytes. Deterministic only where the pump has no
     thread, so the notes land on the same blocks every time."""
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice=voice, output="graph")
     inst.program_change(1)
@@ -259,7 +259,7 @@ def cost(voice, swaps=8):
     count in ``status`` is no measure of it: it also counts the time the pump
     waits for room in a full ring.)
     """
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice=voice, output="graph")
     for note in (48, 60, 64, 67):

@@ -11,8 +11,8 @@ played on a voice that has played before only matches the rack's if both park
 together.
 """
 
+import audioinstruments._rack.adapter as adapter
 import pytest
-import vrack.adapter as adapter
 
 pytestmark = pytest.mark.skipif(
     not adapter.graph_available(), reason="the compiled form needs audiograph"

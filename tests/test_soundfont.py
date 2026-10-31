@@ -17,9 +17,9 @@ import sys
 import tempfile
 import unittest
 
-import vrack.adapter as adapter
-import vrack.soundfont as soundfont
-import vrack.soundfont_drums as soundfont_drums
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.soundfont as soundfont
+import audioinstruments._rack.soundfont_drums as soundfont_drums
 
 SUPPORT = pathlib.Path(__file__).resolve().parent / "support"
 if str(SUPPORT) not in sys.path:
@@ -754,7 +754,7 @@ class BoundedCacheTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def setUp(self):
-        import vrack._sf2 as _sf2
+        import audioinstruments._rack._sf2 as _sf2
 
         self.font = _sf2.SoundFont(self.path)
         self.made = []
