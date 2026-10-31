@@ -46,6 +46,8 @@ MODULES = (
     "test_poly80",
     "test_duosynth",
     "test_electric_piano",
+    "test_clavichord",
+    "test_reed_piano",
     "test_reed_piano200a",
     "test_midi_cv_duo",
     "test_ensemble",

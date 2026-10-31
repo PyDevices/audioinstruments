@@ -15,6 +15,8 @@ modelled by what it is rather than by one instrument:
 - ``PickupCore``: a pickup's nonlinearity, electromagnetic (a coil and magnet)
   or electrostatic (a charged comb), where the part sits against it
   (``offset``) and how far it swings (``drive``).
+- ``pickup_weight``, ``pickup_weights``: a pickup at position x along a string
+  sees partial n weighted by sin(n·π·x).
 - ``key_curve``: a per-key value read off a few anchor keys, for the decay
   times, gains and ratios that change along a keyboard.
 """
@@ -56,12 +58,34 @@ def key_curve(note, points):
     return prev[1]
 
 
+def pickup_weight(n, x):
+    """The sensitivity of a pickup at string position ``x`` to partial ``n``.
+
+    A pickup at position ``x`` (a fraction of the string length from the
+    bridge) sees partial ``n`` (1-indexed) weighted by ``sin(n * pi * x)``.
+    """
+    return math.sin(float(n) * math.pi * float(x))
+
+
+def pickup_weights(modes, pos):
+    """A pickup's sensitivity to ``modes`` harmonic partials at string position ``pos``.
+
+    Returns a tuple of ``modes`` weights, where partial ``n`` (1 to ``modes``)
+    is weighted by ``sin(n * pi * pos)``.
+    """
+    p = float(pos) * math.pi
+    return tuple(math.sin((m + 1) * p) for m in range(modes))
+
+
 class HammerExciter:
-    """The push of a hammer on a vibrating part, as a half-sine pulse.
+    """The push of a hammer (or a pluck) on a vibrating part.
 
     A soft blow is a long, round push that mostly moves the fundamental; a
-    hard one is short and sharp, so it reaches the high modes too. The
-    pulse's area (the push it gives the fundamental) is ``level`` times the
+    hard one is short and sharp, so it reaches the high modes too. In a
+    pluck, the force ramps up as the reed is pulled, ending in a sudden
+    release rather than a half-sine push.
+
+    The pulse's area (the push it gives the fundamental) is ``level`` times the
     hardest pulse's, so a shorter pulse is a taller one: hardness moves the
     brightness, and the caller sets the loudness. The contact time also
     shortens up the keyboard (a smaller, stiffer part throws the hammer off
@@ -71,15 +95,20 @@ class HammerExciter:
     #: Contact time in samples at 48 kHz for the softest and the hardest blow.
     SOFT = 128.0
     HARD = 16.0
+    SHAPES = ("hammer", "pluck")
 
-    def __init__(self, block_size, sample_rate=48000):
+    def __init__(self, block_size, sample_rate=48000, shape="hammer"):
+        if shape not in self.SHAPES:
+            raise ValueError("unknown exciter shape %r" % (shape,))
         self.block_size = block_size
         self.sample_rate = sample_rate
+        self.shape = shape
         self.ramp = Ramp(block_size)
         self.pulse_active = False
         self.pulse_len = 0
         self.pulse_pos = 0
         self.pulse_amp = 0.0
+        self._pulse_shape = shape
 
     def set_block_size(self, block_size):
         self.block_size = block_size
@@ -90,15 +119,22 @@ class HammerExciter:
         self.pulse_len = 0
         self.pulse_pos = 0
         self.pulse_amp = 0.0
+        self._pulse_shape = self.shape
 
-    def strike(self, hardness=0.5, level=1.0, f0=None, contact=0.5):
-        """Start a blow.
+    def strike(self, hardness=0.5, level=1.0, f0=None, contact=0.5, shape=None):
+        """Start a blow or a pluck.
 
         ``hardness`` (0..1) sets the contact time, from ``SOFT`` to ``HARD``;
         ``level`` is the height of the hardest pulse, and every other pulse
         has its area. With ``f0``, the contact time is held under
         ``contact`` periods of that frequency.
         """
+        if shape is not None:
+            if shape not in self.SHAPES:
+                raise ValueError("unknown exciter shape %r" % (shape,))
+            self._pulse_shape = shape
+        else:
+            self._pulse_shape = self.shape
         h = max(0.0, min(1.0, float(hardness)))
         scale = self.sample_rate / 48000.0
         length = self.SOFT * scale * (self.HARD / self.SOFT) ** h
@@ -127,9 +163,13 @@ class HammerExciter:
         view = dst[start_index : start_index + k]
         copy_into(view, self.ramp.view(k))
         view += self.pulse_pos - 1
-        view *= math.pi / float(self.pulse_len)
-        np.sin(view, out=view)
-        view *= self.pulse_amp
+        if self._pulse_shape == "pluck":
+            view *= 1.0 / float(self.pulse_len)
+            view *= self.pulse_amp
+        else:
+            view *= math.pi / float(self.pulse_len)
+            np.sin(view, out=view)
+            view *= self.pulse_amp
         self.pulse_pos += k
         if self.pulse_pos >= self.pulse_len:
             self.pulse_active = False
@@ -151,15 +191,16 @@ class StruckBarCore:
 
     LATENCY = ChunkedBridge.FRAMES
 
-    def __init__(self, sample_rate, block_size, modes=4):
+    def __init__(self, sample_rate, block_size, modes=4, shape="hammer"):
         self.sample_rate = sample_rate
         self.block_size = block_size
         self.modes = modes
+        self.shape = shape
         self.bank = audiomodal.Bank(
             sample_rate=sample_rate, modes=modes, channel_count=1, mix=1.0, gain=BANK_GAIN
         )
         self.bridge = ChunkedBridge(block_size, sample_rate).chain(self.bank)
-        self.exciter = HammerExciter(block_size, sample_rate)
+        self.exciter = HammerExciter(block_size, sample_rate, shape=shape)
         self.edges = EdgeDetector(block_size)
         self._in = create_buffer(block_size)
         self._mute = 0
@@ -196,11 +237,11 @@ class StruckBarCore:
                 f = f0 * ratio
                 if f >= top:
                     f, gain = top, 0.0
-                self.bank.set_mode(m, f, max(0.001, decay), max(0.0, gain))
+                self.bank.set_mode(m, f, max(0.001, decay), float(gain))
             else:
                 self.bank.set_mode(m, f0, 0.001, 0.0)
 
-    def render(self, gate, dst, hardness=0.5, level=1.0, f0=None):
+    def render(self, gate, dst, hardness=0.5, level=1.0, f0=None, shape=None):
         """Render one block into ``dst``; a rising edge in ``gate`` strikes.
 
         ``hardness``, ``level`` and ``f0`` go to ``HammerExciter.strike``.
@@ -212,7 +253,7 @@ class StruckBarCore:
             rising, _ = self.edges.scan(gate)
             if rising >= 0:
                 self.bank.clear()
-                self.exciter.strike(hardness, level, f0)
+                self.exciter.strike(hardness, level, f0, shape=shape)
                 self.exciter.render_into(exc, start_index=rising)
             elif self.exciter.pulse_active:
                 self.exciter.render_into(exc)

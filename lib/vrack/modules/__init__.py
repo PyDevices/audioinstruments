@@ -13,6 +13,8 @@ from .._lazy import load
 _REGISTRY = (
     ("Acid303", "Acid303", "acid303"),
     ("BassPedalsVoice", "BassPedalsVoice", "bass_pedals.voice"),
+    ("ClavichordOutput", "ClavichordOutput", "clavichord.output"),
+    ("ClavichordVoice", "ClavichordVoice", "clavichord.voice"),
     ("CompactOrganOutput", "CompactOrganOutput", "compact_organ.output"),
     ("CompactOrganVibrato", "CompactOrganVibrato", "compact_organ.vibrato"),
     ("CompactOrganVoice", "CompactOrganVoice", "compact_organ.voice"),
@@ -68,6 +70,8 @@ _REGISTRY = (
     ("PolyXaVoice", "PolyXaVoice", "polyxa.voice"),
     ("PolyrhythmSynth", "PolyrhythmSynth", "polyrhythm_synth"),
     ("RandomSequencer", "RandomSequencer", "random_sequencer"),
+    ("ReedPianoOutput", "ReedPianoOutput", "reed_piano.output"),
+    ("ReedPianoVoice", "ReedPianoVoice", "reed_piano.voice"),
     ("ReedPiano200AOutput", "ReedPiano200AOutput", "reed_piano200a.output"),
     ("ReedPiano200AVoice", "ReedPiano200AVoice", "reed_piano200a.voice"),
     ("RotarySpeaker", "RotarySpeaker", "rotary_speaker"),
