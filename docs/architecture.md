@@ -168,8 +168,41 @@ parameter for: an oscillator's starting phase, which the rack scatters from
 voice to voice so a stack of voices on one pitch does not start in phase,
 and where each voice's noise starts.
 
-Compile after the patch is complete: a cable plugged after `compile_rack()`
-is not in the graph. The fragments that exist: `PolyMidiCV` (poly and mono), `VoiceMix` (a mix with buses has none: see [polyphony.md](polyphony.md#buses)), the voice, LFO
+A cable plugged after `compile_rack()` is not in the graph until you compile
+again, and a patch can change while it plays without stopping a note. Change
+the rack (plug or pull a cable, add or remove a module), then, between two
+`step()` calls, `compiled = compiled.recompile(groups)`. It compiles the rack
+as it now stands beside the running graph and hands that graph's state over
+(audiodsp 0.6.11.dev9 and later, for `Graph.carry`): each module's nodes take
+the state of the nodes of the same kind it added before, in order, so voices,
+envelopes, oscillator phases, filter memory and delay lines carry on; wires
+keep their last block, so a late cable still carries the previous one; and
+controls keep their values. A node a module now builds differently starts
+fresh. The next `step()` renders the block the old graph would have, with the
+change in it. If the compile fails, the old graph is left as it was. An
+instrument does this for you: `connect()`, `disconnect()`, `add_module()` and
+`remove_module()` take a `sample_position` and swap the new graph in at the
+block it falls in. A swap costs the compile and little more: about 1.3 ms for
+the Poly6 (99 nodes) and 6.7 ms for the PolyA6 (676) on a desktop CPython,
+and 6 ms and 44 ms on the MicroPython unix port, with the handover itself
+under 0.4 ms and 1.5 ms.
+
+A graph the audio pump plays (`attach()`) changes the same way, and the
+instrument's calls work unchanged; it needs an audiodsp with `Graph.swap`.
+The new graph is compiled while the pump plays on. Then the pump is parked
+at a block boundary, the state is carried, and the two graphs trade patches,
+so the pump, output or mixer pulling the graph keeps the object it has and
+hears the new patch from its next block. Everything an instrument changes in
+one turn lands together, on the block after the turn, and `since` on the new
+rack is the frame it took over at. The stream stays byte-equal to a rack
+built with the change from that block on (`tools/pump_swap.py`). The pump
+stands parked for 0.05 to 0.4 ms on a desktop CPython and 0.3 to 1.5 ms on
+the MicroPython unix port, from the 26-node Mono101 to the 676-node PolyA6;
+the compile, which it plays through, takes 0.5 to 7 ms and 1.6 to 54 ms.
+A module that still runs in Python can't be added to an attached graph: the
+change is refused and the old patch plays on.
+
+The fragments that exist: `PolyMidiCV` (poly and mono), `VoiceMix` (a mix with buses has none: see [polyphony.md](polyphony.md#buses)), the voice, LFO
 and output section of the Poly106 and of the Poly6, the voice and LFO of the
 Poly5, the voice, noise and output of the PolyA6, the voice and LFO of the Poly8, the voice, LFO and output of the PolyXa, the voice and LFO of the Mono101, the voice of the MonoSynth, the voice, LFO and output of the DuoSynth, and the
 Duo20, HybridMono, WestCoastSynth and ModalResonator modules. The

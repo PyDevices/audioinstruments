@@ -127,10 +127,10 @@ def ring_bells(t):
         for n in chord:  # each bell is struck with its fifth and an octave below it
             events.append((start, "on", n, 127))
             events.append((start + (1.6 if k == 4 else 0.6), "off", n, 0))
-    # Sweep the ring_speed macro across the last note
+    # Sweep the ring_speed macro across the last note (set_macro takes 0-127)
     for i in range(8):
         frac = (i + 1) / 8.0
-        events.append((t + 3.7 + i * 0.15, "macro", MACRO_RING_SPEED, 0.5 + 0.4 * frac))
+        events.append((t + 3.7 + i * 0.15, "macro", MACRO_RING_SPEED, (0.5 + 0.4 * frac) * 127))
     return events, t + 6.0
 
 
@@ -252,10 +252,10 @@ def init_patch(t):
     for n in chord:
         events.append((t, "on", n, 105))
         events.append((t + 5.0, "off", n, 0))
-    # Sweep mix macro from 0.0 to 1.0
+    # Sweep the mix macro from channel I to channel II (set_macro takes 0-127)
     for i in range(12):
         frac = i / 11.0
-        events.append((t + 0.4 + i * 0.35, "macro", MACRO_MIX, frac))
+        events.append((t + 0.4 + i * 0.35, "macro", MACRO_MIX, frac * 127))
     return events, t + 5.6
 
 

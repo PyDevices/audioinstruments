@@ -300,3 +300,22 @@ def test_a_stolen_voice_starts_its_new_note_from_rest():
     assert abs(20 * np.log10(rms(stolen) / rms(fresh))) < 1.0
     # and nothing of the old note's pitch is left
     assert tone(stolen, 65.4) < 0.01 * tone(stolen, 523.25)
+
+
+def test_a_full_bend_moves_a_note_by_the_bend_range_and_no_more():
+    def fundamental(bend):
+        inst = make(0)
+        inst.pitch_bend(bend)
+        x = play(inst, (57,), buffers=100)[4800:, 0]
+        mag = np.abs(np.fft.rfft(x * np.hanning(len(x))))
+        freqs = np.fft.rfftfreq(len(x), 1.0 / 48000)
+        # the strongest bin, wherever it lands
+        near = (freqs > 50.0) & (freqs < 8000.0)
+        i = int(np.argmax(np.where(near, mag, 0.0)))
+        a, b, c = np.log(mag[i - 1 : i + 2] + 1e-12)
+        return float(freqs[i] + 0.5 * (a - c) / (a - 2.0 * b + c) * (freqs[1] - freqs[0]))
+
+    centre = fundamental(8192)
+    full = fundamental(16383)
+    cents = 1200.0 * np.log2(full / centre)
+    assert abs(cents - 200.0) < 10.0, cents

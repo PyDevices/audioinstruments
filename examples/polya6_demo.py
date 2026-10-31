@@ -79,19 +79,20 @@ def pwm_strings(t):
     events.append((t + 5.5, "cc", 1, 75))
     events.append((t + 6.0, "cc", 1, 115))
     events.append((t + 6.4, "cc", 1, 0))
-    return events, t + 6.8
+    # room for the last chord's 1.5 s release before the next patch cuts it
+    return events, t + 7.6
 
 
 def huge_pad(t):
     """One twelve-note chord held across the section (24 voices unison, so the pool steals)."""
     chord = (48, 52, 55, 59, 60, 62, 64, 67, 69, 71, 72, 76)
     events = []
-    events.append((t, "macro", MACRO_F2_FREQ, 0.35))
+    events.append((t, "macro", MACRO_F2_FREQ, 0.45 * 127))
     for i, n in enumerate(chord):
         events.append((t + 0.01 * i, "on", n, 100))
         events.append((t + 5.8, "off", n, 0))
     for k in range(12):
-        val = 0.35 + 0.04 * k
+        val = (0.45 + 0.035 * k) * 127  # set_macro takes the MIDI scale
         events.append((t + 0.5 + 0.4 * k, "macro", MACRO_F2_FREQ, val))
     return events, t + 6.5
 
@@ -208,12 +209,12 @@ def sh_steps(t):
     """One held chord with random S&H filter steps and resonance raised."""
     chord = (48, 55, 60, 64)
     events = []
-    events.append((t, "macro", MACRO_F2_RES, 0.45))
+    events.append((t, "macro", MACRO_F2_RES, 0.45 * 127))
     for n in chord:
         events.append((t, "on", n, 100))
         events.append((t + 4.8, "off", n, 0))
     for k in range(8):
-        events.append((t + 0.5 * k, "macro", MACRO_F2_RES, 0.45 + 0.05 * k))
+        events.append((t + 0.5 * k, "macro", MACRO_F2_RES, (0.45 + 0.05 * k) * 127))
     return events, t + 5.4
 
 

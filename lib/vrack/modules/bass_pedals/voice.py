@@ -124,6 +124,8 @@ class BassPedalsVoice(Module):
         # the glided note, held across rests; None until the first note
         self._glided = None
         self._scattered = False
+        # the VCA's gain at the end of the last block, so a step in it ramps
+        self._gain = None
 
         cv, gate, audio = SignalType.CV, SignalType.GATE, SignalType.AUDIO
         self.pitch_in = self.add_input("pitch", "1V/Oct", cv)
@@ -173,6 +175,7 @@ class BassPedalsVoice(Module):
             "_filt",
             "_egate",
             "_tmp",
+            "_gramp",
         ):
             self.add_scratch(name)
 
@@ -308,10 +311,20 @@ class BassPedalsVoice(Module):
         gain = p["loud_sustain"] * foot_loudness(loudness_x) * OUTPUT_GAIN
         if p["vel_vca"] > 0.0:
             gain *= 1.0 - p["vel_vca"] * (1.0 - velocity)
+        # A new gain (a foot slider moved, a new velocity) ramps across the
+        # block, so a step in it is not a click and a pedal sweep has no zipper.
         out = self.audio_out.buffer
         copy_into(out, self._filt)
         out *= self._lenv
-        out *= gain
+        prev = self._gain if self._gain is not None else gain
+        if prev == gain:
+            out *= gain
+        else:
+            ramp = self._gramp
+            scaled_into(ramp, self.ramp.view(n), (gain - prev) / n)
+            ramp += prev
+            out *= ramp
+        self._gain = gain
 
 
 def _seed(text):

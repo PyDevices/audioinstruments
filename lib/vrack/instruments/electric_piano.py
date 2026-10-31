@@ -204,7 +204,6 @@ class ElectricPiano(VoicePatch):
         voice.connect(voice.pitch, v.pitch_in)
         voice.connect(voice.gate, v.gate_in)
         voice.connect(voice.velocity, v.vel_in)
-        voice.connect(voice.bend, v.bend_in)
         return v.audio_out
 
     def build_shared(self, rack, left, right):

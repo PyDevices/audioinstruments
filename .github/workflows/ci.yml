@@ -3,7 +3,10 @@ name: CI
 # A pull request is checked for what it changes: tools/ci_scope.py reads the diff
 # and says which files to lint, which tests to run and which instruments to check
 # against their trait files. A change to the core checks every instrument; a change
-# to docs checks nothing. A push to main, and a manual run, check everything.
+# to docs checks nothing. A push to main is checked the same way, for what changed
+# between the commit main was at before the push and the pushed one. When GitHub
+# names no earlier commit, or the runner can't find it, the push checks everything.
+# A manual run checks everything.
 #
 # MicroPython (tests/mpy) is not run here: it needs a build with ulab and audiodsp.
 # Run `micropython tests/mpy/run.py` before you merge.
@@ -13,9 +16,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A newer commit on a pull request replaces the run for the older one. Pushes to
+# main are never cancelled: each is checked only for its own changes, so a
+# cancelled one would leave those changes unchecked.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -36,9 +42,13 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
         run: |
           if [ "$EVENT" = pull_request ]; then
             python3 tools/ci_scope.py --base "$BASE" --out "$RUNNER_TEMP/scope.json" --github
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ -n "${BEFORE//0/}" ] \
+              && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            python3 tools/ci_scope.py --base "$BEFORE" --out "$RUNNER_TEMP/scope.json" --github
           else
             python3 tools/ci_scope.py --all --out "$RUNNER_TEMP/scope.json" --github
           fi
@@ -57,7 +67,7 @@ jobs:
         run: |
           python -m pip install -q -i https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            "omnipython-audiodsp>=0.6.11.dev8" numpy pytest ruff==0.17.1
+            "omnipython-audiodsp>=0.6.11.dev10" numpy pytest ruff==0.17.1
           python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy|pytest|ruff) "
 
       - name: Lint
