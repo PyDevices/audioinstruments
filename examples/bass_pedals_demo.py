@@ -9,7 +9,8 @@ way you would play it with your feet: every note is a pedal, MIDI 36 to 48, one
 at a time except where a section holds one under another on purpose. The foot
 buttons are stepped on through ``set_control``, the foot sliders are control
 changes (11 for loudness, 4 for the filter) and the macros move where each is
-the point. Afterwards the script checks that every section makes sound, that
+the point. The DECAY button is stepped off just before each patch change, so
+a long tail stops instead of being cut. Afterwards the script checks that every section makes sound, that
 nothing reaches the adapter's clip level, and prints a table of each section's
 start time, peak, RMS, clipped samples and shares of power below 40 Hz and
 above 120 Hz.
@@ -200,6 +201,10 @@ def render(sections):
     starts = []
     t = 0.2
     for name, patch, write in sections:
+        if starts:
+            # The DECAY button stepped off as the last section ends, so its
+            # ringing tail closes in 56 ms instead of being cut by the patch change.
+            events.append((t - 0.45, "ctl", "decay", "off"))
         starts.append((name, t, int(t * RATE)))
         events.append((t - 0.05, "patch", patch))
         events.append((t - 0.05, "cc", 11, 127))

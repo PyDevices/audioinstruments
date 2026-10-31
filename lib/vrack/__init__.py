@@ -102,6 +102,8 @@ __all__ = [
     "PolyrhythmSynth",
     "Rack",
     "RandomSequencer",
+    "ReedPianoOutput",
+    "ReedPianoVoice",
     "Semi32",
     "SignalType",
     "StateVariableMono",

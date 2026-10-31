@@ -34,6 +34,28 @@ def test_a_harder_blow_is_shorter_with_the_same_push():
     assert abs(float(np.sum(a)) - float(np.sum(b))) < 0.05 * float(np.sum(b))
 
 
+def test_a_pluck_rises_and_lets_go_at_its_peak():
+    pluck, hammer = HammerExciter(N, shape="pluck"), HammerExciter(N)
+    pluck.strike(0.5, 0.5)
+    hammer.strike(0.5, 0.5)
+    a, b = create_buffer(N), create_buffer(N)
+    pluck.render_into(a)
+    hammer.render_into(b)
+    p = a[: pluck.pulse_len]
+    # the force climbs every sample and is at its height when the reed tears free
+    assert np.all(np.diff(p) > 0)
+    assert abs(float(p[-1]) - float(np.max(p))) < 1e-6 and float(p[-1]) > 0.5 * pluck.pulse_amp
+    assert np.all(a[pluck.pulse_len :] == 0)
+    # a hammer's push ends where it began, near zero
+    h = b[: hammer.pulse_len]
+    assert float(h[-1]) < 0.2 * float(np.max(h))
+    # a pluck asked for on the strike overrides the hammer the exciter was built with
+    hammer.strike(0.5, 0.5, shape="pluck")
+    c = create_buffer(N)
+    hammer.render_into(c)
+    assert np.allclose(c, a)
+
+
 def test_the_pickup_adds_even_harmonics_only_off_centre_and_more_with_swing():
     cycles, n = 10, 4800
     x = np.sin(2 * np.pi * cycles * np.arange(n) / n).astype(np.float32)

@@ -59,8 +59,10 @@ _MODULE_VOICES = {
 #: submodule of ``vrack.instruments`` and the ``VoicePatch`` class in it.
 _PATCH_VOICES = {
     "bass_pedals": ("bass_pedals", "BassPedals"),
+    "combo_organ": ("combo_organ", "ComboOrgan"),
     "compact_organ": ("compact_organ", "CompactOrgan"),
     "duosynth": ("duosynth", "DuoSynth"),
+    "electric_grand70": ("electric_grand70", "ElectricGrand70"),
     "electric_piano": ("electric_piano", "ElectricPiano"),
     "mono101": ("mono101", "Mono101"),
     "mono_synth": ("mono_synth", "MonoSynth"),
@@ -71,6 +73,7 @@ _PATCH_VOICES = {
     "poly80": ("poly80", "Poly80"),
     "polya6": ("polya6", "PolyA6"),
     "polyxa": ("polyxa", "PolyXa"),
+    "reed_piano": ("reed_piano", "ReedPiano"),
     "reed_piano200a": ("reed_piano200a", "ReedPiano200A"),
     "rhythm606": ("rhythm606", "Rhythm606"),
     "rhythm808": ("rhythm808", "Rhythm808"),
@@ -466,6 +469,7 @@ class Instrument:
             output = "ring" if _pull_is_native_only() else "pull"
         self._ring = None
         self._attached = False
+        self._due = False  # a patch change waits for its recompile (attached)
         if output == "graph":
             if self._compiled is None:
                 raise ValueError(
@@ -867,6 +871,56 @@ class Instrument:
         self._output = None
         self._ring = None
 
+    # -- changing the patch while it plays ----------------------------------------------
+
+    def connect(self, source, dest, sample_position=0):
+        """Plug a cable from ``source`` to ``dest`` (jacks, or names such as
+        ``"vcf.cv"``) while the instrument plays. On a graph the patch is
+        compiled again beside the running one and swapped in at the block
+        ``sample_position`` falls in, with every voice, envelope and filter
+        carrying on where it was. On a graph the audio pump plays, every change
+        made in one turn lands together, on the block after the turn."""
+        self._live(sample_position, self.rack.connect, source, dest)
+
+    def disconnect(self, dest, sample_position=0):
+        """Pull the cable into ``dest`` (the jack, its name or the cable) while
+        the instrument plays, as ``connect()`` plugs one."""
+        self._live(sample_position, self.rack.disconnect, dest)
+
+    def add_module(self, module, sample_position=0):
+        """Install ``module`` in the rack while the instrument plays. Patch its
+        cables with ``connect()``; until then it sits unpatched. It runs in no
+        voice: it is always on, as a shared effect is."""
+        self._live(sample_position, self.rack.add_module, module)
+
+    def remove_module(self, module, sample_position=0):
+        """Take ``module`` and its cables out of the rack while the instrument plays."""
+        self._live(sample_position, self.rack.remove_module, module)
+
+    def _live(self, sample_position, change, *args):
+        self._check_live()
+        self._at(_sample_position(sample_position), self._swap, change, args)
+        if self._due:
+            with self._lock:
+                self._recompile()
+
+    def _swap(self, change, args):
+        """Change the rack, then compile it beside the running graph and swap that in.
+        On an attached graph the recompile waits for the end of the turn, so a
+        turn's changes land on one block whether or not the patch changed."""
+        change(*args)
+        if self._compiled is not None:
+            if self._attached:
+                self._due = True
+            else:
+                self._recompile()
+
+    def _recompile(self):
+        self._due = False
+        self._compiled = self._compiled.recompile(
+            groups=[voice.members for voice in self._pool.voices]
+        )
+
     # -- rendering ----------------------------------------------------------------------
 
     def _run_events(self, frames):
@@ -885,12 +939,12 @@ class Instrument:
         int16 views per block, when the rack renders; the graph writes ``raw``)."""
         rack = self.rack
         size = self._block_size
-        compiled = self._compiled
-        if compiled is not None:
+        if self._compiled is not None:
             for k in range(self._blocks):
                 if self._events:
                     self._run_events(size)
-                compiled.step(raw, k)
+                # read each block: an event may have swapped in a recompiled graph
+                self._compiled.step(raw, k)
             return
         conv = self._conv
         mono = self._channel_count == 1
@@ -942,7 +996,10 @@ class Instrument:
         self._check_live()
         if self._attached:
             with self._lock:
-                return self._compiled.control(self._run_events if self._events else None)
+                blocks = self._compiled.control(self._run_events if self._events else None)
+                if self._due:
+                    self._recompile()
+                return blocks
         ring = self._ring
         if ring is None:
             return 0

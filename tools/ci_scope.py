@@ -35,6 +35,12 @@ How a file is mapped:
 - A change to the shared core (``core/``, the adapter, the registry, the
   package ``__init__``, ``conftest.py``) runs every test and checks every
   instrument.
+- Except a new instrument's rows. Given the base (``--base``), a change to
+  the adapter, the registry, the package ``__init__`` or ``tools/traits.py``
+  that only adds rows to their tables (``TABLES``, compared with ``ast``)
+  reaches what the new rows name: the instrument, the modules, its trait
+  check, and the tests that go through every module or instrument. A row
+  removed or edited, or any other change in the file, is the old rule.
 - Everything is checked when ``pyproject.toml``, the workflow or this tool
   changed, when a file under ``lib/`` or ``tools/`` or ``tests/`` was
   deleted, or when a file there that is not python or a trait file changed.
@@ -76,6 +82,14 @@ REGISTRY = "lib/vrack/modules/__init__.py"
 TRAITS_TOOL = "tools/traits.py"
 TRAITS_DIR = "tests/traits"
 TRAITS_TEST = "tests/test_traits.py"
+#: The tables a new instrument adds a row to, by file. A change to one of these
+#: files that only adds rows reaches only what the new rows name.
+TABLES = {
+    ADAPTER: ("_MODULE_VOICES", "_PATCH_VOICES", "SAMPLERS"),
+    REGISTRY: ("_REGISTRY", "__all__"),
+    "lib/vrack/__init__.py": ("__all__",),
+    TRAITS_TOOL: ("SPECS",),
+}
 
 
 def _is_mpy(path):
@@ -96,6 +110,64 @@ def _literal(root, rel, name):
                 if isinstance(target, ast.Name) and target.id == name:
                     return ast.literal_eval(node.value)
     return None
+
+
+def added_rows(before, after, tables):
+    """The rows ``after`` adds to the module-level ``tables`` of ``before``.
+
+    A dict of table name -> new keys (a dict) or new items (a tuple or list),
+    or None when anything else differs: a row removed, edited or moved, a
+    table added or taken away, or a change outside the tables.
+    """
+    if before is None:
+        return None
+    try:
+        trees = [ast.parse(before), ast.parse(after)]
+    except SyntaxError:
+        return None
+    values = []
+    for tree in trees:
+        found = {}
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Assign)
+                and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)
+                and node.targets[0].id in tables
+            ):
+                try:
+                    found[node.targets[0].id] = ast.literal_eval(node.value)
+                except ValueError:
+                    return None
+                node.value = ast.Constant(None)
+        values.append(found)
+    if sorted(values[0]) != sorted(values[1]):
+        return None
+    if ast.dump(trees[0]) != ast.dump(trees[1]):
+        return None
+    out = {}
+    for name in values[0]:
+        old, new = values[0][name], values[1][name]
+        if type(old) is not type(new):
+            return None
+        if isinstance(old, dict):
+            if any(key not in new or new[key] != value for key, value in old.items()):
+                return None
+            out[name] = {key: new[key] for key in new if key not in old}
+        elif isinstance(old, (tuple, list)):
+            # the old rows, in order, with new ones between them
+            added, rest = [], list(old)
+            for item in new:
+                if rest and item == rest[0]:
+                    rest.pop(0)
+                else:
+                    added.append(item)
+            if rest:
+                return None
+            out[name] = added
+        elif old != new:
+            return None
+    return out
 
 
 def python_files(root):
@@ -309,8 +381,47 @@ def trait_names(root):
     return sorted(names)
 
 
-def scope(root, changed, deleted=(), force_full=False):
-    """What to check for ``changed`` (existing files) and ``deleted`` ones."""
+def _registered(graph, rows):
+    """(files, instruments) the new ``rows`` of ``TABLES`` name, or None if a row
+    names something this tool cannot place."""
+    files, names = set(), set()
+
+    def own(name):
+        # the file itself, not the packages above it (resolve() gives those too)
+        stem = "lib/" + name.replace(".", "/")
+        files.update({stem + ".py", stem + "/__init__.py"} & graph.known)
+
+    def module(cls):
+        if cls not in graph.by_name:
+            return False
+        own(graph.by_name[cls])
+        return True
+
+    for name, entry in rows.get("_MODULE_VOICES", {}).items():
+        names.add(name)
+        if not module(entry[0]):
+            return None
+    for name, entry in rows.get("_PATCH_VOICES", {}).items():
+        names.add(name)
+        own("vrack.instruments." + entry[0])
+    for name in rows.get("SAMPLERS", ()):
+        names.add(name)
+        own("vrack." + name)
+    for _cls, _name, sub in rows.get("_REGISTRY", ()):
+        own("vrack.modules." + sub)
+    for cls in rows.get("__all__", ()):
+        if not module(cls):
+            return None
+    names.update(rows.get("SPECS", {}))
+    return files, names
+
+
+def scope(root, changed, deleted=(), force_full=False, before=None):
+    """What to check for ``changed`` (existing files) and ``deleted`` ones.
+
+    ``before`` maps a file of ``TABLES`` to its text at the base (None if it
+    was not there). Without it, a change to one of them is checked in full.
+    """
     changed = sorted(set(changed))
     deleted = sorted(set(deleted))
     reasons = []
@@ -342,6 +453,17 @@ def scope(root, changed, deleted=(), force_full=False):
         }
 
     code = {r for r in changed if r.endswith(".py") and not _is_mpy(r)}
+    # A file whose change only adds a new instrument's rows to its tables stands
+    # for what those rows name; the instruments are checked by name.
+    new_rows, new_names = False, set()
+    for rel in sorted(code & set(TABLES)):
+        rows = added_rows((before or {}).get(rel), _read(root, rel), TABLES[rel])
+        placed = _registered(graph, rows) if rows is not None else None
+        if placed is not None:
+            code.discard(rel)
+            code |= placed[0]
+            new_names |= placed[1]
+            new_rows = True
     shared = sorted(
         r for r in code if r.startswith(SHARED_PREFIXES) or r in SHARED_FILES + (ADAPTER, REGISTRY)
     )
@@ -354,16 +476,17 @@ def scope(root, changed, deleted=(), force_full=False):
     for rel in all_tests:
         reach = set(graph.reach(rel))
         reach |= graph.reach("tests/conftest.py") if "tests/conftest.py" in graph.known else set()
-        if SWEEP.search(_read(root, rel)):
+        sweep = SWEEP.search(_read(root, rel))
+        if sweep:
             reach |= reached_all
-        if reach & code:
+        if reach & code or (sweep and new_rows):
             tests.append(rel)
 
     instruments = graph.instruments()
     named = {}
     for name in every:
         files = instruments.get(name, set())
-        if files & code or "%s/%s.json" % (TRAITS_DIR, name) in changed:
+        if files & code or "%s/%s.json" % (TRAITS_DIR, name) in changed or name in new_names:
             named[name] = True
     hit = sorted(named)
 
@@ -402,6 +525,21 @@ def changed_between(root, base, head="HEAD"):
         status, _, path = line.partition("\t")
         (deleted if status.startswith("D") else changed).append(path)
     return changed, deleted
+
+
+def tables_at(root, base, head, changed):
+    """The text at the merge base of each changed file of ``TABLES``."""
+    fork = subprocess.run(
+        ["git", "merge-base", base, head], cwd=root, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    out = {}
+    for rel in TABLES:
+        if rel in changed:
+            ran = subprocess.run(
+                ["git", "show", "%s:%s" % (fork, rel)], cwd=root, capture_output=True, text=True
+            )
+            out[rel] = ran.stdout if ran.returncode == 0 else None
+    return out
 
 
 def summary(result, changed):
@@ -443,14 +581,15 @@ def main(argv=None):
             print("\n".join(json.load(f)[args.get]))
         return 0
 
-    changed, deleted = [], []
+    changed, deleted, before = [], [], None
     if args.files is not None:
         changed = args.files
     elif args.base and not set(args.base) <= {"0"}:
         changed, deleted = changed_between(ROOT, args.base, args.head)
+        before = tables_at(ROOT, args.base, args.head, changed)
     else:
         args.all = True  # no base (a new branch, a manual run): check everything
-    result = scope(ROOT, changed, deleted, force_full=args.all)
+    result = scope(ROOT, changed, deleted, force_full=args.all, before=before)
 
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
