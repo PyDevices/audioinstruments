@@ -62,6 +62,7 @@ _PATCH_VOICES = {
     "combo_organ": ("combo_organ", "ComboOrgan"),
     "compact_organ": ("compact_organ", "CompactOrgan"),
     "duosynth": ("duosynth", "DuoSynth"),
+    "electric_grand70": ("electric_grand70", "ElectricGrand70"),
     "electric_piano": ("electric_piano", "ElectricPiano"),
     "mono101": ("mono101", "Mono101"),
     "mono_synth": ("mono_synth", "MonoSynth"),
