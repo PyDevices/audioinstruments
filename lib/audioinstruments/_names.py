@@ -7,6 +7,7 @@
 ALL = (
     "acid303",
     "bass_pedals",
+    "combo_organ",
     "compact_organ",
     "duo20",
     "duosynth",
@@ -23,6 +24,7 @@ ALL = (
     "poly80",
     "polya6",
     "polyxa",
+    "reed_piano",
     "reed_piano200a",
     "state_variable_mono",
     "string_ensemble",
@@ -38,6 +40,7 @@ DRUM_MACHINES = ()
 MELODIC = (
     "acid303",
     "bass_pedals",
+    "combo_organ",
     "compact_organ",
     "duo20",
     "duosynth",
@@ -54,6 +57,7 @@ MELODIC = (
     "poly80",
     "polya6",
     "polyxa",
+    "reed_piano",
     "reed_piano200a",
     "state_variable_mono",
     "string_ensemble",
