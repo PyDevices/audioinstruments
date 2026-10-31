@@ -98,7 +98,8 @@ def test_every_voice_satisfies_the_component_contract(inst):
 
 
 def test_every_voice_plays_a_chord(inst):
-    for note in (60, 64, 67):
+    notes = tuple(sorted(inst.pads))[:3] if inst.pads else (60, 64, 67)
+    for note in notes:
         inst.note_on(note, 100)
     x = pull(inst, 40)
     assert np.all(np.isfinite(x)) and peak(x) > 200, inst.patch.NAME

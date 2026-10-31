@@ -56,6 +56,7 @@ MODULES = (
     "test_string_ensemble",
     "test_tonewheel3",
     "test_vocoder330",
+    "test_rhythm606",
     "test_rhythm808",
 )
 
