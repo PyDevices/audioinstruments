@@ -47,6 +47,7 @@ MODULES = (
     "test_combo_organ",
     "test_poly80",
     "test_duosynth",
+    "test_electric_grand70",
     "test_electric_piano",
     "test_reed_piano",
     "test_reed_piano200a",
