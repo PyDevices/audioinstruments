@@ -1227,6 +1227,17 @@ def test_route_touch_pulse():
     assert abs(20 * np.log10(centroid(hard_l) / centroid(soft_l))) < 1.0
 
 
+def two_levels(inst, v0, v1, blocks=8):
+    """Each voice's RMS over several blocks: one block is under a cycle of the note,
+    so its RMS swings with the phase."""
+    a, b = [], []
+    for _ in range(blocks):
+        inst.rack.step()
+        a.append(np.array(v0.audio_out.buffer, dtype=np.float64))
+        b.append(np.array(v1.audio_out.buffer, dtype=np.float64))
+    return rms(np.concatenate(a)), rms(np.concatenate(b))
+
+
 def test_route_pressure_per_key():
     # two held keys: pressure on one moves both channels of that voice and nothing of the other
     for ch in (1, 2):
@@ -1243,18 +1254,19 @@ def test_route_pressure_per_key():
         )
         inst.note_on(60, 100)
         inst.note_on(64, 100)
+        v0, v1 = get_voice(inst, 0), get_voice(inst, 1)
         for _ in range(3):
             inst.rack.step()
-        v0, v1 = get_voice(inst, 0), get_voice(inst, 1)
         c = (lambda v: v.ch1) if ch == 1 else (lambda v: v.ch2)
         before = (c(v0).lp_hz, c(v1).lp_hz)
-        level_before = (rms(v0.audio_out.buffer), rms(v1.audio_out.buffer))
+        level_before = two_levels(inst, v0, v1)
         inst.poly_pressure(60, 127)
-        inst.rack.step()
+        inst.rack.step()  # the level ramps in across this block
         assert c(v0).lp_hz == pytest.approx(before[0] * 2**voice.AFTER_BRIL_OCT, rel=0.02)
         assert c(v1).lp_hz == pytest.approx(before[1], rel=0.001)
-        assert rms(v0.audio_out.buffer) > 1.3 * level_before[0]
-        assert rms(v1.audio_out.buffer) == pytest.approx(level_before[1], rel=0.1)
+        level_after = two_levels(inst, v0, v1)
+        assert level_after[0] > 1.3 * level_before[0]
+        assert level_after[1] == pytest.approx(level_before[1], rel=0.1)
         inst.channel_pressure(127)  # the whole keyboard
         inst.rack.step()
         assert c(v1).lp_hz == pytest.approx(before[1] * 2**voice.AFTER_BRIL_OCT, rel=0.02)
@@ -1652,6 +1664,35 @@ def test_a_patch_leaves_nothing_of_the_one_before():
 
 
 # -- Behaviour tests --------------------------------------------------------------
+
+
+def test_a_mix_move_ramps_and_a_closed_channel_fades_out():
+    """Moving the mix steps neither channel: each one's gain ramps across one block,
+    and a channel the mix closes renders one more block while it fades out."""
+    sines = {
+        "ch1_saw": False,
+        "ch1_sine": 10.0,
+        "ch1_vcf_level": 0.0,
+        "ch2_saw": False,
+        "ch2_sine": 10.0,
+        "ch2_vcf_level": 0.0,
+        "ch2_feet": "4",
+    }
+    flags = []
+
+    def collect(inst):
+        flags.append(get_voice(inst).rendered)
+        return np.array(get_voice(inst).audio_out.buffer, dtype=np.float64)
+
+    out = run(30, collect, script={20: lambda inst: ctl(inst, mix=0.0)}, **sines)
+    x = np.concatenate(out)
+    steady = np.abs(np.diff(x[10 * BLOCK : 20 * BLOCK])).max()
+    across = np.abs(np.diff(x[19 * BLOCK : 23 * BLOCK])).max()
+    assert across < 1.2 * steady
+    assert flags[20] == (True, True) and flags[21] == (True, False)
+    # after the ramp the voice is channel I alone, at its full gain
+    alone = np.concatenate(run(30, voice_audio(), mix=0.0, **sines))
+    assert np.allclose(x[22 * BLOCK :], alone[22 * BLOCK :], atol=1e-6)
 
 
 def test_behaviour_1_two_channels():

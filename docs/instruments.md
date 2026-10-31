@@ -1003,7 +1003,9 @@ Each voice renders channel I and channel II, and `mix` blends them: 0 is
 channel I alone, 10 is channel II alone, and in between the gains are `1 - m`
 and `m`, a plain linear crossfade [M p.49]. A channel that `mix` leaves silent
 is not rendered at all, so a patch that uses one channel costs about half as
-much. Channel I starts as a sawtooth and channel II as a pulse a little off square
+much. A move of `mix`, or of anything else that sets a channel's level, ramps
+in across one block rather than stepping, and a channel that `mix` closes
+renders one more block while it fades out. Channel I starts as a sawtooth and channel II as a pulse a little off square
 (`ch2_pw` 3), with `detune` of 0.08 of a semitone on channel II only, so the two
 beat slowly.
 
@@ -2190,6 +2192,102 @@ voices held on the Suitcase patch (on the machine and interpreters
 ballad, funk bark comping, high glass tines melody, dark tonebar groove, fast
 auto-pan chords, and staccato damper stabs), writing `wav_exports/electric_piano_demo.wav`.
 
+## Playing the ReedPiano
+
+The ReedPiano is a ten-voice plucked-reed electric piano after a small 1960s
+and 70s model with no hammers. Each key lifts a sticky pad that rests on a
+flat steel reed; the pad pulls the reed up until it tears free, and the reed
+rings. When you let the key go, the pad lands back on the reed and damps it
+with a soft thud. An electromagnetic pickup beside the reed gives a bright,
+slightly hollow plink. A preamp with a tone control and a stereo auto-pan
+follow the voices.
+
+```python
+import vrack.adapter as adapter
+
+inst = adapter.create(48000, voice="reed_piano")      # ten voices
+audio_out.play(inst.output)
+inst.program_change(0)                                # Classic
+for note in (45, 52, 57, 60):
+    inst.note_on(note, 100)
+```
+
+### The mechanism
+
+Each voice is one key, scaled across the original's 61 keys, F1 to F6 (MIDI 29
+to 89). Any key plays; outside that range the per-key values hold their end
+values.
+
+- **The pad** (`HammerExciter` with `shape="pluck"`) pulls the reed with a
+  force that climbs and then lets go all at once, at its height: a pluck, not
+  a hammer's round push. `pad_stick` sets how long the pull takes, so a pad
+  that sticks harder lets go with a sharper snap and more high harmonics.
+  Because the reed tears free at nearly the same point however fast you press
+  the key, velocity moves the level by only about 5 dB from 32 to 127, and the
+  brightness a little.
+- **The reed** (`StruckBarCore`) rings in an `audiomodal.Bank`: its
+  fundamental, two quiet bending modes at 6.2 and 17.5 times it, and a short
+  snap at 2.8 times it that follows `pad_stick`. The fundamental rings for
+  about 7 s at F1, 5.5 s at middle C and 1 s at F6 (to -60 dB, scaled 0.3 to
+  2 times by `decay`), so a middle C falls 6 dB in about 0.4 s and the top
+  octave is short. Those times were steered toward a sampled instrument of the
+  same kind, whose notes fall about that fast from the middle up.
+- **The pickup** (`PickupCore` with `curve="electromagnetic"`) has the reed
+  resting off centre, so the tone carries a strong second harmonic beside the
+  odd ones: at middle C the second, third and fourth come out about 4, 23 and
+  21 dB under the fundamental, close to the sampled instrument's. A short
+  treble reed swings less past the pickup, so the top keys are nearly pure.
+  The level does not follow the swing: bass and treble play at the same level.
+- **The pad landing** damps a released key, 20 dB down in about 50 ms, with a
+  short low thud whose level is `pad_thud`. The original has no sustain pedal;
+  the pedal (CC 64) works here as on every vrack instrument, an addition.
+- **The preamp and auto-pan** (`ReedPianoOutput`) block the pickup's slow
+  offset below 15 Hz, tilt the tone with a low shelf at 200 Hz and a high shelf
+  at 3 kHz moved in opposite directions (12 dB either way), and pan the sound
+  between the speakers at 1.5 to 9 Hz, which stands in for the chorus or
+  phaser players usually ran this kind of piano through.
+
+### Controls and presets
+
+Every control runs from 0 to 10:
+
+- `volume` (7 fresh): master level.
+- `tone` (5 fresh): dark at 0, flat at 5, bright at 10.
+- `pad_stick` (5 fresh): a soft, round pluck at 0, a sharp snap at 10. The
+  level stays within a couple of dB.
+- `decay` (5 fresh): the reed's ring, 0.3 to 2 times the times above.
+- `pad_thud` (4 fresh): the level of the release thud.
+- `vibrato_rate` (4 fresh) and `vibrato_depth` (0 fresh): the auto-pan's
+  speed and width.
+
+The six patches: `Classic` (0), everything fresh; `Snappy` (1), `pad_stick` 8
+and `tone` 7, hard and cutting; `Soft Plucks` (2), `pad_stick` 2, `tone` 3 and
+`pad_thud` 2, mellow; `Long Ring` (3), `decay` 9; `Wide` (4), `vibrato_depth`
+6 at `vibrato_rate` 5, a stereo shimmer; `Dead Thud` (5), `decay` 2 and
+`pad_thud` 8, short, almost a percussion sound. The six macros are `tone`,
+`pad_stick`, `decay`, `pad_thud`, `vibrato_rate` and `vibrato_depth`.
+
+`inst.latency_samples` is 256 frames (5.3 ms at 48 kHz), the reed's modal bank.
+
+### What it costs
+
+`examples/poly_bench.py reed_piano` renders with all ten voices held on the
+Classic patch:
+
+| block | CPython ms | factor | MicroPython ms | factor |
+| ---: | ---: | ---: | ---: | ---: |
+| 64 | 9.4 | 2.3 | 7.2 | 3.0 |
+| 128 (the default) | 6.2 | 3.4 | 4.3 | 5.0 |
+| 256 | 4.3 | 5.0 | 2.9 | 7.4 |
+
+The milliseconds are per 1024-frame buffer (21 ms of audio), on the machine
+and interpreters of 2026-10-30.
+
+`examples/reed_piano_demo.py` plays a one-minute piece in five sections (a
+beat-group chord riff on Classic, a fast line on Snappy, a slow melody on Soft
+Plucks, held arpeggios on Wide and a rhythm of short notes on Dead Thud) and
+writes `wav_exports/reed_piano_demo.wav`.
+
 ## Playing the ReedPiano200A
 
 The ReedPiano200A is a ten-voice electric reed piano after a portable 1970s
@@ -2619,7 +2717,9 @@ and `control_change(4, v)` is FILTER, each read as `v / 127`, and both read 1.0
 LOUDNESS is a 100 kOhm pot in series with 15 kOhm, so its gain at position `x`
 is `15 / (15 + 100 * (1 - x))` (`FOOT_LOUD_R301` (15.0) and `FOOT_LOUD_R302`
 (100.0)): 1.0 at the top and 0.13, 17.7 dB down, at the bottom. It never fades
-to silence. FILTER adds up to `FOOT_FILTER_OCT` (3.0) octaves to the cutoff.
+to silence. A new LOUDNESS value ramps in over one block, so a jump or a
+sweep on the pedal doesn't click or zipper. FILTER adds up to `FOOT_FILTER_OCT`
+(3.0) octaves to the cutoff.
 
 #### The panel
 
@@ -3051,6 +3151,110 @@ So on CPython a full-keyboard cluster needs 256-frame blocks on Garage (1.09)
 and doesn't keep up on Full Combo even there (0.80). On MicroPython Garage
 keeps up at 128 frames and Full Combo needs 256 (1.33). Ordinary playing, up to
 sixteen keys, is real time on both at the default block.
+
+## Playing the ComboOrgan
+
+The ComboOrgan is a divide-down transistor combo organ of the reverse-keyed,
+mid-1960s kind: 49 keys that all sound at once, four footage drawbars with a
+four-pitch mixture, two tone colour drawbars, a bass octave and one pitch
+vibrato for the whole keyboard. Next to the CompactOrgan it is breathier and
+brighter, and the mixture gives it a shimmer on top.
+
+```python
+import vrack.adapter as adapter
+
+inst = adapter.create(48000, voice="combo_organ")     # 49 voices
+audio_out.play(inst.output)
+inst.program_change(0)                                # Continental
+inst.note_on(60, 100)
+```
+
+There is a voice for every key from C2 to C6 at 8' (MIDI 48 to 96), so holding
+the whole keyboard never steals a note. Keys are switches: velocity does
+nothing and every note sounds at the same level, with a 3 ms ramp on and off so
+they don't click. Silent voices park. The sustain pedal (CC 64) holds notes, and
+pitch bend works as on the other vrack instruments.
+
+### Footage drawbars and the IV mixture
+
+Every key sounds a band-limited square wave at each footage drawn. The
+drawbars run 0 to 8, about 3 dB a step, with 8 at full level and 0 silent:
+
+- `db16` (default 0): 16', an octave below the key.
+- `db8` (default 8): 8', the key's own pitch.
+- `db4` (default 6): 4', an octave above.
+- `db_iv` (default 4): the IV mixture, four pitches at once: 2 2/3', 2', 1 3/5'
+  and 1', a twelfth, two octaves, two octaves and a major third, and three
+  octaves above 8'. They are tuned in equal temperament, as a divider organ's
+  are, so the fifth and the third sit a little off the 8' tone's own harmonics
+  and beat slowly against them. No mixture pitch goes above MIDI 108: near the
+  top of the keyboard each one folds back an octave.
+
+A key's footages are summed into one waveform that a single synthio note
+plays, with the mixture's twelfth and third as two more notes beside it, so a
+key costs the same whatever is drawn. Moving a drawbar rebuilds the waveform of
+each sounding key once. The squares keep only the harmonics under Nyquist and
+roll them off toward it as a divider's squares do, so the top octave doesn't
+alias.
+
+### Tone colours, bass and vibrato
+
+The drawn footages pass through two tone colour filters, and their drawbars
+(0 to 8) set how much of each you hear:
+
+- `flute` (default 6): a 1200 Hz low-pass that rounds the squares into a soft,
+  hollow, nearly sine-like tone.
+- `reed` (default 4): a 900 Hz high-pass with a small resonant peak that thins
+  the fundamental and leaves a bright, buzzing, nasal edge.
+
+The reed path is added inverted. The two filters are half a turn apart near
+their corners, so added the same way up they cancel there, and a blend of the
+two would come out quieter and thinner than either alone.
+
+`bass` (on or off; default off) takes the lowest octave, C2 to B2 (MIDI 48 to
+59), off the manual and plays it as a dark 16' and 8' through a 200 Hz
+four-pole low-pass. `bass_volume` (0 to 10; default 6) sets its level.
+
+`vibrato` (on or off; default on) is one 6.5 Hz LFO that moves every note
+together, 25 cents either side of the pitch.
+
+`expression` (0 to 10; default 10) is the swell pedal, and `volume` (0 to 10;
+default 7) the master level. At volume 7 chords play at about the level of the
+other instruments. Holding all 49 keys on a full registration (Beat Group,
+Reedy Lead or New Wave) clips the output for a fraction of a percent of the
+samples; the tone filters themselves stay well inside their range. Turn the
+volume down if you play that way.
+
+### Patches, macros and latency
+
+There are six patches: Continental (everything fresh), Beat Group, Soft Flute,
+Reedy Lead, New Wave and Deep. The eight macros are `db16`, `db8`, `db4`,
+`db_iv`, `flute`, `reed`, `vibrato` and `expression`. The keys' notes play in
+256-frame chunks, so the organ sounds 256 frames (5.3 ms at 48 kHz) after the
+key, and `inst.latency_samples` is 256.
+
+`examples/combo_organ_demo.py` plays a 60-second piece in five sections
+(Continental, Beat Group, Soft Flute, Reedy Lead, New Wave) and writes
+`wav_exports/combo_organ_demo.wav`.
+
+### What it costs
+
+`examples/poly_bench.py combo_organ` renders 1024-frame buffers on the fresh
+Continental registration with sixteen keys held:
+
+| block | CPython ms | factor | MicroPython ms | factor |
+| ---: | ---: | ---: | ---: | ---: |
+| 64 | 16.6 | 1.28 | 7.1 | 2.99 |
+| 128 (the default) | 12.3 | 1.73 | 4.6 | 4.66 |
+| 256 | 9.7 | 2.21 | 2.6 | 8.18 |
+
+Both keep up with sixteen keys at every block size. With all 49 keys held,
+MicroPython keeps up at every block size (1.03 at 64 frames, 1.99 at 128, 2.81
+at 256) and CPython does not (0.53, 0.66 and 0.73): most of CPython's time goes
+to calling each key's note through audiodsp's CPython layer, not to the sound
+itself. MicroPython's default 8 MB heap holds the whole organ, its 49 keys
+sounding, at every block size: 2.7 MB at 64 frames, 3.2 MB at 128 and 4.2 MB
+at 256.
 
 ## Traits
 

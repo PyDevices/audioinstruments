@@ -70,6 +70,8 @@ MODULES = [
     vrack.DuoSynthOutput,
     vrack.ElectricPianoVoice,
     vrack.ElectricPianoOutput,
+    vrack.ReedPianoVoice,
+    vrack.ReedPianoOutput,
     vrack.ReedPiano200AVoice,
     vrack.ReedPiano200AOutput,
     vrack.Tremolo,
@@ -138,6 +140,9 @@ MODULES = [
     vrack.CompactOrganVoice,
     vrack.CompactOrganVibrato,
     vrack.CompactOrganOutput,
+    vrack.ComboOrganVoice,
+    vrack.ComboOrganVibrato,
+    vrack.ComboOrganOutput,
 ]
 
 

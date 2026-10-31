@@ -12,11 +12,11 @@ Planned work, in rough order:
   they are run by hand before a merge.
 - The docs in the shared five sections: Get started, Guides, Reference, How it
   works and Changelog.
-- A board. Run a two-module patch on an ESP32-P4 or -S3 build of MicroPython
-  with audiodsp and measure what a block costs, now that the oscillator and
-  ladder run as nodes; that decides which per-sample cores (the two-poles,
-  the grain engine) need C nodes before a rack is playable on a
-  microcontroller.
+- A board, re-measured. The ESP32-P4 numbers in `docs/performance.md` predate
+  the oscillator and ladder nodes. Time a two-module patch again with them
+  on a P4 or S3 build of MicroPython with audiodsp; that decides which
+  per-sample cores (the two-poles, the grain engine) need C nodes before a
+  rack is playable on a microcontroller.
 - The Poly80 as a graph. The Poly106, Poly5, Poly6, Poly8, PolyXa, PolyA6, Mono101,
   MonoSynth, DuoSynth, Duo20 and HybridMono compile to one `audiograph` call a block; the
   Poly80 needs a fragment per module, and some new nodes.
@@ -25,15 +25,19 @@ Planned work, in rough order:
   that share one.
 - The Vocoder330 as a graph. Its voices feed the shared filter bank through pool
   buses, and the graph compiler can't render buses yet.
-- Live output. `examples/play_audio.py` writes WAVs; a `--live` path through
-  `audiodev` on the desktop and `audiopump` on a board, with the block
-  deadline measured rather than assumed.
+- Live output with the block deadline measured. `examples/play_audio.py`
+  already plays live through `board_config.pcm_out`; what's left is timing
+  the conversion to PCM and the device write against the block budget, and
+  writing it up in `docs/performance.md`.
 - Feedback cables without the block delay, where a loop is short: run the
   modules inside a loop at a smaller sub-block when all of them are Python
   cores, and say so in `rack.late_cables`.
 - `examples/hmi_board.py` on the audio pump. It renders on the interpreter's
   thread, so a busy screen eats the audio's time; `examples/hmi_instrument.py
   --pump` plays the graph on the pump's core instead, and this one should too.
+- Changing the patch of a graph on the audio pump. `recompile()` swaps a new graph
+  in between two `step()` calls; an attached graph needs the pump to switch graphs at
+  a block boundary, and refuses for now.
 - Notes on their own frame with the graph on the audio pump. A note played in
   a turn lands at the next block; with `audiograph` setting a value at a frame
   inside a block, `schedulable` can be True and a sequencer can time notes.
