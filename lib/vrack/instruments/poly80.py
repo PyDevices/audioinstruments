@@ -532,10 +532,22 @@ class Poly80(VoicePatch):
     """The Poly80 as an eight-voice polyphonic voice patch for ``vrack.adapter.create()``."""
 
     NAME = "poly80"
+    DISPLAY_NAME = "Poly80"
     VOICES = 8
     LATENCY_SAMPLES = LATENCY_FRAMES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {
+        0: "BIPOLAR",
+        1: "BIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "UNIPOLAR",
+        8: "UNIPOLAR",
+        9: "UNIPOLAR",
+    }
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))

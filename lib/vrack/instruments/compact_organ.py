@@ -209,11 +209,21 @@ class CompactOrgan(VoicePatch):
     """The CompactOrgan voice patch for ``vrack.adapter.create()``."""
 
     NAME = "compact_organ"
+    DISPLAY_NAME = "Compact Organ"
     VOICES = VOICES
     LATENCY_SAMPLES = LATENCY_SAMPLES
     BUSES = BUSES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "TOGGLE",
+        2: "TOGGLE",
+        3: "UNIPOLAR",
+        4: "TOGGLE",
+        5: "TOGGLE",
+        6: "TOGGLE",
+        7: "TOGGLE",
+    }
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))

@@ -321,12 +321,24 @@ class Vocoder330(VoicePatch):
     """The Vocoder330 voice patch for ``vrack.adapter.create()``."""
 
     NAME = "vocoder330"
+    DISPLAY_NAME = "Vocoder330"
     VOICES = VOICES
     MAX_VOICES = MAX_VOICES
     LATENCY_SAMPLES = LATENCY_SAMPLES
     BUSES = BUSES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "UNIPOLAR",
+        5: "UNIPOLAR",
+        6: "UNIPOLAR",
+        7: "UNIPOLAR",
+        8: "UNIPOLAR",
+        9: "UNIPOLAR",
+    }
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))

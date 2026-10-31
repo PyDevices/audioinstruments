@@ -17,9 +17,9 @@ git clone https://github.com/PyDevices/audioinstruments && cd audioinstruments
 
 ```python
 import audiocore
-from vrack import adapter
+import audioinstruments
 
-inst = adapter.create(48000, voice="poly106")
+inst = audioinstruments.create("poly106", 48000)
 print(inst.macro_labels[:4])
 inst.note_on(60, 100)
 for n in range(6):

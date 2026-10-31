@@ -48,17 +48,23 @@ except ImportError:  # a build without threads
 #: its pitch goes into, the jack its gate goes into, and the jack its audio
 #: leaves from.
 _MODULE_VOICES = {
+    "acid303": ("Acid303", "pitch_in", "gate_in", "audio_out"),
     "duo20": ("Duo20", "kybd_cv", "kybd_gate", "vca_out"),
     "mono_one": ("MonoOne", "kybd_cv", "kybd_gate", "vca_out"),
     "state_variable_mono": ("StateVariableMono", "kybd_cv", "kybd_gate", "vca_out"),
     "patch2600": ("Patch2600", "kybd_cv", "kybd_gate", "vca_out"),
     "hybrid_mono": ("HybridMono", "kybd_cv", "kybd_gate", "vca_out"),
+    "west_coast_synth": ("WestCoastSynth", "kybd_cv", "kybd_gate", "lpg2_out"),
 }
+
+#: Single-module voices that play one note at a time, as the machine did.
+_MONO_MODULE_VOICES = ("acid303",)
 
 #: Instruments built from several modules, with presets: the name, the
 #: submodule of ``vrack.instruments`` and the ``VoicePatch`` class in it.
 _PATCH_VOICES = {
     "bass_pedals": ("bass_pedals", "BassPedals"),
+    "clavichord": ("clavichord", "Clavichord"),
     "combo_organ": ("combo_organ", "ComboOrgan"),
     "compact_organ": ("compact_organ", "CompactOrgan"),
     "duosynth": ("duosynth", "DuoSynth"),
@@ -137,6 +143,10 @@ class VoicePatch:
     """
 
     NAME = "voice"
+    #: The name a host shows, ``NAME`` when None.
+    DISPLAY_NAME = None
+    CATEGORIES = ("Synth",)
+    VENDOR = "PyDevices"
     #: True for a monophonic patch: ``create()`` builds one voice and refuses more.
     MONO = False
     #: How many voices ``create()`` builds when it is not told.
@@ -148,6 +158,7 @@ class VoicePatch:
     #: dict from each name to the jack carrying that bus's sum.
     BUSES = ()
     MACRO_LABELS = ()
+    #: {index: "UNIPOLAR" | "BIPOLAR" | "TOGGLE"}, one per macro.
     MACRO_MODES = {}
     #: {index: (name, macro values 0..127)}; patch 0 is the sound a fresh
     #: instrument makes.
@@ -184,8 +195,12 @@ class ModuleVoice(VoicePatch):
         from .modules import get_module_class
 
         self.NAME = name
+        if name in _MONO_MODULE_VOICES:
+            self.MONO = True
+            self.VOICES = 1
         self._cls = get_module_class(module_name)
         self.MACRO_LABELS = tuple(self._cls.MACRO_LABELS)
+        self.DISPLAY_NAME = self._cls.DISPLAY_NAME
         self.MACRO_MODES = dict(self._cls.MACRO_MODES)
         probe = self._cls("probe")
         defaults = tuple(
