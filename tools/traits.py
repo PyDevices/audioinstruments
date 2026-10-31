@@ -353,6 +353,15 @@ SPECS = {
         "ring": 10.0,
         "tail": 0.3,
     },
+    "rhythm909": {
+        "patches": (0, 1),
+        "drums": True,
+        "notes": (36, 37, 38, 39, 42, 46, 41, 45, 48, 49, 51),
+        "velocity": 100,
+        "velocities": (40, 100, 127),
+        "ring": 10.0,
+        "tail": 0.3,
+    },
 }
 
 #: Phrases for a reference that has no instrument spec of its own yet: the

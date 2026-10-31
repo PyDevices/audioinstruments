@@ -13,27 +13,43 @@ This module provides reusable building blocks for analog drum machines:
 - CowbellCore: Two square waves through a band-pass filter with two-stage decay.
 - OneShotEnvelopeCore: Exponential decay envelope triggered by gate rising edge,
   retriggerable without a click.
+- SweptOscillatorDrumCore: A swept-oscillator analog drum (triangle shaped toward
+  a sine) with pitch envelope, strike click, and noise mix.
+- BitDepthRateCore: A bit-depth and sample-rate reduction stage using SampleHold.
 """
 
 import math
 
+from ..core.bridge import NodeBridge
 from ..core.signal import (
+    BRIDGE_SCALE,
     DEFAULT_BLOCK_SIZE,
     DEFAULT_SAMPLE_RATE,
+    ULAB,
     add,
     add_scaled,
     clear_buffer,
     copy_into,
     create_buffer,
+    crossfade_into,
+    from_int16,
     mul,
+    np,
+    offset,
     scale,
     scaled_into,
     sub,
+    to_int16,
 )
 from .biquad import BiquadFilter
 from .blocks import EdgeDetector, Ramp, exp_segment, linear_segment
 from .noise import NoiseGenerator
 from .oscillator import OscillatorCore
+
+try:
+    import audioshaper
+except ImportError:
+    audioshaper = None
 
 TWO_PI = 2.0 * math.pi
 METALLIC_FREQS = (205.3, 304.4, 369.6, 522.7, 540.0, 800.0)
@@ -511,6 +527,7 @@ class MetallicBankCore:
         self.sample_rate = sample_rate
         self.block_size = block_size
         self.edges = EdgeDetector(block_size)
+        self.tune_ratio = 1.0
         self.oscs = [OscillatorCore(sample_rate) for _ in range(6)]
 
         # Hat filters: bandpass ~7500 Hz, highpass ~7000 Hz
@@ -560,12 +577,13 @@ class MetallicBankCore:
     def render_bank(self):
         """Sum the six square-wave oscillators into self._sum_buf."""
         bs = self.block_size
+        mult = getattr(self, "tune_ratio", 1.0)
         self.oscs[0].render(
-            bs, base_freq_hz=METALLIC_FREQS[0], pulse_width=0.5, pulse=self._sum_buf
+            bs, base_freq_hz=METALLIC_FREQS[0] * mult, pulse_width=0.5, pulse=self._sum_buf
         )
         for i in range(1, 6):
             self.oscs[i].render(
-                bs, base_freq_hz=METALLIC_FREQS[i], pulse_width=0.5, pulse=self._osc_buf
+                bs, base_freq_hz=METALLIC_FREQS[i] * mult, pulse_width=0.5, pulse=self._osc_buf
             )
             add(self._sum_buf, self._osc_buf)
 
@@ -852,3 +870,368 @@ class MaracasCore:
         if (idx + n) >= attack_n and level < 1e-4:
             self.level = 0.0
             self.ringing = False
+
+
+class SweptOscillatorDrumCore:
+    """An analog drum synthesis core using a swept oscillator.
+
+    A band-limited oscillator (triangle shaped toward a sine) swept rapidly
+    downward in pitch by an exponential envelope, with an attack click (impulse
+    and filtered noise burst), an exponential amplitude envelope with a soft
+    strike ramp, and an optional noise mix with its own filter and decay.
+    """
+
+    def __init__(self, sample_rate=DEFAULT_SAMPLE_RATE, block_size=DEFAULT_BLOCK_SIZE):
+        self.sample_rate = sample_rate
+        self.block_size = block_size
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.noise_gen = NoiseGenerator()
+        self.osc = OscillatorCore(sample_rate)
+
+        self.frequency = 55.0
+        self.decay = 0.35
+        self.pitch_drop_cents = 2400.0
+        self.sweep_time_sec = 0.030
+        self.click_level = 0.35
+        self.click_tone_hz = 3200.0
+        self.noise_mix = 0.0
+        self.noise_decay_sec = 0.05
+        self.shape = 1.0
+        self.accent = 0.5
+
+        self.click_filter = BiquadFilter(block_size, sample_rate, mode="HP", stages=1, q=1.0)
+        self.click_filter.set(self.click_tone_hz)
+
+        self.noise_filter = BiquadFilter(block_size, sample_rate, mode="HP", stages=1, q=1.0)
+        self.noise_filter.set(2000.0)
+
+        self.amp = 0.0
+        self.rise = 0.0
+        self.sweep_env = 0.0
+        self.click_env = 0.0
+        self.click_lpf = 0.0
+        self.noise_env = 0.0
+        self.ringing = False
+
+        self._sweep_buf = create_buffer(block_size)
+        self._pitch_cv = create_buffer(block_size)
+        self._tri_buf = create_buffer(block_size)
+        self._shaper_x = create_buffer(block_size)
+        self._shaper_x2 = create_buffer(block_size)
+        self._shaper_poly = create_buffer(block_size)
+        self._shaped_sine = create_buffer(block_size)
+        self._amp_buf = create_buffer(block_size)
+        self._rise_buf = create_buffer(block_size)
+        self._click_buf1 = create_buffer(block_size)
+        self._click_buf2 = create_buffer(block_size)
+        self._noise_click = create_buffer(block_size)
+        self._noise_click_filtered = create_buffer(block_size)
+        self._white = create_buffer(block_size)
+        self._filtered_noise = create_buffer(block_size)
+        self._noise_env_buf = create_buffer(block_size)
+        self._tmp = create_buffer(block_size)
+
+    def set_block_size(self, block_size):
+        self.block_size = block_size
+        self.edges = EdgeDetector(block_size)
+        self.ramp = Ramp(block_size)
+        self.click_filter = BiquadFilter(block_size, self.sample_rate, mode="HP", stages=1, q=1.0)
+        self.click_filter.set(self.click_tone_hz)
+        self.noise_filter = BiquadFilter(block_size, self.sample_rate, mode="HP", stages=1, q=1.0)
+        self.noise_filter.set(2000.0)
+
+        self._sweep_buf = create_buffer(block_size)
+        self._pitch_cv = create_buffer(block_size)
+        self._tri_buf = create_buffer(block_size)
+        self._shaper_x = create_buffer(block_size)
+        self._shaper_x2 = create_buffer(block_size)
+        self._shaper_poly = create_buffer(block_size)
+        self._shaped_sine = create_buffer(block_size)
+        self._amp_buf = create_buffer(block_size)
+        self._rise_buf = create_buffer(block_size)
+        self._click_buf1 = create_buffer(block_size)
+        self._click_buf2 = create_buffer(block_size)
+        self._noise_click = create_buffer(block_size)
+        self._noise_click_filtered = create_buffer(block_size)
+        self._white = create_buffer(block_size)
+        self._filtered_noise = create_buffer(block_size)
+        self._noise_env_buf = create_buffer(block_size)
+        self._tmp = create_buffer(block_size)
+
+    def reset(self):
+        self.amp = 0.0
+        self.rise = 0.0
+        self.sweep_env = 0.0
+        self.click_env = 0.0
+        self.click_lpf = 0.0
+        self.noise_env = 0.0
+        self.edges.high = False
+        self.ringing = False
+        self.osc.reset()
+        self.click_filter.reset()
+        self.noise_filter.reset()
+
+    def trigger(self, velocity=1.0):
+        step = velocity * 1.0
+        self.amp += step
+        self.rise += step
+        self.sweep_env = 1.0
+        self.click_env = velocity * (1.0 + 0.4 * self.accent)
+        self.noise_env = velocity if self.noise_mix > 0.0 else 0.0
+        self.ringing = True
+
+    def render(self, gate, dst, velocity=1.0):
+        n = len(dst)
+        rising = -1
+        if gate is not None:
+            rising, _ = self.edges.scan(gate)
+        if rising >= 0:
+            self.trigger(velocity)
+
+        if not self.ringing and rising < 0:
+            clear_buffer(dst)
+            return
+
+        sr = float(self.sample_rate)
+        r = math.exp(-4.60517 / (sr * max(0.01, self.decay)))
+        f0 = max(10.0, min(sr * 0.45, self.frequency))
+
+        if self.pitch_drop_cents > 0.0 and self.sweep_env > 1e-4:
+            sweep_r = math.exp(-1.0 / (sr * max(0.001, self.sweep_time_sec)))
+            self.sweep_env = exp_segment(self._sweep_buf, self.sweep_env, 0.0, sweep_r, self.ramp)
+            scaled_into(self._pitch_cv, self._sweep_buf, self.pitch_drop_cents / 12000.0)
+            pitch_cv = self._pitch_cv
+        else:
+            pitch_cv = None
+            self.sweep_env = 0.0
+
+        self.osc.render(n, base_freq_hz=f0, pitch_cv=pitch_cv, tri=self._tri_buf)
+
+        # Shape triangle toward sine using polynomial y = x * (1.5 - 0.5 * x^2)
+        scaled_into(self._shaper_x, self._tri_buf, 2.0)
+        copy_into(self._shaper_x2, self._shaper_x)
+        mul(self._shaper_x2, self._shaper_x2)
+        scaled_into(self._shaper_poly, self._shaper_x2, -0.5)
+        offset(self._shaper_poly, 1.5)
+        mul(self._shaper_x, self._shaper_poly)
+        scaled_into(self._shaped_sine, self._shaper_x, 0.5)
+
+        if self.shape >= 0.999:
+            copy_into(dst, self._shaped_sine)
+        elif self.shape <= 0.001:
+            copy_into(dst, self._tri_buf)
+        else:
+            crossfade_into(dst, self._tri_buf, self._shaped_sine, self.shape, self._tmp)
+
+        self.amp = exp_segment(self._amp_buf, self.amp, 0.0, r, self.ramp)
+        if self.rise > 1e-6:
+            rise_r = math.exp(-1.0 / (sr * min(0.001, 0.5 / f0)))
+            self.rise = exp_segment(self._rise_buf, self.rise, 0.0, rise_r, self.ramp)
+            sub(self._amp_buf, self._rise_buf)
+        else:
+            self.rise = 0.0
+        mul(dst, self._amp_buf)
+
+        if self.click_level > 0.0 and (self.click_env > 1e-4 or self.click_lpf > 1e-4):
+            click_alpha = 1.0 - math.exp(
+                -TWO_PI * max(100.0, min(sr * 0.45, self.click_tone_hz)) / sr
+            )
+            click_r = math.exp(-1.0 / (sr * 0.002))
+            beta = 1.0 - click_alpha
+            c = click_r
+            denom = c - beta
+            k = (click_alpha * self.click_env / denom) if abs(denom) > 1e-9 else 0.0
+            a_coeff = self.click_lpf - k
+            b_coeff = k
+            self._click_lpf_end = exp_segment(self._click_buf1, a_coeff, 0.0, beta, self.ramp)
+            self._click_c_end = exp_segment(self._click_buf2, b_coeff, 0.0, c, self.ramp)
+            self.click_env = exp_segment(self._tmp, self.click_env, 0.0, c, self.ramp)
+            add(self._click_buf1, self._click_buf2)
+            self.click_lpf = self._click_lpf_end + self._click_c_end
+
+            # Click also includes a burst of filtered noise
+            self.noise_gen.white(self._noise_click)
+            self.click_filter.process(self._noise_click, self._noise_click_filtered)
+            mul(self._noise_click_filtered, self._click_buf2)
+            add_scaled(self._click_buf1, self._noise_click_filtered, 0.4, self._tmp)
+            add_scaled(dst, self._click_buf1, self.click_level, self._tmp)
+        else:
+            self.click_env = 0.0
+            self.click_lpf = 0.0
+
+        if self.noise_mix > 0.0 and self.noise_env > 1e-4:
+            noise_r = math.exp(-1.0 / (sr * max(0.005, self.noise_decay_sec)))
+            self.noise_gen.white(self._white)
+            self.noise_filter.process(self._white, self._filtered_noise)
+            self.noise_env = exp_segment(
+                self._noise_env_buf, self.noise_env, 0.0, noise_r, self.ramp
+            )
+            mul(self._filtered_noise, self._noise_env_buf)
+            add_scaled(dst, self._filtered_noise, self.noise_mix, self._tmp)
+        else:
+            self.noise_env = 0.0
+
+        if (
+            self.amp < 1e-4
+            and self.click_env < 1e-4
+            and self.click_lpf < 1e-4
+            and self.noise_env < 1e-4
+        ):
+            self.amp = 0.0
+            self.ringing = False
+
+
+class BitDepthRateCore:
+    """A bit-depth and sample-rate reduction stage.
+
+    Quantises incoming audio to N bits (e.g. 6-bit linear PCM) and holds
+    each sample at a target sample rate (e.g. 32 kHz) using audioshaper.SampleHold,
+    with an anti-aliasing low-pass filter to prevent aliasing whistles below 2 kHz.
+    """
+
+    def __init__(self, sample_rate=DEFAULT_SAMPLE_RATE, block_size=DEFAULT_BLOCK_SIZE):
+        self.sample_rate = sample_rate
+        self.block_size = block_size
+        self.bits = 6
+        self.rate = 32000.0
+        self.crush = True
+
+        self.anti_alias = BiquadFilter(block_size, sample_rate, mode="LP", stages=2, q=0.7071)
+        self._update_anti_alias()
+
+        self._build_hold()
+
+    def set_block_size(self, block_size):
+        self.block_size = block_size
+        self.anti_alias = BiquadFilter(block_size, self.sample_rate, mode="LP", stages=2, q=0.7071)
+        self._update_anti_alias()
+        self._build_hold()
+
+    def _build_hold(self):
+        """The hold: audioshaper's node on MicroPython, plain arrays on numpy.
+
+        A numpy host counts the hold itself, which costs a few array ops where
+        the node costs two pulls through the audiodsp shim.
+        """
+        block_size = self.block_size
+        self._filtered = create_buffer(block_size)
+        self._tmp = create_buffer(block_size)
+        self.bridge = None
+        self.sample_hold = None
+        self._arr = None
+        if np is not None and not ULAB:
+            self._arr = np.arange(block_size, dtype=np.int64)
+            self._ahead = self._arr + 1
+            self._count = np.zeros(block_size, dtype=np.int64)
+            self._last = np.zeros(block_size, dtype=np.int64)
+            self._refresh = np.zeros(block_size, dtype=bool)
+            self._quant = create_buffer(block_size)
+            self._half = create_buffer(block_size)
+            self._hold_clear()
+        elif audioshaper is not None:
+            self.bridge = NodeBridge(block_size, self.sample_rate)
+            self.sample_hold = audioshaper.SampleHold(
+                self.bridge.source, self.sample_rate, int(round(self.rate))
+            )
+            self.bridge.chain(self.sample_hold, direct=False)
+
+    def _hold_clear(self):
+        # Armed so that the first frames refresh, the way the node's clear() leaves it.
+        self._acc = self.sample_rate - 1
+        self._held = 0.0
+
+    def _hold(self, src, dst):
+        """Zero-order hold at rate/sample_rate, counting the way the node does.
+
+        Every array is made once in _build_hold, so a block allocates nothing.
+        """
+        num = self.sample_rate
+        den = int(round(self.rate))
+        n = len(src)
+        count = self._count[:n]
+        np.multiply(self._ahead[:n], den, out=count)
+        count += self._acc
+        np.floor_divide(count, num, out=count)
+        refresh = self._refresh[:n]
+        refresh[0] = count[0] > 0
+        np.greater(count[1:], count[:-1], out=refresh[1:])
+        last = self._last[:n]
+        last.fill(-1)
+        np.copyto(last, self._arr[:n], where=refresh)
+        np.maximum.accumulate(last, out=last)
+        np.take(src, last, out=dst, mode="clip")
+        np.less(last, 0, out=refresh)
+        np.copyto(dst, self._held, where=refresh)
+        self._held = float(dst[n - 1])
+        self._acc = (self._acc + den * n) % num
+
+    def reset(self):
+        self.anti_alias.reset()
+        if self._arr is not None:
+            self._hold_clear()
+            return
+        if self.bridge is not None:
+            self.bridge.reset()
+        if self.sample_hold is not None:
+            self.sample_hold.clear()
+
+    def set_rate(self, rate_hz):
+        r = max(4000.0, min(self.sample_rate * 0.95, float(rate_hz)))
+        if abs(r - self.rate) > 1.0:
+            self.rate = r
+            self._update_anti_alias()
+            if self.sample_hold is not None:
+                self.sample_hold.set(self.sample_rate, int(round(self.rate)))
+
+    def _update_anti_alias(self):
+        cutoff = min(self.rate * 0.45, self.sample_rate * 0.45)
+        self.anti_alias.set(cutoff)
+
+    def process(self, src, dst):
+        if not self.crush:
+            copy_into(dst, src)
+            return
+
+        self.anti_alias.process(src, self._filtered)
+        if self._arr is not None:
+            self._hold_numpy(dst)
+            return
+        if self.sample_hold is None:
+            copy_into(dst, self._filtered)
+            return
+
+        # Quantise by rounding to whole steps on the wire: the hold then runs
+        # on the small integer levels and the step is put back afterwards.
+        # (An in-place floor-divide on the view would rebind it on MicroPython,
+        # cutting it from the node's input, and a floor leaves a constant
+        # offset on a decaying tail.)
+        step = float(1 << 15 - max(1, min(15, int(self.bits)))) if self.bits < 16 else 1.0
+        if step > 1.0:
+            scaled_into(self._tmp, self._filtered, 1.0 / step)
+            to_int16(self.bridge._in_view, self._tmp, self._filtered)
+        else:
+            to_int16(self.bridge._in_view, self._filtered, self._tmp)
+
+        from_int16(dst, self.bridge._pull())
+        if step > 1.0:
+            scale(dst, step)
+
+    def _hold_numpy(self, dst):
+        filtered = self._filtered
+        if self.bits >= 16:
+            self._hold(filtered, dst)
+            return
+        step = float(1 << (15 - max(1, min(15, int(self.bits))))) / BRIDGE_SCALE
+        # Round half away from zero to whole steps, as the wire does.
+        q = self._quant
+        np.multiply(filtered, 1.0 / step, out=q)
+        np.copysign(0.5, filtered, out=self._half)
+        q += self._half
+        np.trunc(q, out=q)
+        q *= step
+        np.clip(q, -2.0, 2.0, out=q)
+        self._hold(q, dst)
+
+    def render(self, src, dst):
+        self.process(src, dst)

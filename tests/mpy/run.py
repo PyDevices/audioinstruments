@@ -69,6 +69,7 @@ MODULES = (
     "test_vocoder330",
     "test_rhythm606",
     "test_rhythm808",
+    "test_rhythm909",
     "test_face",
 )
 
