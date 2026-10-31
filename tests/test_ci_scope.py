@@ -175,6 +175,92 @@ def test_docs_and_examples_check_little(repo):
     assert out["pytest"] == [] and out["instruments"] == []
 
 
+def _new_instrument(tmp_path, registry_row='("Gamma", "Gamma", "gamma")'):
+    """Add instrument ``c``, its module ``Gamma`` and their rows, as a branch would.
+
+    Returns what the tables said before, for ``scope(before=...)``.
+    """
+    before = {
+        rel: (tmp_path / rel).read_text()
+        for rel in ("lib/vrack/adapter.py", "lib/vrack/modules/__init__.py", "tools/traits.py")
+    }
+    (tmp_path / "lib/vrack/adapter.py").write_text(
+        before["lib/vrack/adapter.py"].replace(
+            '_PATCH_VOICES = {"b": ("b", "B")}',
+            '_PATCH_VOICES = {"b": ("b", "B"), "c": ("c", "C")}',
+        )
+    )
+    (tmp_path / "lib/vrack/modules/__init__.py").write_text(
+        before["lib/vrack/modules/__init__.py"].replace(
+            '("BVoice", "BVoice", "b.voice"))',
+            '("BVoice", "BVoice", "b.voice"), %s)' % registry_row,
+        )
+    )
+    (tmp_path / "tools/traits.py").write_text("SPECS = {'a': {}, 'b': {}, 'c': {}}\n")
+    (tmp_path / "lib/vrack/modules/gamma.py").write_text("from ..dsp.d3 import f\n")
+    (tmp_path / "lib/vrack/instruments/c.py").write_text(
+        "class C:\n    GRAPH = 'vrack.modules.gamma'\n"
+    )
+    (tmp_path / "tests/traits/c.json").write_text("{}")
+    return before
+
+
+NEW_INSTRUMENT = [
+    "lib/vrack/adapter.py",
+    "lib/vrack/modules/__init__.py",
+    "tools/traits.py",
+    "lib/vrack/modules/gamma.py",
+    "lib/vrack/instruments/c.py",
+    "tests/traits/c.json",
+]
+
+
+def test_a_new_instruments_rows_check_only_it_and_the_sweeps(repo, tmp_path):
+    before = _new_instrument(tmp_path)
+    out = ci_scope.scope(repo, NEW_INSTRUMENT, before=before)
+    assert not out["full"] and not out["reasons"]
+    assert out["instruments"] == ["c"]
+    assert "tests/test_sweep.py" in out["pytest"]
+    assert "tests/test_traits.py::test_traits_hold[c]" in out["pytest"]
+    assert "tests/test_traits.py::test_traits_hold[a]" not in out["pytest"]
+    assert "tests/test_alpha.py" not in out["pytest"]
+    assert "lib/vrack/adapter.py" in out["lint"]
+
+
+def test_an_edited_row_still_checks_everything(repo, tmp_path):
+    before = _new_instrument(tmp_path)
+    path = tmp_path / "lib/vrack/modules/__init__.py"
+    path.write_text(path.read_text().replace('"alpha")', '"alpha2")'))
+    out = ci_scope.scope(repo, NEW_INSTRUMENT, before=before)
+    assert out["pytest"] == ["tests"] and out["instruments"] == ["a", "b", "c"]
+
+
+def test_new_rows_without_the_base_check_everything(repo, tmp_path):
+    _new_instrument(tmp_path)
+    out = ci_scope.scope(repo, NEW_INSTRUMENT)
+    assert out["pytest"] == ["tests"] and out["instruments"] == ["a", "b", "c"]
+
+
+@pytest.mark.parametrize(
+    "after",
+    [
+        "T = (1, 2, 3)\nD = {'x': 1, 'y': 2}\n",
+        "T = (1, 3)\nD = {'x': 1}\n",  # a row removed
+        "T = (1, 2)\nD = {'x': 9}\n",  # a row edited
+        "T = (2, 1)\nD = {'x': 1}\n",  # rows moved
+        "T = (1, 2)\nD = {'x': 1}\nimport os\n",  # code beside the tables
+        "T = (1, 2)\n",  # a table gone
+        "T = (1, 2)\nD = {'x': 1}\nE = ()\n",  # a table new
+    ],
+)
+def test_only_added_rows_count_as_added(after):
+    rows = ci_scope.added_rows("T = (1, 2)\nD = {'x': 1}\n", after, ("T", "D"))
+    if after.startswith("T = (1, 2, 3)"):
+        assert rows == {"T": [3], "D": {"y": 2}}
+    else:
+        assert rows is None
+
+
 @pytest.mark.parametrize(
     "changed,deleted",
     [
