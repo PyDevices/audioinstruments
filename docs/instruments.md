@@ -1003,7 +1003,9 @@ Each voice renders channel I and channel II, and `mix` blends them: 0 is
 channel I alone, 10 is channel II alone, and in between the gains are `1 - m`
 and `m`, a plain linear crossfade [M p.49]. A channel that `mix` leaves silent
 is not rendered at all, so a patch that uses one channel costs about half as
-much. Channel I starts as a sawtooth and channel II as a pulse a little off square
+much. A move of `mix`, or of anything else that sets a channel's level, ramps
+in across one block rather than stepping, and a channel that `mix` closes
+renders one more block while it fades out. Channel I starts as a sawtooth and channel II as a pulse a little off square
 (`ch2_pw` 3), with `detune` of 0.08 of a semitone on channel II only, so the two
 beat slowly.
 
