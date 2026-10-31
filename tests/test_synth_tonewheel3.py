@@ -5,23 +5,23 @@
 import math
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Rack
-from vrack.core.signal import create_buffer
-from vrack.dsp.organ import (
+from audioinstruments._rack.core import Rack
+from audioinstruments._rack.core.signal import create_buffer
+from audioinstruments._rack.dsp.organ import (
     DRAWBAR_LEVELS,
     DrawbarToneCore,
     ScannerVibratoCore,
     SwellPedalCore,
     tonewheel_harmonics,
 )
-from vrack.dsp.rotary import RotarySpeakerCore
-from vrack.instruments import tonewheel3
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.tonewheel3.percussion import Tonewheel3Percussion
-from vrack.modules.tonewheel3.voice import DRAWBARS, Tonewheel3Voice
+from audioinstruments._rack.dsp.rotary import RotarySpeakerCore
+from audioinstruments._rack.instruments import tonewheel3
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.tonewheel3.percussion import Tonewheel3Percussion
+from audioinstruments._rack.modules.tonewheel3.voice import DRAWBARS, Tonewheel3Voice
 
 SR = 48000
 CLIP = 27000

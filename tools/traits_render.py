@@ -23,7 +23,7 @@ for folder in (HERE, ROOT + "/lib"):
     if folder not in sys.path:
         sys.path.insert(0, folder)
 
-import vrack.adapter as adapter  # noqa: E402
+import audioinstruments._rack.adapter as adapter  # noqa: E402
 from traits_phrase import BUFFER, SAMPLE_RATE, schedule  # noqa: E402
 
 

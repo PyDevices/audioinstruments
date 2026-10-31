@@ -6,13 +6,13 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import create_buffer, signal
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.string_ensemble.envelope import StringEnsembleEnvelope
-from vrack.modules.string_ensemble.output import StringEnsembleOutput
-from vrack.modules.string_ensemble.voice import StringEnsembleVoice
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import create_buffer, signal
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.string_ensemble.envelope import StringEnsembleEnvelope
+from audioinstruments._rack.modules.string_ensemble.output import StringEnsembleOutput
+from audioinstruments._rack.modules.string_ensemble.voice import StringEnsembleVoice
 
 SLACK = 64
 

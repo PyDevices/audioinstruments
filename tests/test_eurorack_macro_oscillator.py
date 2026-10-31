@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for MacroOscillator."""
 
-from vrack.core.rack import Rack
-from vrack.modules.macro_oscillator import MacroOscillator
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.macro_oscillator import MacroOscillator
 
 
 def test_macro_oscillator_instantiation():

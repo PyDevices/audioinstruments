@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Run vrack's MicroPython-side tests.
+"""Run the rack's MicroPython-side tests.
 
     micropython tests/mpy/run.py            # all
     micropython tests/mpy/run.py alloc      # one module, tests/mpy/test_alloc.py
@@ -97,16 +97,16 @@ def run(names):
 
 
 def check_frozen():
-    """Fail unless vrack and audioinstruments come from the firmware."""
+    """Fail unless the rack and audioinstruments come from the firmware."""
     import audioinstruments
-    import vrack
+    import audioinstruments._rack
 
-    for package in (vrack, audioinstruments):
+    for package in (audioinstruments._rack, audioinstruments):
         # A frozen package's file is its path in the firmware, with no folder before it.
         path = getattr(package, "__file__", "")
-        if path != package.__name__ + "/__init__.py":
+        if path != package.__name__.replace(".", "/") + "/__init__.py":
             raise SystemExit("--frozen, but %s comes from %r" % (package.__name__, path))
-    print("vrack and audioinstruments are frozen")
+    print("audioinstruments and its rack are frozen")
 
 
 if __name__ == "__main__":

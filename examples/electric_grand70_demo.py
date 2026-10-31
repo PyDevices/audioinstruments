@@ -18,14 +18,14 @@ if "lib" not in sys.path:
     sys.path.insert(0, "lib")
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 from demo_check import Audible, section_ok
 
 RATE = 48000
 BUFFER = 256
 CLIP = 27000
 
-# Presets from vrack.instruments.electric_grand70
+# Presets from audioinstruments._rack.instruments.electric_grand70
 STAGE_GRAND = 0
 BALLAD = 1
 BRIGHT_ROCK = 2

@@ -18,7 +18,7 @@ import time
 import unittest
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 SUPPORT = pathlib.Path(__file__).resolve().parent / "support"
 if str(SUPPORT) not in sys.path:

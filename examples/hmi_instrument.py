@@ -10,7 +10,7 @@
 The demo module (``poly6_demo`` by default) supplies the instrument's name
 and its sections: real patches in audible ranges, the same phrase
 ``examples/<demo>.py`` renders and checks. They loop here. The instrument
-is an ``hmilink`` model (``vrack.hmi.InstrumentModel``): a panel changes
+is an ``hmilink`` model (``audioinstruments._rack.hmi.InstrumentModel``): a panel changes
 the patch, moves the macros, turns the knobs inside the voices, plugs and
 unplugs cables, and every other panel follows. A phone opens
 http://<host>:9000/.
@@ -37,10 +37,10 @@ for p in ("lib", "examples", "/lib"):
         sys.path.append(p)
 
 import audiocore  # noqa: E402
+import audioinstruments._rack.adapter as adapter  # noqa: E402
 import hmilink  # noqa: E402
-import vrack.adapter as adapter  # noqa: E402
+from audioinstruments._rack.hmi import InstrumentModel  # noqa: E402
 from hmilink import tcp  # noqa: E402
-from vrack.hmi import InstrumentModel  # noqa: E402
 
 try:
     from time import sleep_ms, ticks_diff, ticks_us

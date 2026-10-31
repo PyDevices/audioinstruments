@@ -8,8 +8,8 @@ plays one line, and the second equals it.
 """
 
 import pytest
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.poly_midi_cv import PolyMidiCV
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
 BLOCK = 64
 

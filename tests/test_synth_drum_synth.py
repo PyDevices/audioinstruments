@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for DrumSynth."""
 
-from vrack.core.rack import Rack
-from vrack.modules.drum_synth import DrumSynth
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.drum_synth import DrumSynth
 
 
 def test_drum_synth_instantiation():

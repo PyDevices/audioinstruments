@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """The in-place kernels compute what they say and write only where told."""
 
-from vrack.core import (
+from audioinstruments._rack.core import (
     add_scaled,
     copy_into,
     create_buffer,

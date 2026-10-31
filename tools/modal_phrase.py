@@ -25,9 +25,9 @@ ROOT = "/".join(_parts[:-2]) or "."
 if ROOT + "/lib" not in sys.path:
     sys.path.insert(0, ROOT + "/lib")
 
-from vrack.core import Module, Rack, SignalType, compile_rack, fill  # noqa: E402
-from vrack.core.graph import UNIT  # noqa: E402
-from vrack.modules.modal_resonator import ModalResonator  # noqa: E402
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, fill  # noqa: E402
+from audioinstruments._rack.core.graph import UNIT  # noqa: E402
+from audioinstruments._rack.modules.modal_resonator import ModalResonator  # noqa: E402
 
 BLOCK = 128
 BLOCKS = 144

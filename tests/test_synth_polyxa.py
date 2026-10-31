@@ -3,13 +3,13 @@
 """PolyXa: the instrument plays, each control does what its name says, and all routings work."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Rack
-from vrack.instruments import polyxa
-from vrack.modules.mono101.lfo import Mono101LFO
-from vrack.modules.polyxa.output import PolyXaOutput
+from audioinstruments._rack.core import Rack
+from audioinstruments._rack.instruments import polyxa
+from audioinstruments._rack.modules.mono101.lfo import Mono101LFO
+from audioinstruments._rack.modules.polyxa.output import PolyXaOutput
 
 CLIP = 27000
 RATE = 48000
@@ -358,7 +358,7 @@ def test_every_patch_plays_hard_chord_without_clipping():
 
 
 def test_every_patch_attacks_in_1_2_seconds_or_less():
-    from vrack.modules.polyxa.voice import ATTACK_RANGE, slider_time
+    from audioinstruments._rack.modules.polyxa.voice import ATTACK_RANGE, slider_time
 
     for index in range(len(polyxa.PRESETS)):
         values = polyxa.settings(index)

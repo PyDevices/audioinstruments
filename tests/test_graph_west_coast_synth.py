@@ -64,7 +64,7 @@ def test_each_stage_against_the_rack(out):
 
 
 def test_a_cabled_function_output_or_strike_keeps_it_on_the_rack():
-    from vrack.core import compile_rack
+    from audioinstruments._rack.core import compile_rack
 
     for jack in ("func1_out", "strike_in"):
         rack, keys, synth = phrase.build(0)
@@ -95,7 +95,7 @@ def test_a_cabled_gate_control_reads_the_cable():
 
 @pytest.mark.parametrize("fault", ["strike", "symmetry", "manual"])
 def test_a_planted_fault_is_caught(monkeypatch, fault):
-    from vrack.modules.west_coast_synth import WestCoastSynth
+    from audioinstruments._rack.modules.west_coast_synth import WestCoastSynth
 
     if fault == "strike":
         # the gates left without the keyboard's strike

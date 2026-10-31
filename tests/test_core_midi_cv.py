@@ -3,7 +3,7 @@
 """Unit tests for the master MIDI-to-CV module and Donner/Arturia profile."""
 
 import pytest
-from vrack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
 
 def test_note_on_off_and_pitch_cv():

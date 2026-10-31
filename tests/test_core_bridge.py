@@ -6,7 +6,7 @@ import math
 
 import audiofilters
 import synthio
-from vrack.core import ChunkedBridge, NodeBridge, create_buffer, effect_kwargs
+from audioinstruments._rack.core import ChunkedBridge, NodeBridge, create_buffer, effect_kwargs
 
 N = 64
 SR = 48000

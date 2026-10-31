@@ -49,19 +49,19 @@ What matches to how many counts, and why:
   by the graph.
 """
 
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType, compile_rack, fill
-from vrack.core.graph import UNIT
-from vrack.modules.duo20 import Duo20
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, fill
+from audioinstruments._rack.core.graph import UNIT
+from audioinstruments._rack.modules.duo20 import Duo20
 
 
 def keeps_every_wire(fn):
     """Run ``fn`` with buffer sharing off: it reads a wire by its id after a block."""
     import functools
 
-    import vrack.core.graph as vgraph
+    import audioinstruments._rack.core.graph as vgraph
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
@@ -263,7 +263,7 @@ def test_a_note_through_the_lpf_s_touchy_stretch_is_the_rack_note_to_a_percent(c
 def test_the_rack_lpf_itself_turns_on_a_hair_there():
     # A millionth of a unit (a sixtieth of a count) added to the rack's own LPF input
     # moves its output by thousands of counts in that stretch, and nothing elsewhere.
-    from vrack.dsp import twopole
+    from audioinstruments._rack.dsp import twopole
 
     plain = patched(False, right="lpf_out", params={"vco1_wave": 0.0})[1]
     real = twopole.SallenKeyLPFCore.render
@@ -319,7 +319,7 @@ def test_a_loud_drone_is_not_parked():
 
 
 def test_a_mixer_that_parks_a_loud_drone_fails(monkeypatch):
-    import vrack.modules.voice_mix as voice_mix
+    import audioinstruments._rack.modules.voice_mix as voice_mix
 
     monkeypatch.setattr(voice_mix, "QUIET_LEVEL", 1.0)
     _top, _rms, _level, _tail, last = compare({"vca_init_gain": 1.0, "volume": 0.0})

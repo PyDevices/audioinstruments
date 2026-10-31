@@ -14,13 +14,13 @@ import os
 import re
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.dsp.blocks import exp_segment  # noqa: F401 (the glide's building block)
-from vrack.instruments import bass_pedals
-from vrack.modules.bass_pedals import voice as bp
-from vrack.modules.bass_pedals.voice import slider_time
+from audioinstruments._rack.dsp.blocks import exp_segment  # noqa: F401 (the glide's building block)
+from audioinstruments._rack.instruments import bass_pedals
+from audioinstruments._rack.modules.bass_pedals import voice as bp
+from audioinstruments._rack.modules.bass_pedals.voice import slider_time
 
 RATE = 48000
 BLOCK = 128
@@ -349,8 +349,8 @@ def test_the_instrument_output_is_not_silent_through_the_adapter():
 
 
 def test_cores_are_the_ladder_and_oscillator_the_build_has():
-    from vrack.dsp.ladder import LadderCore
-    from vrack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.dsp.ladder import LadderCore
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
 
     inst = make()
     v = voice(inst)
@@ -1026,9 +1026,9 @@ def test_route_foot_filter():
         vca_gain(script={0: [cc(4, 127), on(43)]}), rel=1e-6
     )
     # a jack nothing feeds reads 1.0: the pedal fully forward
-    from vrack.core import Rack
-    from vrack.modules.bass_pedals.voice import BassPedalsVoice
-    from vrack.modules.midi_cv import MidiCVModule
+    from audioinstruments._rack.core import Rack
+    from audioinstruments._rack.modules.bass_pedals.voice import BassPedalsVoice
+    from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
     rack = Rack(block_size=BLOCK)
     midi = rack.add_module(MidiCVModule("midi", block_size=BLOCK))
@@ -1133,7 +1133,7 @@ def octave_slope_db(x, f0, n):
 
 
 def test_the_ladder_has_four_poles():
-    from vrack.dsp.ladder import LadderCore
+    from audioinstruments._rack.dsp.ladder import LadderCore
 
     f0 = hz_of_note(43)
     controls = {"filter_cutoff": 3.8}

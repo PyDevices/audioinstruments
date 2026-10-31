@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Tests for shared drum synthesis cores in vrack.dsp.drums."""
+"""Tests for shared drum synthesis cores in audioinstruments._rack.dsp.drums."""
 
 import numpy as np
-from vrack.core.signal import create_buffer
-from vrack.dsp.drums import (
+from audioinstruments._rack.core.signal import create_buffer
+from audioinstruments._rack.dsp.drums import (
     METALLIC_FREQS,
     BitDepthRateCore,
     BridgedTDrumCore,

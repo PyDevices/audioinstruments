@@ -1,8 +1,8 @@
-# How vrack is put together
+# How the rack is put together
 
 ## Layout
 
-    lib/vrack/
+    lib/audioinstruments/_rack/
       core/      the rack, jacks and cables, the signal kernels, the audiodsp bridge,
                  and poly.py: the voice allocator and the voice pool
       adapter.py create() and ALL: a polyphonic rack, or a SoundFont, as an audio component
@@ -66,7 +66,7 @@ may write into; the rack resizes jacks and scratch buffers together when
 its block size changes. `set_macro`/`get_macro` address parameters by index
 through `MACRO_LABELS`. `get_state`/`set_state` carry the parameters, and
 `Rack.save_patch`/`load_patch` the whole patch as a dict.
-`Rack.save_patch_file(path)` writes that dict to a JSON file, and `Rack.load_patch_file(path)` or `vrack.load_rack(path)` reads it back and installs the modules it names.
+`Rack.save_patch_file(path)` writes that dict to a JSON file, and `Rack.load_patch_file(path)` or `audioinstruments._rack.load_rack(path)` reads it back and installs the modules it names.
 A patch stores its format version (`PATCH_FORMAT_VERSION`, now 2). Version 2
 renamed every module, so a version 1 patch is refused with a message that
 says so; rebuild it with the current names.
@@ -81,8 +81,8 @@ large panels use named parameters throughout.
 On a build with `audiograph` (CPython from audiodsp 0.6.9.dev4, and the
 MicroPython and CircuitPython builds), a rack can be compiled into one C
 graph and rendered by one call a block, which is what holds real time on an
-ESP32-P4. `vrack.core.graph.compile_rack(rack)` does it, and
-`vrack.adapter.create()` does it for an instrument whenever every module in
+ESP32-P4. `audioinstruments._rack.core.graph.compile_rack(rack)` does it, and
+`audioinstruments._rack.adapter.create()` does it for an instrument whenever every module in
 the patch can take part. A module takes part by declaring its **fragment**:
 the nodes it is made of, how they hang on its jacks, and how its parameters
 reach them.

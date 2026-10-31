@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for GranularProcessor."""
 
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.granular_processor import GranularProcessor
 from conftest import Source
-from vrack.core.rack import Rack
-from vrack.modules.granular_processor import GranularProcessor
 
 
 def test_granular_processor_instantiation():

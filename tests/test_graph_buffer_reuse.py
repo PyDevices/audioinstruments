@@ -8,10 +8,10 @@ happening, and the wires that must keep a buffer of their own never sharing one.
 renders themselves are held to the rack by the test_graph_* comparisons.
 """
 
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.core.graph as vgraph
 import pytest
-import vrack.adapter as adapter
-import vrack.core.graph as vgraph
-from vrack.core.graph import _outputs, plan_buffers
+from audioinstruments._rack.core.graph import _outputs, plan_buffers
 
 ag = pytest.importorskip("audiograph")
 

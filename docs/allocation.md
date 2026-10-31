@@ -72,7 +72,7 @@ frames, and `tests/mpy/test_bridge.py` pulls an audiodsp node under
 
 These cores loop per sample in Python, because no vector form exists for a
 recursion with a nonlinearity inside it and audiodsp has no node that does
-the job at vrack's block size (see [audiodsp.md](audiodsp.md)):
+the job at the rack's block size (see [audiodsp.md](audiodsp.md)):
 
 - `dsp/oscillator.py`: the wave blender, and the PolyBLEP VCO when audiodsp
   has no `audiooscillator` (with it, the VCO is a node);

@@ -11,12 +11,12 @@ import math
 import os
 import traceback
 
+import audioinstruments._rack
 import numpy as np
 import pytest
-import vrack
-from vrack.core import create_buffer, signal
-from vrack.dsp import ensemble
-from vrack.dsp.ensemble import (
+from audioinstruments._rack.core import create_buffer, signal
+from audioinstruments._rack.dsp import ensemble
+from audioinstruments._rack.dsp.ensemble import (
     CENTRE_MS,
     FAST_DEPTH_MS,
     FAST_HZ,
@@ -219,7 +219,7 @@ def test_a_switch_does_not_click():
 
 # -- allocation, by the method of test_allocation.py ---------------------------
 
-LIB = os.path.dirname(os.path.abspath(vrack.__file__))
+LIB = os.path.dirname(os.path.abspath(audioinstruments._rack.__file__))
 EVENTS = []
 TRACING = [False]
 

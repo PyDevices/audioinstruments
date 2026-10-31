@@ -3,10 +3,10 @@
 """Mono101: the instrument plays, and each control does what its name says."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import mono101
+from audioinstruments._rack.instruments import mono101
 
 CLIP = 27000
 RATE = 48000
@@ -465,8 +465,8 @@ def test_portamento_off_auto_and_on_and_constant_time():
 
 
 def test_the_instrument_creates_no_arrays_while_it_plays_and_glides():
+    from audioinstruments._rack.core import signal
     from test_allocation import EVENTS, TRACING, traced_zeros
-    from vrack.core import signal
 
     signal.set_buffer_factory(traced_zeros)
     try:

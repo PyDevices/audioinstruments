@@ -8,7 +8,7 @@ them: a ufunc without ``out=``, ``a * b``, ``-a``, a slice copy. numpy 2
 builds such a result as a plain ndarray and hands the subclass a view of it,
 so a fresh array shows up with a plain ``base``; a real view of a traced
 block has a ``TracedBlock`` base. That is how the two are told apart. One ``rack.step()``
-after warm-up must create no array of 256 bytes or more from vrack's own
+after warm-up must create no array of 256 bytes or more from audioinstruments._rack's own
 code (at a 256-frame block a float temporary is 1 KB and an int16 one
 512 B). audiodsp's CPython shims make plain ndarrays and bytes of their
 own; those are not traced.
@@ -19,12 +19,15 @@ To see this test fail, put ``tmp = src * 0.5`` in any process() path.
 import os
 import traceback
 
+import audioinstruments._rack
 import numpy as np
 import pytest
-import vrack
-from vrack.core import Rack, signal
+from audioinstruments._rack.core import Rack, signal
 
-LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(vrack.__file__))), "vrack")
+LIB = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(audioinstruments._rack.__file__))),
+    "audioinstruments._rack",
+)
 BLOCK = 256
 THRESHOLD = 256
 
@@ -59,138 +62,138 @@ def traced_buffers():
 
 
 MODULES = [
-    vrack.Patch2600,
-    vrack.ParaphonicSynth,
-    vrack.WestCoastSynth,
-    vrack.HybridMono,
-    vrack.PinMatrix3,
-    vrack.Duo20,
-    vrack.DuoSynthVoice,
-    vrack.DuoSynthLFO,
-    vrack.DuoSynthOutput,
-    vrack.ElectricGrand70Voice,
-    vrack.ElectricGrand70Output,
-    vrack.ElectricPianoVoice,
-    vrack.ElectricPianoOutput,
-    vrack.ElectronicDrums5Voice,
-    vrack.ClavichordVoice,
-    vrack.ClavichordOutput,
-    vrack.ReedPianoVoice,
-    vrack.ReedPianoOutput,
-    vrack.ReedPiano200AVoice,
-    vrack.ReedPiano200AOutput,
-    vrack.Tremolo,
-    vrack.WestCoast0,
-    vrack.FunctionGenerator,
-    vrack.MidiCVModule,
-    vrack.PolyMidiCV,
-    vrack.VoiceMix,
-    vrack.Modular100VCO,
-    vrack.Modular100VCF,
-    vrack.Modular100VCA,
-    vrack.Modular100EnvLFO,
-    vrack.Modular100Utility,
-    vrack.Modular55VCA,
-    vrack.Modular55LowPass,
-    vrack.Modular55HighPass,
-    vrack.Modular55Envelope,
-    vrack.Modular55VCO,
-    vrack.DrumSynth,
-    vrack.Semi32,
-    vrack.PolyrhythmSynth,
-    vrack.RandomSequencer,
-    vrack.GranularProcessor,
-    vrack.MacroOscillator,
-    vrack.ModalResonator,
-    vrack.StateVariableMono,
-    vrack.Acid303,
-    vrack.MonoOne,
-    vrack.Mono101Voice,
-    vrack.Mono101LFO,
-    vrack.MonoSynthVoice,
-    vrack.Poly106Voice,
-    vrack.Poly106LFO,
-    vrack.Poly106Output,
-    vrack.Poly5Voice,
-    vrack.Poly5LFO,
-    vrack.Poly6Voice,
-    vrack.Poly6LFO,
-    vrack.Poly6Output,
-    vrack.Poly8Voice,
-    vrack.Poly8LFO,
-    vrack.Poly80Voice,
-    vrack.Poly80Mod,
-    vrack.Poly80Output,
-    vrack.PolyA6Voice,
-    vrack.PolyA6Noise,
-    vrack.PolyA6Output,
-    vrack.PolyXaVoice,
-    vrack.PolyXaLFO,
-    vrack.PolyXaOutput,
-    vrack.StringEnsembleVoice,
-    vrack.StringEnsembleEnvelope,
-    vrack.StringEnsembleBass,
-    vrack.StringEnsembleOutput,
-    vrack.BassPedalsVoice,
-    vrack.Vocoder330Voice,
-    vrack.Vocoder330Keys,
-    vrack.Vocoder330Mic,
-    vrack.Vocoder330Bank,
-    vrack.Vocoder330Output,
-    vrack.Tonewheel3Voice,
-    vrack.Tonewheel3Percussion,
-    vrack.Tonewheel3Vibrato,
-    vrack.Tonewheel3Expression,
-    vrack.Tonewheel3Rotary,
-    vrack.CompactOrganVoice,
-    vrack.CompactOrganVibrato,
-    vrack.CompactOrganOutput,
-    vrack.Rhythm606BassDrum,
-    vrack.Rhythm606ClosedHat,
-    vrack.Rhythm606Cymbal,
-    vrack.Rhythm606OpenHat,
-    vrack.Rhythm606Snare,
-    vrack.Rhythm606Tom,
-    vrack.Rhythm78Cowbell,
-    vrack.Rhythm78Cymbal,
-    vrack.Rhythm78Drum,
-    vrack.Rhythm78Guiro,
-    vrack.Rhythm78HiHat,
-    vrack.Rhythm78Output,
-    vrack.Rhythm78Snare,
-    vrack.Rhythm78Tambourine,
-    vrack.Rhythm808BassDrum,
-    vrack.Rhythm808Clap,
-    vrack.Rhythm808Claves,
-    vrack.Rhythm808ClosedHat,
-    vrack.Rhythm808Conga,
-    vrack.Rhythm808Cowbell,
-    vrack.Rhythm808Cymbal,
-    vrack.Rhythm808Maracas,
-    vrack.Rhythm808OpenHat,
-    vrack.Rhythm808Output,
-    vrack.Rhythm808RimShot,
-    vrack.Rhythm808Snare,
-    vrack.Rhythm808Tom,
-    vrack.Rhythm909BassDrum,
-    vrack.Rhythm909Clap,
-    vrack.Rhythm909ClosedHat,
-    vrack.Rhythm909Crash,
-    vrack.Rhythm909OpenHat,
-    vrack.Rhythm909Ride,
-    vrack.Rhythm909RimShot,
-    vrack.Rhythm909Snare,
-    vrack.Rhythm909Tom,
-    vrack.ComboOrganVoice,
-    vrack.ComboOrganVibrato,
-    vrack.ComboOrganOutput,
+    audioinstruments._rack.Patch2600,
+    audioinstruments._rack.ParaphonicSynth,
+    audioinstruments._rack.WestCoastSynth,
+    audioinstruments._rack.HybridMono,
+    audioinstruments._rack.PinMatrix3,
+    audioinstruments._rack.Duo20,
+    audioinstruments._rack.DuoSynthVoice,
+    audioinstruments._rack.DuoSynthLFO,
+    audioinstruments._rack.DuoSynthOutput,
+    audioinstruments._rack.ElectricGrand70Voice,
+    audioinstruments._rack.ElectricGrand70Output,
+    audioinstruments._rack.ElectricPianoVoice,
+    audioinstruments._rack.ElectricPianoOutput,
+    audioinstruments._rack.ElectronicDrums5Voice,
+    audioinstruments._rack.ClavichordVoice,
+    audioinstruments._rack.ClavichordOutput,
+    audioinstruments._rack.ReedPianoVoice,
+    audioinstruments._rack.ReedPianoOutput,
+    audioinstruments._rack.ReedPiano200AVoice,
+    audioinstruments._rack.ReedPiano200AOutput,
+    audioinstruments._rack.Tremolo,
+    audioinstruments._rack.WestCoast0,
+    audioinstruments._rack.FunctionGenerator,
+    audioinstruments._rack.MidiCVModule,
+    audioinstruments._rack.PolyMidiCV,
+    audioinstruments._rack.VoiceMix,
+    audioinstruments._rack.Modular100VCO,
+    audioinstruments._rack.Modular100VCF,
+    audioinstruments._rack.Modular100VCA,
+    audioinstruments._rack.Modular100EnvLFO,
+    audioinstruments._rack.Modular100Utility,
+    audioinstruments._rack.Modular55VCA,
+    audioinstruments._rack.Modular55LowPass,
+    audioinstruments._rack.Modular55HighPass,
+    audioinstruments._rack.Modular55Envelope,
+    audioinstruments._rack.Modular55VCO,
+    audioinstruments._rack.DrumSynth,
+    audioinstruments._rack.Semi32,
+    audioinstruments._rack.PolyrhythmSynth,
+    audioinstruments._rack.RandomSequencer,
+    audioinstruments._rack.GranularProcessor,
+    audioinstruments._rack.MacroOscillator,
+    audioinstruments._rack.ModalResonator,
+    audioinstruments._rack.StateVariableMono,
+    audioinstruments._rack.Acid303,
+    audioinstruments._rack.MonoOne,
+    audioinstruments._rack.Mono101Voice,
+    audioinstruments._rack.Mono101LFO,
+    audioinstruments._rack.MonoSynthVoice,
+    audioinstruments._rack.Poly106Voice,
+    audioinstruments._rack.Poly106LFO,
+    audioinstruments._rack.Poly106Output,
+    audioinstruments._rack.Poly5Voice,
+    audioinstruments._rack.Poly5LFO,
+    audioinstruments._rack.Poly6Voice,
+    audioinstruments._rack.Poly6LFO,
+    audioinstruments._rack.Poly6Output,
+    audioinstruments._rack.Poly8Voice,
+    audioinstruments._rack.Poly8LFO,
+    audioinstruments._rack.Poly80Voice,
+    audioinstruments._rack.Poly80Mod,
+    audioinstruments._rack.Poly80Output,
+    audioinstruments._rack.PolyA6Voice,
+    audioinstruments._rack.PolyA6Noise,
+    audioinstruments._rack.PolyA6Output,
+    audioinstruments._rack.PolyXaVoice,
+    audioinstruments._rack.PolyXaLFO,
+    audioinstruments._rack.PolyXaOutput,
+    audioinstruments._rack.StringEnsembleVoice,
+    audioinstruments._rack.StringEnsembleEnvelope,
+    audioinstruments._rack.StringEnsembleBass,
+    audioinstruments._rack.StringEnsembleOutput,
+    audioinstruments._rack.BassPedalsVoice,
+    audioinstruments._rack.Vocoder330Voice,
+    audioinstruments._rack.Vocoder330Keys,
+    audioinstruments._rack.Vocoder330Mic,
+    audioinstruments._rack.Vocoder330Bank,
+    audioinstruments._rack.Vocoder330Output,
+    audioinstruments._rack.Tonewheel3Voice,
+    audioinstruments._rack.Tonewheel3Percussion,
+    audioinstruments._rack.Tonewheel3Vibrato,
+    audioinstruments._rack.Tonewheel3Expression,
+    audioinstruments._rack.Tonewheel3Rotary,
+    audioinstruments._rack.CompactOrganVoice,
+    audioinstruments._rack.CompactOrganVibrato,
+    audioinstruments._rack.CompactOrganOutput,
+    audioinstruments._rack.Rhythm606BassDrum,
+    audioinstruments._rack.Rhythm606ClosedHat,
+    audioinstruments._rack.Rhythm606Cymbal,
+    audioinstruments._rack.Rhythm606OpenHat,
+    audioinstruments._rack.Rhythm606Snare,
+    audioinstruments._rack.Rhythm606Tom,
+    audioinstruments._rack.Rhythm78Cowbell,
+    audioinstruments._rack.Rhythm78Cymbal,
+    audioinstruments._rack.Rhythm78Drum,
+    audioinstruments._rack.Rhythm78Guiro,
+    audioinstruments._rack.Rhythm78HiHat,
+    audioinstruments._rack.Rhythm78Output,
+    audioinstruments._rack.Rhythm78Snare,
+    audioinstruments._rack.Rhythm78Tambourine,
+    audioinstruments._rack.Rhythm808BassDrum,
+    audioinstruments._rack.Rhythm808Clap,
+    audioinstruments._rack.Rhythm808Claves,
+    audioinstruments._rack.Rhythm808ClosedHat,
+    audioinstruments._rack.Rhythm808Conga,
+    audioinstruments._rack.Rhythm808Cowbell,
+    audioinstruments._rack.Rhythm808Cymbal,
+    audioinstruments._rack.Rhythm808Maracas,
+    audioinstruments._rack.Rhythm808OpenHat,
+    audioinstruments._rack.Rhythm808Output,
+    audioinstruments._rack.Rhythm808RimShot,
+    audioinstruments._rack.Rhythm808Snare,
+    audioinstruments._rack.Rhythm808Tom,
+    audioinstruments._rack.Rhythm909BassDrum,
+    audioinstruments._rack.Rhythm909Clap,
+    audioinstruments._rack.Rhythm909ClosedHat,
+    audioinstruments._rack.Rhythm909Crash,
+    audioinstruments._rack.Rhythm909OpenHat,
+    audioinstruments._rack.Rhythm909Ride,
+    audioinstruments._rack.Rhythm909RimShot,
+    audioinstruments._rack.Rhythm909Snare,
+    audioinstruments._rack.Rhythm909Tom,
+    audioinstruments._rack.ComboOrganVoice,
+    audioinstruments._rack.ComboOrganVibrato,
+    audioinstruments._rack.ComboOrganOutput,
 ]
 
 
 def driven_rack(module_cls):
     """A rack with the module, a MIDI-CV module on its keyboard inputs, and a note held."""
     rack = Rack(block_size=BLOCK)
-    midi = rack.add_module(vrack.MidiCVModule("midi"))
+    midi = rack.add_module(audioinstruments._rack.MidiCVModule("midi"))
     mod = rack.add_module(module_cls("mod"))
     for name in (
         "kybd_cv",
@@ -252,7 +255,7 @@ RHYTHM78_MODULES = [
 def test_rhythm78_voice_creates_no_arrays_on_the_strike_block(module_cls):
     """The strike itself (retuning a hat, laying out the scrapes) makes no array either."""
     rack = driven_rack(module_cls)
-    midi = next(m for m in rack.modules if isinstance(m, vrack.MidiCVModule))
+    midi = next(m for m in rack.modules if isinstance(m, audioinstruments._rack.MidiCVModule))
     for _ in range(8):
         rack.step()
     midi.note_off(48)
@@ -284,12 +287,12 @@ def test_the_tracer_sees_a_temporary():
 
 def test_a_pool_creates_no_arrays_while_voices_play_and_steal():
     """Voices, the allocator's CV jacks and the mixer, with a steal and a cut in flight."""
-    from vrack.core import VoicePool
+    from audioinstruments._rack.core import VoicePool
 
     rack = Rack(block_size=BLOCK)
 
     def build(voice):
-        synth = voice.add(vrack.MonoOne, "synth")
+        synth = voice.add(audioinstruments._rack.MonoOne, "synth")
         rack.connect(voice.pitch, synth.inputs["kybd_cv"])
         rack.connect(voice.gate, synth.inputs["kybd_gate"])
         return synth.outputs["vca_out"]
@@ -318,12 +321,12 @@ def test_a_pool_creates_no_arrays_while_voices_play_and_steal():
 @pytest.mark.parametrize("mono", (False, True), ids=("poly", "mono"))
 def test_a_pool_creates_no_arrays_while_pressure_moves_every_block(mono):
     """Poly and channel pressure sent every block, with a steal in flight, make no array."""
-    from vrack.core import VoicePool
+    from audioinstruments._rack.core import VoicePool
 
     rack = Rack(block_size=BLOCK)
 
     def build(voice):
-        synth = voice.add(vrack.MonoOne, "synth")
+        synth = voice.add(audioinstruments._rack.MonoOne, "synth")
         rack.connect(voice.pitch, synth.inputs["kybd_cv"])
         rack.connect(voice.gate, synth.inputs["kybd_gate"])
         return synth.outputs["vca_out"]
@@ -356,12 +359,12 @@ def test_a_pool_creates_no_arrays_while_pressure_moves_every_block(mono):
 
 def test_a_pool_with_buses_creates_no_arrays_through_a_steal():
     """Two buses fed by every voice, summed through plain blocks and a steal's ramp."""
-    from vrack.core import VoicePool
+    from audioinstruments._rack.core import VoicePool
 
     rack = Rack(block_size=BLOCK)
 
     def build(voice):
-        synth = voice.add(vrack.MonoOne, "synth")
+        synth = voice.add(audioinstruments._rack.MonoOne, "synth")
         rack.connect(voice.pitch, synth.inputs["kybd_cv"])
         rack.connect(voice.gate, synth.inputs["kybd_gate"])
         voice.bus("a", synth.outputs["vca_out"])
@@ -388,18 +391,24 @@ def test_a_pool_with_buses_creates_no_arrays_through_a_steal():
 
 def test_a_mono_pool_with_a_glide_creates_no_arrays_through_legato_and_bend():
     """The mono jacks, a legato move, a retrigger and a GlideCore sliding the note."""
-    from vrack.core import VoicePool
-    from vrack.dsp.glide import GlideCore
+    from audioinstruments._rack.core import VoicePool
+    from audioinstruments._rack.dsp.glide import GlideCore
 
     rack = Rack(block_size=BLOCK)
 
-    class Slide(vrack.core.Module):
+    class Slide(audioinstruments._rack.core.Module):
         NAME = "Slide"
 
         def _build(self):
-            self.note_in = self.add_input("note", signal_type=vrack.core.SignalType.CV)
-            self.pitch_in = self.add_input("pitch", signal_type=vrack.core.SignalType.CV)
-            self.out = self.add_output("out", signal_type=vrack.core.SignalType.AUDIO)
+            self.note_in = self.add_input(
+                "note", signal_type=audioinstruments._rack.core.SignalType.CV
+            )
+            self.pitch_in = self.add_input(
+                "pitch", signal_type=audioinstruments._rack.core.SignalType.CV
+            )
+            self.out = self.add_output(
+                "out", signal_type=audioinstruments._rack.core.SignalType.AUDIO
+            )
             self.glide = GlideCore(self.sample_rate, self.block_size)
             self.glide.mode = GlideCore.ON
             self.glide.time = 0.05
@@ -437,16 +446,22 @@ def test_a_mono_pool_with_a_glide_creates_no_arrays_through_legato_and_bend():
 
 def test_mono_unison_and_a_poly_glide_create_no_arrays():
     """A mono stack of three moving legato, a bend, the unison lowered, and a poly glide."""
-    from vrack.core import VoicePool
-    from vrack.dsp.glide import GlideCore
+    from audioinstruments._rack.core import VoicePool
+    from audioinstruments._rack.dsp.glide import GlideCore
 
-    class Slide(vrack.core.Module):
+    class Slide(audioinstruments._rack.core.Module):
         NAME = "Slide"
 
         def _build(self):
-            self.note_in = self.add_input("note", signal_type=vrack.core.SignalType.CV)
-            self.pitch_in = self.add_input("pitch", signal_type=vrack.core.SignalType.CV)
-            self.out = self.add_output("out", signal_type=vrack.core.SignalType.AUDIO)
+            self.note_in = self.add_input(
+                "note", signal_type=audioinstruments._rack.core.SignalType.CV
+            )
+            self.pitch_in = self.add_input(
+                "pitch", signal_type=audioinstruments._rack.core.SignalType.CV
+            )
+            self.out = self.add_output(
+                "out", signal_type=audioinstruments._rack.core.SignalType.AUDIO
+            )
             self.glide = GlideCore(self.sample_rate, self.block_size)
             self.glide.mode = GlideCore.ON
             self.glide.time = 0.05
@@ -501,7 +516,7 @@ def test_the_string_ensemble_creates_no_arrays_with_a_bass_key_and_a_released_ch
     The one-module rows above feed a voice only a pitch and a gate and never reach the bass
     or the output section, so this plays the instrument itself.
     """
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice="string_ensemble", output="pull", block_size=BLOCK)
     inst.program_change(10)  # Everything: all six tones, ensemble on
@@ -536,7 +551,7 @@ def test_the_vocoder330_creates_no_arrays_with_every_section_playing_and_a_steal
     The one-module rows above feed a voice only a pitch and a gate and leave the keys, the mic, the
     bank and the output unfed, so this plays the instrument itself.
     """
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice="vocoder330", output="pull", block_size=BLOCK, voices=4)
     inst.program_change(11)  # Swooping Choir: the swoop, the choir, the ensemble
@@ -574,7 +589,7 @@ def test_the_vocoder330_creates_no_arrays_with_every_section_playing_and_a_steal
 def test_the_tonewheel3_creates_no_arrays_with_every_effect_on_and_a_steal():
     """The whole organ: drawbars, percussion, click, chorus, a half-closed pedal, the
     driven speaker changing speed, and a steal."""
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice="tonewheel3", output="pull", block_size=BLOCK, voices=4)
     inst.program_change(2)  # Rock Drive: percussion, fast speaker, drive
@@ -604,7 +619,7 @@ def test_the_tonewheel3_creates_no_arrays_with_every_effect_on_and_a_steal():
 
 def test_the_clavichord_creates_no_arrays_with_the_wah_a_release_pluck_and_a_steal():
     """Every tab, the wah and the tremolo on, a key let go (its release pluck), and a steal."""
-    import vrack.adapter as adapter
+    import audioinstruments._rack.adapter as adapter
 
     inst = adapter.create(48000, voice="clavichord", output="pull", block_size=BLOCK, voices=4)
     inst.program_change(5)  # Auto-Wah

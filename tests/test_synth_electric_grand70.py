@@ -6,10 +6,10 @@ import os
 import sys
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import electric_grand70
+from audioinstruments._rack.instruments import electric_grand70
 
 sys.path.insert(
     0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")

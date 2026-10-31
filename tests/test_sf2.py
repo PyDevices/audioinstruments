@@ -18,7 +18,7 @@ import sys
 import tempfile
 import unittest
 
-import vrack._sf2 as sf2
+import audioinstruments._rack._sf2 as sf2
 
 SUPPORT = pathlib.Path(__file__).resolve().parent / "support"
 if str(SUPPORT) not in sys.path:

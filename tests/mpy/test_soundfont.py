@@ -11,11 +11,11 @@ import os
 import sys
 
 import audiocore
-import vrack.adapter as adapter
-import vrack.midi_cc as midi_cc
-import vrack.soundfont as soundfont
-from vrack.midi_dispatch import MidiDispatcher
-from vrack.sequencer import Sequencer
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.midi_cc as midi_cc
+import audioinstruments._rack.soundfont as soundfont
+from audioinstruments._rack.midi_dispatch import MidiDispatcher
+from audioinstruments._rack.sequencer import Sequencer
 
 if "tests/support" not in sys.path:
     sys.path.insert(0, "tests/support")

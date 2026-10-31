@@ -12,7 +12,7 @@ Runs on CPython and MicroPython, so the same bank can be built on a board.
 
 import struct
 
-import vrack._sf2 as sf2
+import audioinstruments._rack._sf2 as sf2
 
 SAMPLE_RATE = 22050
 

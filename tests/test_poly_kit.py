@@ -7,10 +7,10 @@ constant that halves each block after a strike, so it stays sounding for a
 few blocks and then goes quiet, as a drum does, whatever the gate does.
 """
 
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
 
 BLOCK = 64
 PADS = {36: 0, 38: 1, 42: 2, 46: 3}

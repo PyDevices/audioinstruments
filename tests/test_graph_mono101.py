@@ -38,19 +38,19 @@ import os
 import subprocess
 import tempfile
 
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.core.bridge as bridge
+import audioinstruments._rack.core.signal as signal
+import audioinstruments._rack.dsp.ladder as ladder
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-import vrack.core.bridge as bridge
-import vrack.core.signal as signal
-import vrack.dsp.ladder as ladder
-from vrack.core import Rack, compile_rack
-from vrack.core.graph import UNIT
-from vrack.modules._util import knob_hz
-from vrack.modules.mono101.lfo import RATE_RANGE, Mono101LFO
-from vrack.modules.mono101.voice import Mono101Voice
-from vrack.modules.poly_midi_cv import PolyMidiCV
-from vrack.modules.voice_mix import VoiceMix
+from audioinstruments._rack.core import Rack, compile_rack
+from audioinstruments._rack.core.graph import UNIT
+from audioinstruments._rack.modules._util import knob_hz
+from audioinstruments._rack.modules.mono101.lfo import RATE_RANGE, Mono101LFO
+from audioinstruments._rack.modules.mono101.voice import Mono101Voice
+from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
+from audioinstruments._rack.modules.voice_mix import VoiceMix
 
 from tools import graph_phrase, traits
 

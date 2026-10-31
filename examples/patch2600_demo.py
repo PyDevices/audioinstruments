@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Example: Patch2600, the semi-modular voice inspired by the ARP 2600, in vrack.
+"""Example: Patch2600, the semi-modular voice inspired by the ARP 2600, in the rack.
 
 Demonstrates:
 1. Playing Patch2600 out of the box with pre-normalled default routing (no cables needed).
@@ -11,11 +11,11 @@ Demonstrates:
 
 import math
 
-from vrack import MidiCVModule, Patch2600, Rack
+from audioinstruments._rack import MidiCVModule, Patch2600, Rack
 
 
 def main():
-    print("=== vrack: Patch2600 semi-modular synthesizer ===")
+    print("=== audioinstruments: Patch2600 semi-modular synthesizer ===")
     rack = Rack(sample_rate=48000, block_size=64)
 
     # Install MIDI-to-CV and Patch2600

@@ -5,7 +5,7 @@
 import array
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 
 def pulled(inst, buffers):

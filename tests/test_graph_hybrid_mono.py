@@ -37,12 +37,12 @@ What matches to how many counts, and why:
   is one, as on the rack.
 """
 
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType, compile_rack, fill
-from vrack.core.graph import UNIT
-from vrack.modules.hybrid_mono import HybridMono
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, fill
+from audioinstruments._rack.core.graph import UNIT
+from audioinstruments._rack.modules.hybrid_mono import HybridMono
 
 pytestmark = pytest.mark.skipif(
     not adapter.graph_available(), reason="the compiled form needs audiograph"

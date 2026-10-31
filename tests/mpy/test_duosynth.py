@@ -6,12 +6,12 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import signal
-from vrack.core.rack import Rack
-from vrack.modules.duosynth.lfo import DuoSynthLFO
-from vrack.modules.duosynth.voice import DuoSynthVoice
-from vrack.modules.midi_cv import MidiCVModule
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import signal
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.duosynth.lfo import DuoSynthLFO
+from audioinstruments._rack.modules.duosynth.voice import DuoSynthVoice
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
 
 SLACK = 64
 
@@ -123,9 +123,9 @@ def test_duo_priority_and_ring_mod():
 
 
 def test_cores_are_nodes():
-    from vrack.dsp.ladder import LadderCore, audioladder
-    from vrack.dsp.oscillator import OscillatorCore
-    from vrack.modules.duosynth.output import DuoSynthOutput
+    from audioinstruments._rack.dsp.ladder import LadderCore, audioladder
+    from audioinstruments._rack.dsp.oscillator import OscillatorCore
+    from audioinstruments._rack.modules.duosynth.output import DuoSynthOutput
 
     assert OscillatorCore.__name__ == "NodeOscillatorCore"
     assert LadderCore.__name__ == "NodeLadderCore"

@@ -5,12 +5,12 @@
 import math
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.modules.duosynth.voice as duosynth_voice
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-import vrack.modules.duosynth.voice as duosynth_voice
-from vrack.instruments import duosynth
-from vrack.modules.duosynth.output import DuoSynthOutput
+from audioinstruments._rack.instruments import duosynth
+from audioinstruments._rack.modules.duosynth.output import DuoSynthOutput
 
 CLIP = 27000
 RATE = 48000
@@ -329,7 +329,11 @@ def test_every_patch_plays_without_clipping(patch):
 
 
 def test_every_patch_attacks_in_1_2_seconds_or_less():
-    from vrack.modules.duosynth.voice import ADSR_ATTACK_RANGE, AR_ATTACK_RANGE, slider_time
+    from audioinstruments._rack.modules.duosynth.voice import (
+        ADSR_ATTACK_RANGE,
+        AR_ATTACK_RANGE,
+        slider_time,
+    )
 
     for index in range(len(duosynth.PRESETS)):
         values = duosynth.settings(index)
@@ -1742,7 +1746,11 @@ def test_docs_and_code_agree():
 
 def test_patch_list_validity():
     # Checks: patch presets valid and attacks <= 1.2s
-    from vrack.modules.duosynth.voice import ADSR_ATTACK_RANGE, AR_ATTACK_RANGE, slider_time
+    from audioinstruments._rack.modules.duosynth.voice import (
+        ADSR_ATTACK_RANGE,
+        AR_ATTACK_RANGE,
+        slider_time,
+    )
 
     for index in range(len(duosynth.PRESETS)):
         p_name, patch_diff = duosynth.PRESETS[index]

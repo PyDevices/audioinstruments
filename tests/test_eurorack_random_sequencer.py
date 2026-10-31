@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Unit and integration tests for RandomSequencer."""
 
-from vrack.core.rack import Rack
-from vrack.modules.random_sequencer import RandomSequencer
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.random_sequencer import RandomSequencer
 
 
 def test_random_sequencer_instantiation():

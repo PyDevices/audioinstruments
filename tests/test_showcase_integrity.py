@@ -4,7 +4,7 @@
 
 import math
 
-from vrack import (
+from audioinstruments._rack import (
     Acid303,
     DrumSynth,
     MidiCVModule,
@@ -12,8 +12,8 @@ from vrack import (
     Patch2600,
     PolyrhythmSynth,
 )
-from vrack.core.rack import Rack
-from vrack.core.signal import DEFAULT_BLOCK_SIZE, DEFAULT_SAMPLE_RATE
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.core.signal import DEFAULT_BLOCK_SIZE, DEFAULT_SAMPLE_RATE
 
 
 def measure_audio_metrics(rack, num_blocks=50):

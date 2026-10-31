@@ -5,11 +5,11 @@
 import math
 
 import pytest
+from audioinstruments._rack.core.cable import Cable
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.patch2600 import Patch2600
 from conftest import Source
-from vrack.core.cable import Cable
-from vrack.core.rack import Rack
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.patch2600 import Patch2600
 
 
 def test_patch2600_zero_cable_playability():

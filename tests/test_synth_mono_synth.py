@@ -3,10 +3,10 @@
 """MonoSynth: the instrument plays, and each control does what its name says."""
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import mono_synth
+from audioinstruments._rack.instruments import mono_synth
 
 CLIP = 27000
 RATE = 48000
@@ -539,8 +539,8 @@ def test_attack_knobs_slow_the_start_of_each_contour():
 
 
 def test_the_instrument_creates_no_arrays_while_it_plays_and_glides():
+    from audioinstruments._rack.core import signal
     from test_allocation import EVENTS, TRACING, traced_zeros
-    from vrack.core import signal
 
     signal.set_buffer_factory(traced_zeros)
     try:

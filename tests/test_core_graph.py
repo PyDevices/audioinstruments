@@ -13,8 +13,8 @@ monkeypatching the compiler, and assert the comparison catches them.
 
 import numpy as np
 import pytest
-from vrack.core import Module, Rack, SignalType, compile_rack, copy_into, fill
-from vrack.core.graph import UNIT
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, copy_into, fill
+from audioinstruments._rack.core.graph import UNIT
 
 ag = pytest.importorskip("audiograph")
 
@@ -264,7 +264,7 @@ def test_an_output_nothing_writes_is_refused():
 
 
 def test_a_dropped_cable_is_caught(monkeypatch):
-    from vrack.core import graph as core_graph
+    from audioinstruments._rack.core import graph as core_graph
 
     real_feed = core_graph.CompiledRack.feed
 

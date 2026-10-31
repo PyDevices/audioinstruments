@@ -17,9 +17,15 @@ To see this test fail, put ``tmp = src * 0.5`` in one of the kernels.
 
 import gc
 
-from vrack.core import Rack, create_buffer, mix_into
-from vrack.dsp import AmplifierCore, EnvelopeCore, LFOCore, SampleAndHoldCore, WavefolderCore
-from vrack.modules.modular100 import Modular100EnvLFO, Modular100VCA
+from audioinstruments._rack.core import Rack, create_buffer, mix_into
+from audioinstruments._rack.dsp import (
+    AmplifierCore,
+    EnvelopeCore,
+    LFOCore,
+    SampleAndHoldCore,
+    WavefolderCore,
+)
+from audioinstruments._rack.modules.modular100 import Modular100EnvLFO, Modular100VCA
 
 SLACK = 64  # bytes; a float or two of block-rate bookkeeping
 
@@ -93,7 +99,7 @@ def test_cv_cores_are_flat():
 
 
 def test_drum_cores_are_flat():
-    from vrack.dsp.drums import (
+    from audioinstruments._rack.dsp.drums import (
         BridgedTDrumCore,
         CowbellCore,
         HandClapCore,
@@ -172,7 +178,12 @@ def test_node_cores_are_flat():
     costs two bytes a frame, and a per-sample loop hundreds.
     """
     import micropython
-    from vrack.dsp import LadderCore, NodeLadderCore, NodeOscillatorCore, OscillatorCore
+    from audioinstruments._rack.dsp import (
+        LadderCore,
+        NodeLadderCore,
+        NodeOscillatorCore,
+        OscillatorCore,
+    )
 
     def osc(n):
         core = OscillatorCore(48000)
@@ -217,8 +228,8 @@ def test_the_poly_midi_voice_jacks_are_flat_in_poly_and_in_mono_unison():
     MidiCV's own block (its 48 knob and pad jacks) is not flat on MicroPython,
     so the check is on the bytes the voice jacks add to it.
     """
-    from vrack.modules.midi_cv import MidiCVModule
-    from vrack.modules.poly_midi_cv import PolyMidiCV
+    from audioinstruments._rack.modules.midi_cv import MidiCVModule
+    from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
     def added(mono, n):
         base = MidiCVModule("b", block_size=n)
@@ -249,7 +260,7 @@ def test_the_ensemble_adds_nothing_that_grows_with_the_block():
     chunk (the pull happens once a chunk), per call. What is left is vector
     kernels, a few hundred bytes of bookkeeping each whatever the block.
     """
-    from vrack.dsp.ensemble import EnsembleCore
+    from audioinstruments._rack.dsp.ensemble import EnsembleCore
 
     def added(n):
         core = EnsembleCore(48000, n)
@@ -279,8 +290,8 @@ def test_the_ensemble_adds_nothing_that_grows_with_the_block():
 
 def test_the_pressure_jacks_are_flat_while_pressure_moves_every_block():
     """What pressure adds to PolyMidiCV's block, sent every block, poly and as a mono stack."""
-    from vrack.modules.midi_cv import MidiCVModule
-    from vrack.modules.poly_midi_cv import PolyMidiCV
+    from audioinstruments._rack.modules.midi_cv import MidiCVModule
+    from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
     def added(mono, n):
         base = MidiCVModule("b", block_size=n)
@@ -313,7 +324,7 @@ def test_the_pressure_jacks_are_flat_while_pressure_moves_every_block():
 
 def test_a_voice_mix_with_buses_is_flat_in_a_steady_block_and_a_ramp():
     """VoiceMix with two buses at 64 and 256 frames: a held voice and one fading out."""
-    from vrack.modules.voice_mix import VoiceMix
+    from audioinstruments._rack.modules.voice_mix import VoiceMix
 
     def make(n, ramp):
         mix = VoiceMix("m", block_size=n, voices=2, buses=("a", "b"))

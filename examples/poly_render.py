@@ -37,7 +37,7 @@ if "lib" not in sys.path:
     sys.path.insert(0, "lib")
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 SAMPLE_RATE = 48000
 BUFFER = 256

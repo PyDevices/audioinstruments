@@ -7,8 +7,8 @@ import math
 import time
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import Module, Rack, SignalType, VoiceAllocator, VoicePool, np
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import Module, Rack, SignalType, VoiceAllocator, VoicePool, np
 
 AMPLITUDE = 0.3 * 0.5
 

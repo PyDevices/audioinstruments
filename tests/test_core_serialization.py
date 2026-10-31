@@ -3,8 +3,8 @@
 """Unit tests for patch state serialization and restoration."""
 
 import pytest
-from vrack.core.rack import Rack
-from vrack.modules.modular100 import Modular100VCA, Modular100VCF, Modular100VCO
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.modules.modular100 import Modular100VCA, Modular100VCF, Modular100VCO
 
 
 def test_save_and_load_patch():

@@ -29,9 +29,9 @@ if "examples" not in sys.path:
     sys.path.insert(0, "examples")
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.modules.vocoder330.mic import TALKER_PHRASE_S
 from demo_check import section_ok, shares
-from vrack.modules.vocoder330.mic import TALKER_PHRASE_S
 
 RATE = 48000
 BUFFER = 256

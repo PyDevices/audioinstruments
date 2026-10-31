@@ -8,7 +8,7 @@ Needs a build with ``audiograph``; every test skips (returns) without it.
 import array
 
 import audiocore
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 try:
     import audiograph  # noqa: F401

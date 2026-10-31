@@ -67,8 +67,8 @@ def time_call(fn, blocks=200, runs=5):
 def cores():
     """One 64-frame block of the VCO (saw and pulse, with pitch, FM and sync
     in) and of the transistor ladder, each in Python and on its node."""
-    from vrack.core import create_buffer
-    from vrack.dsp import (
+    from audioinstruments._rack.core import create_buffer
+    from audioinstruments._rack.dsp import (
         LadderCore,
         NodeLadderCore,
         NodeOscillatorCore,

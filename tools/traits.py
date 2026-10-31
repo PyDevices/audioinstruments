@@ -11,7 +11,7 @@
 
 The second form measures a SoundFont preset (a bank by the start of its md5,
 then the preset number) with the same phrase as an instrument's run, played
-through ``vrack.soundfont``, and writes the same traits under ``ref.``. With
+through ``audioinstruments._rack.soundfont``, and writes the same traits under ``ref.``. With
 ``--vs NAME[:PATCH]`` it then prints how the instrument's accepted traits
 differ from the reference's. See "A SoundFont as the reference" below.
 
@@ -33,7 +33,7 @@ A drum instrument, or a kit, is measured with a drum phrase instead: every
 GM drum note it plays, struck at three velocities and left to ring until it
 is silent, with traits per note (see "Drums" below).
 
-Every instrument in ``vrack.adapter.ALL`` can have a spec in ``SPECS``:
+Every instrument in ``audioinstruments._rack.adapter.ALL`` can have a spec in ``SPECS``:
 which of its patches to play, which notes and velocities, and how long to
 hold and let ring, since a pad needs longer than a pluck. A spec's
 ``controls`` maps a patch to controls set after its program change (names
@@ -61,8 +61,8 @@ if os.path.join(ROOT, "lib") not in sys.path:
     sys.path.insert(0, os.path.join(ROOT, "lib"))
 
 import audiocore  # noqa: E402
-import vrack.adapter as adapter  # noqa: E402
-from vrack.soundfont import PERCUSSION_BANK, open_bank  # noqa: E402
+import audioinstruments._rack.adapter as adapter  # noqa: E402
+from audioinstruments._rack.soundfont import PERCUSSION_BANK, open_bank  # noqa: E402
 
 try:
     from .traits_phrase import BUFFER, SAMPLE_RATE, phrase  # noqa: F401
@@ -761,7 +761,7 @@ def measure_render(stereo, latency, events, spec, prefix):
 
 def _truncating_cast(dst_i16, src, tmp):
     """The float-to-int16 cast, truncating: up to a count off on every wire."""
-    from vrack.core.signal import BRIDGE_SCALE
+    from audioinstruments._rack.core.signal import BRIDGE_SCALE
 
     dst_i16[:] = np.clip(np.asarray(src, dtype=np.float64) * BRIDGE_SCALE, -32768.0, 32767.0)
 
@@ -769,12 +769,17 @@ def _truncating_cast(dst_i16, src, tmp):
 @contextlib.contextmanager
 def truncating():
     """Every module that casts to the wires truncates while this is open."""
-    import vrack.core.bridge
-    import vrack.core.graph
-    import vrack.core.signal
-    import vrack.dsp.ladder
+    import audioinstruments._rack.core.bridge
+    import audioinstruments._rack.core.graph
+    import audioinstruments._rack.core.signal
+    import audioinstruments._rack.dsp.ladder
 
-    modules = (vrack.core.signal, vrack.core.bridge, vrack.core.graph, vrack.dsp.ladder)
+    modules = (
+        audioinstruments._rack.core.signal,
+        audioinstruments._rack.core.bridge,
+        audioinstruments._rack.core.graph,
+        audioinstruments._rack.dsp.ladder,
+    )
     saved = [module.to_int16 for module in modules]
     for module in modules:
         module.to_int16 = _truncating_cast
@@ -1139,7 +1144,7 @@ def open_reference(path, program, bank_number=0, drums=False):
 
 
 def render_reference(path, program, spec, bank_number=0):
-    """The phrase played through ``vrack.soundfont`` on one melodic preset of the bank at ``path``."""
+    """The phrase played through ``audioinstruments._rack.soundfont`` on one melodic preset of the bank at ``path``."""
     inst = open_reference(path, program, bank_number)
     try:
         return play(inst, spec)

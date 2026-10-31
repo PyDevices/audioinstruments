@@ -27,18 +27,18 @@ import os
 import subprocess
 import tempfile
 
+import audioinstruments._rack.adapter as adapter
+import audioinstruments._rack.core.bridge as bridge
+import audioinstruments._rack.core.signal as signal
+import audioinstruments._rack.dsp.ladder as ladder
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-import vrack.core.bridge as bridge
-import vrack.core.signal as signal
-import vrack.dsp.ladder as ladder
-from vrack.core import Module, Rack, SignalType, compile_rack
-from vrack.core.graph import UNIT, TooManyGroups
-from vrack.modules._util import knob_hz
-from vrack.modules.polyxa.lfo import RATE_RANGE, PolyXaLFO
-from vrack.modules.polyxa.output import DC_HZ, PolyXaOutput
-from vrack.modules.polyxa.voice import PolyXaVoice
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack
+from audioinstruments._rack.core.graph import UNIT, TooManyGroups
+from audioinstruments._rack.modules._util import knob_hz
+from audioinstruments._rack.modules.polyxa.lfo import RATE_RANGE, PolyXaLFO
+from audioinstruments._rack.modules.polyxa.output import DC_HZ, PolyXaOutput
+from audioinstruments._rack.modules.polyxa.voice import PolyXaVoice
 
 from tools import graph_phrase, traits
 

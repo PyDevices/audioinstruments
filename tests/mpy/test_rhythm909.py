@@ -6,8 +6,8 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import signal
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import signal
 
 SLACK = 64
 CASTS = 0 if getattr(signal, "_cast_into", None) is not None else 0
@@ -146,8 +146,8 @@ def test_crusher_follows_its_input_and_settles_to_zero():
     A rebound input view once left the hold replaying old audio, so a hat that had
     gone silent kept sounding a loop of its first block.
     """
-    from vrack.core.signal import create_buffer
-    from vrack.dsp.drums import BitDepthRateCore
+    from audioinstruments._rack.core.signal import create_buffer
+    from audioinstruments._rack.dsp.drums import BitDepthRateCore
 
     crusher = BitDepthRateCore(48000, 128)
     src = create_buffer(128)

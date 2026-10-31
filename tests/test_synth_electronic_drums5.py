@@ -5,10 +5,10 @@ velocity scales level and bend, and re-strike re-pings cleanly.
 """
 
 import audiocore
+import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
-import vrack.adapter as adapter
-from vrack.instruments import electronic_drums5
+from audioinstruments._rack.instruments import electronic_drums5
 
 
 def make(preset=0, **options):

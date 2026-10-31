@@ -1,7 +1,7 @@
 # Instruments
 
 An instrument is a voice patch with its presets, ready to play from
-`vrack.adapter.create(48000, voice=name)`. Its name is in `adapter.ALL`, it
+`audioinstruments._rack.adapter.create(48000, voice=name)`. Its name is in `adapter.ALL`, it
 answers the audio component contract ([polyphony.md](polyphony.md)), and its
 sound is pinned by a trait file. The Poly106 is the first one, and the
 pattern the others follow.
@@ -12,7 +12,7 @@ The Poly106 is a six-voice poly synth inspired by the Roland Juno-106: one
 DCO, one filter, one envelope and the chorus.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="poly106")   # six voices; voices=8 for more
 audio_out.play(inst.output)
@@ -38,7 +38,7 @@ Sub Bass, Pluck Bass, Lead, Square Lead, Organ, Sweep Pad and Poly Keys.
 frequency, resonance and envelope amount, the four envelope sliders, the LFO
 rate, PWM and the chorus. `inst.patch.set_control(inst.voice_pool, name,
 value)` sets any other control by the name it has in
-`vrack.instruments.poly106.SETTINGS`, with sliders from 0 to 10 as on the
+`audioinstruments._rack.instruments.poly106.SETTINGS`, with sliders from 0 to 10 as on the
 original.
 
 The chorus delays everything by 256 frames, 5.3 ms at 48 kHz, so
@@ -115,7 +115,7 @@ The Poly5 is a five-voice poly synth inspired by the Sequential Prophet-5
 it rings, two envelopes, and Poly-Mod, which lets each voice modulate itself.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="poly5")     # five voices; voices=N for more
 audio_out.play(inst.output)
@@ -174,7 +174,7 @@ and Noise Wind. The ten macros are `vcf_cutoff`, `vcf_resonance`,
 `vcf_env_amount`, `vcf_decay`, `amp_attack`, `amp_release`, `pm_filter_env`,
 `pm_osc_b`, `osc_b_fine` and `glide`. `inst.patch.set_control(inst.voice_pool,
 name, value)` sets any other control by its name in
-`vrack.instruments.poly5.SETTINGS`. There is no built-in effect, so
+`audioinstruments._rack.instruments.poly5.SETTINGS`. There is no built-in effect, so
 `inst.latency_samples` is 0.
 
 `examples/poly5_demo.py` plays all eleven musical patches, writes
@@ -260,7 +260,7 @@ thins its bass as it rings, one envelope for the filter and the amp, chord
 memory, and an ensemble that makes one oscillator sound wide.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="poly6")     # six voices; voices=N for more
 audio_out.play(inst.output)
@@ -351,7 +351,7 @@ Organ, Phase Sweep, Vibrato Lead and Noise Surf. The ten macros are
 `vcf_cutoff`, `vcf_resonance`, `vcf_eg_int`, `eg_attack`, `eg_decay`,
 `eg_release`, `pw_pwm`, `mg_freq`, `fx_speed` and `fx_intensity`.
 `inst.patch.set_control(inst.voice_pool, name, value)` sets any other control
-by its name in `vrack.instruments.poly6.SETTINGS`.
+by its name in `audioinstruments._rack.instruments.poly6.SETTINGS`.
 
 `examples/poly6_demo.py` plays eleven of the patches, stores a chord from held
 keys, switches the effect on a held chord, writes `wav_exports/poly6_demo.wav`
@@ -415,7 +415,7 @@ a low-pass you can set to 12 or 24 dB per octave, two envelopes that can follow
 the key, and assign modes that stack the voices into a unison or a solo line.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="poly8")     # eight voices; voices=N for more
 audio_out.play(inst.output)
@@ -494,7 +494,7 @@ Noise Wind. The ten macros are `vcf_cutoff`, `vcf_resonance`, `vcf_env`,
 `hpf_cutoff`, `env1_decay`, `env2_attack`, `env2_release`, `cross_mod`,
 `lfo_rate` and `portamento`, each covering its control's whole range.
 `inst.patch.set_control(inst.voice_pool, name, value)` sets any other control
-by its name in `vrack.instruments.poly8.SETTINGS`. There is no built-in effect,
+by its name in `audioinstruments._rack.instruments.poly8.SETTINGS`. There is no built-in effect,
 so `inst.latency_samples` is 0.
 
 One thing differs from the original: its 12 dB slope does not self-oscillate,
@@ -574,7 +574,7 @@ envelopes; and one LFO with a wheel and a bend lever to play it with. It sounds
 bright, fat and brassy, and its chord stabs cut.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="polyxa")     # eight voices; voices=N for more
 audio_out.play(inst.output)
@@ -631,7 +631,7 @@ volume envelope drives the VCA and nothing else. `volume` is the VCA's level,
 and `VCA_GAIN` (0.7) leaves the headroom for eight voices.
 
 One **LFO** for the whole instrument runs from 0.1 Hz to 20 Hz (`RATE_RANGE` in
-`lib/vrack/modules/polyxa/lfo.py`), free and with no delay. `lfo_wave` is
+`lib/audioinstruments/_rack/modules/polyxa/lfo.py`), free and with no delay. `lfo_wave` is
 `"sine"`, `"square"` or `"random"`, a new level from white noise on each
 cycle of the square. There is one `lfo_depth` for every destination, and four
 switches say where it goes: `lfo_vco1` and `lfo_vco2` (pitch, up to one octave
@@ -653,7 +653,7 @@ whatever `lfo_vcf` says. The bend never glides.
 `assign` is `"poly"` (each new note takes the next of the eight voices round
 and round, so a release rings until its turn comes) or `"unison"` (one note at a
 time, on every voice). `unison_detune` spreads the stacked voices, `UNISON_DETUNE`
-(0.03) semitones a knob unit in `lib/vrack/instruments/polyxa.py`: 0.09 in a fresh
+(0.03) semitones a knob unit in `lib/audioinstruments/_rack/instruments/polyxa.py`: 0.09 in a fresh
 patch, 0.3 at 10, about 30 cents at the outer voices; it does nothing in
 `"poly"`. `portamento` is the time of one glide, from 5 ms to 5 s
 (`PORTA_RANGE`), in both modes. Every voice glides from its own last note, and
@@ -675,7 +675,7 @@ AC-coupled. It adds no latency, and there is no built-in effect.
 
 Every source and destination the PolyXa wires, the control that sets it, its
 depth with the knob at 10, and the constant that sets that depth (all in
-`lib/vrack/modules/polyxa/voice.py` unless named). CV is 0.1 for an octave, so
+`lib/audioinstruments/_rack/modules/polyxa/voice.py` unless named). CV is 0.1 for an octave, so
 0.7 is seven octaves.
 
 | Source | Destination | Control | Depth at 10 | Constant |
@@ -690,8 +690,8 @@ depth with the knob at 10, and the constant that sets that depth (all in
 | Wheel | VCO-1 pitch | `mod_vco` | 1 octave either way at full wheel | `LFO_PITCH` |
 | Wheel | VCO-2 pitch | `mod_vco` | 1 octave either way at full wheel | `LFO_PITCH` |
 | Wheel | Cutoff | `mod_vcf` | 2 octaves either way at full wheel | `LFO_FILTER` |
-| Bend lever | VCO-1 pitch | `bend_dest` `"both"`, `bend_range` | `bend_range` semitones (2 fresh) | `bend_range` in `lib/vrack/modules/poly_midi_cv.py` |
-| Bend lever | VCO-2 pitch | `bend_dest`, `bend_range` | `bend_range` semitones | `bend_range` in `lib/vrack/modules/poly_midi_cv.py` |
+| Bend lever | VCO-1 pitch | `bend_dest` `"both"`, `bend_range` | `bend_range` semitones (2 fresh) | `bend_range` in `lib/audioinstruments/_rack/modules/poly_midi_cv.py` |
+| Bend lever | VCO-2 pitch | `bend_dest`, `bend_range` | `bend_range` semitones | `bend_range` in `lib/audioinstruments/_rack/modules/poly_midi_cv.py` |
 | Bend lever | Cutoff | `bend_vcf` | 2 octaves either way at full bend (0.4 CV x 0.5) | `BEND_FILTER` |
 | VCO-2 | Cutoff | `vco2_vcf` | 2 octaves either way (0.4 CV x 0.5) | `VCO2_VCF_DEPTH` |
 | Keyboard | Cutoff | `vcf_kybd` | 1 octave per octave, from C4 | `VCF_KYBD` |
@@ -714,7 +714,7 @@ Lead and Noise Wind. The ten macros are `vcf_cutoff`, `vcf_resonance`, `vcf_env`
 `fenv_decay`, `aenv_attack`, `aenv_release`, `vco2_detune`, `vco2_vcf`,
 `lfo_rate` and `portamento`, each covering its control's whole range.
 `inst.patch.set_control(inst.voice_pool, name, value)` sets any other control by
-its name in `vrack.instruments.polyxa.SETTINGS`.
+its name in `audioinstruments._rack.instruments.polyxa.SETTINGS`.
 
 The program memory with its split and double modes, the chord memory, the
 per-voice trims, auto-tune, the cassette interface, the sequencer, master tune
@@ -790,7 +790,7 @@ and hold, unison, portamento and an analogue-style distortion. It adds no
 latency.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="polya6")     # sixteen voices; voices=N for fewer or more
 audio_out.play(inst.output)
@@ -858,7 +858,7 @@ The original is very deep: a 79-source modulation matrix, seven-stage envelopes,
 16-stage tracking generator and 28 digital effects. The PolyA6 keeps its voice and
 folds the rest.
 
-| Original | In vrack | Why |
+| Original | In the rack | Why |
 | --- | --- | --- |
 | 16 voices, poly or mono, unison 2-16, detune, assign lowest or rotary | Kept: `kb_mode`, `unison`, `unison_detune`, `assign` | The voice pool has all four [M p.55-57] |
 | UNISON STACK, MONOVX, mix mode | Left out | Stack changes with the notes held; the rest is per-part routing |
@@ -916,7 +916,7 @@ These are not on the panel. They are the numbers to change if the sound is wrong
 ### The routing table
 
 Every route, the control that sets it, its depth at 100 and the constants in
-`lib/vrack/modules/polya6/voice.py` (or `output.py`, for the distortion) that set it.
+`lib/audioinstruments/_rack/modules/polya6/voice.py` (or `output.py`, for the distortion) that set it.
 Pitch is a CV of 0.1 per octave. An LFO, the S&H or a VCO's sum is taken as +-1 and
 an envelope as 0 to 1 before the amount applies. Each rule has a test of its own in
 `tests/test_synth_polya6.py`.
@@ -979,7 +979,7 @@ that brightens under your fingers, strings, bells and a soaring lead you bend
 from the ribbon.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="poly80")     # eight voices; voices=N for fewer or more
 audio_out.play(inst.output)
@@ -990,7 +990,7 @@ inst.poly_pressure(58, 100)                      # press into the top note: only
 ```
 
 Sliders run from 0 to 10, centred levers from -5 to +5. Every control is in
-`vrack.instruments.poly80.SETTINGS` under the name used here, and
+`audioinstruments._rack.instruments.poly80.SETTINGS` under the name used here, and
 `inst.patch.set_control(inst.voice_pool, name, value)` sets any of them. A
 control with a `ch1_` or `ch2_` in front belongs to channel I or II. Where a
 number below comes from the original's owner's manual (the Yamaha *CS-80
@@ -1034,7 +1034,7 @@ a low-pass, each with its own cutoff and its own resonance, so together they
 make a band-pass [M p.16, 42]. A biquad is 12 dB per octave and does not
 self-oscillate, which is how the original's filters are described in Sound On
 Sound's review of a later instrument built on its voice; the manual gives no
-slope. It is also the cheapest filter in vrack that gives the high-pass a
+slope. It is also the cheapest filter in the rack that gives the high-pass a
 resonance of its own, and it settles to exact silence, where a `synthio` biquad
 leaves an offset behind a VCA. Nothing here says the pair models the original's
 filter.
@@ -1140,7 +1140,7 @@ and a second finger to slide from are not built.
 becomes the larger of its own and the sustain time, from 0.1 s to 10 s
 (`SUSTAIN_RANGE` (0.1, 10.0)) [M p.11, 39]; it never shortens a long one. Sustain is always
 on, as the original's is with no foot switch plugged in; CC 64 holds keys as on
-every vrack instrument. `sustain_mode` `"II"` ends the sustain of the earlier
+every instrument. `sustain_mode` `"II"` ends the sustain of the earlier
 notes each time a new key goes down: they return to their own releases.
 
 `portamento` is the time of one glide, 5 ms to 2 s (`GLIDE_RANGE` (0.005, 2.0)), constant
@@ -1186,7 +1186,7 @@ steal `"none"`.
 
 Where each source goes, the control that sets it, its depth with the control at
 10 (or at +-5 for a lever), and the constant that sets it, all in
-`lib/vrack/modules/poly80/voice.py` unless the row names another file. CV is 0.1
+`lib/audioinstruments/_rack/modules/poly80/voice.py` unless the row names another file. CV is 0.1
 for an octave, so a semitone is 1/120.
 
 | Rule | Source | Destination | Control | Depth at 10 | Constant | Test |
@@ -1264,7 +1264,7 @@ names, 2026-10-21):
 
 The factor is seconds of audio per second of work, one run on an otherwise idle
 machine; it moves by about 15% from run to run. Two channels of eight voices is
-the most any vrack instrument asks. At the default block CPython does not keep
+the most any instrument asks. At the default block CPython does not keep
 up with eight notes held and MicroPython does; at 64 frames neither does. The
 time on CPython goes to audiodsp's stand-ins for the biquad pair, about two
 fifths of a buffer. A channel that `mix` leaves silent is not rendered, so
@@ -1281,7 +1281,7 @@ LFO and a portamento. It sounds thin, bright and biting: a lead that cuts, sync
 sweeps, S&H bleeps.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="duosynth")
 audio_out.play(inst.output)
@@ -1364,7 +1364,7 @@ semitone at 10 [M p.18].
 ### Where each source goes
 
 Every rule the voice follows, the control that sets it, its depth at 10 and
-the constant in `lib/vrack/modules/duosynth/voice.py` that sets it. CV is 0.1
+the constant in `lib/audioinstruments/_rack/modules/duosynth/voice.py` that sets it. CV is 0.1
 for an octave, so 0.7 is seven octaves, and every sum goes through unclamped
 except where the row says so.
 
@@ -1404,7 +1404,7 @@ except where the row says so.
 | `vca` | Gain, VCA | `vca_gain` | gain 2 | `VCA_GAIN_SCALE` (2.0) |
 | `vca` | Envelope, VCA | `vca_level` | gain 2.4 | `VCA_LEVEL_SCALE` (2.4) |
 | `vca` | Velocity, VCA | `vel_vca` | silent at velocity 0 | `VEL_VCA` (1.0) |
-| `bend_and_wheel` | Bend, VCO-1 and VCO-2 | `bend_range` | 8 semitones fresh, never glides | `bend_range` in `lib/vrack/instruments/duosynth.py` |
+| `bend_and_wheel` | Bend, VCO-1 and VCO-2 | `bend_range` | 8 semitones fresh, never glides | `bend_range` in `lib/audioinstruments/_rack/instruments/duosynth.py` |
 | `bend_and_wheel` | Wheel, VCO-1 and VCO-2 | mod wheel | a semitone either way | `WHEEL_VIBRATO_SEMITONES` (1.0) |
 | `hpf_position` | Filter, high-pass, VCA | `hpf_cutoff` | 16 Hz to 16 kHz | `HPF_RANGE` (16.0, 16000.0) |
 | `transpose` | Lever, VCO-1, VCO-2 and keyboard follow | `transpose` | 2 octaves either way | none |
@@ -1442,12 +1442,12 @@ the routing of mixer, filter, high-pass and VCA, and the envelope times (pages
 - The levels: the noise slider at 3 times a VCO slider's gain (`NOISE_LEVEL` (3.0)),
   so a noise patch sits with the others, and the VCA's `VCA_GAIN_SCALE` (2.0) and
   `VCA_LEVEL_SCALE` (2.4), so a chord sits within a dB or so of the other
-  vrack instruments.
+  the instruments.
 - The resonance reaching 1.05 of the ladder's at 10 (`RES_TOP` (1.05)), so
   that it sustains a tone, with a short kick into a quiet filter set above 9
   to start it singing, as an analogue filter's own noise would
   (`SELF_OSC_FROM` (0.92), `SEED_LEVEL` (0.05)).
-- A 10 Hz DC block on the output (`DC_HZ` in `lib/vrack/modules/duosynth/output.py`),
+- A 10 Hz DC block on the output (`DC_HZ` in `lib/audioinstruments/_rack/modules/duosynth/output.py`),
   because sync and the ring modulator leave an offset that moves with the
   pitches and the widths.
 
@@ -1462,7 +1462,7 @@ audio-rate FM and sync. And one filter keeps the controls to the original's:
 the filter type switch exists only on the reissue.
 
 No source describes the Rev 3 filter's circuit, so it is not modelled. It runs
-on vrack's least saturating ladder, `LadderCore(sample_rate, "clean")` with
+on the rack's least saturating ladder, `LadderCore(sample_rate, "clean")` with
 four poles, which thins out in the bass as the resonance rises, as the Rev 3
 is said to. Treat it as a stand-in.
 
@@ -1479,7 +1479,7 @@ and FM Clang. The ten macros are `vcf_cutoff`, `vcf_resonance`, `vcf_env`,
 `adsr_attack`, `adsr_decay`, `adsr_sustain`, `adsr_release`, `vco2_fine`,
 `lfo_rate` and `portamento`, each covering its control's whole range.
 `inst.patch.set_control(inst.voice_pool, name, value)` sets any other control by
-its name in `vrack.instruments.duosynth.SETTINGS`.
+its name in `audioinstruments._rack.instruments.duosynth.SETTINGS`.
 
 `examples/duosynth_demo.py` plays all eleven musical patches in order, writes
 `wav_exports/duosynth_demo.wav`, and checks that every section sounds, nothing
@@ -1563,7 +1563,7 @@ divided-down tones into a wide, slow shimmer. It is made for chords, played
 with two hands.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="string_ensemble")  # 49 voices, one a key
 audio_out.play(inst.output)
@@ -1668,7 +1668,7 @@ the ensemble, so it stays tight and does not chorus. `tune`, the pitch bend and
 
 ### The ensemble
 
-`ensemble` sends the upper tones through `EnsembleCore` in `lib/vrack/dsp/ensemble.py`:
+`ensemble` sends the upper tones through `EnsembleCore` in `lib/audioinstruments/_rack/dsp/ensemble.py`:
 three delay lines swept by the sum of two low-frequency oscillators, the three
 120 degrees apart. The slow sweep runs at `SLOW_HZ` (0.6) with a depth of
 `SLOW_DEPTH_MS` (1.6) milliseconds, the fast one at `FAST_HZ` (6.0) with
@@ -1702,7 +1702,7 @@ applied in each key, so every key in one chord keeps its own velocity. `tune` is
 bend reaches every key and the bass. The mod wheel does nothing. Sliders run 0
 to 10, buttons are on or off, and `inst.patch.set_control(inst.voice_pool,
 name, value)` sets any control by its name in
-`vrack.instruments.string_ensemble.SETTINGS`.
+`audioinstruments._rack.instruments.string_ensemble.SETTINGS`.
 
 **Sources.** The panel follows the SE-II's: Gordon Reid, "Eminent 310 String
 Synthesizer", *Sound On Sound*, May 2007 (six tones, "the Contra-Bass and Cello
@@ -1737,9 +1737,9 @@ expression pedal input, external audio and the reissue's phaser are not built.
 
 Every route the instrument wires, the control that sets it, its depth or time,
 and the constant in the code that sets that (in the voice, envelope, bass and
-output modules under `lib/vrack/modules/string_ensemble/`, the patch in
-`lib/vrack/instruments/string_ensemble.py`, and the ensemble in
-`lib/vrack/dsp/ensemble.py`). CV is 0.1 for an octave.
+output modules under `lib/audioinstruments/_rack/modules/string_ensemble/`, the patch in
+`lib/audioinstruments/_rack/instruments/string_ensemble.py`, and the ensemble in
+`lib/audioinstruments/_rack/dsp/ensemble.py`). CV is 0.1 for an octave.
 
 | Route | Control | Depth or time | Constant | Test |
 | --- | --- | --- | --- | --- |
@@ -1805,8 +1805,8 @@ splits at middle C, and a four-line ensemble makes it wide. It is made for
 chords, played with two hands.
 
 ```python
-import vrack.adapter as adapter
-from vrack.instruments.vocoder330 import attach_mic
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.instruments.vocoder330 import attach_mic
 
 inst = adapter.create(48000, voice="vocoder330")   # 12 voices; voices=N up to 49
 audio_out.play(inst.output)
@@ -1895,7 +1895,7 @@ are not built.
 
 ### The voice the vocoder listens to
 
-vrack's instruments have no audio input, so the mic is built in, and
+the rack's instruments have no audio input, so the mic is built in, and
 `mic_source` picks where it comes from:
 
 - `"test"` (fresh): a built-in talker, so the vocoder sounds in tests and
@@ -2036,8 +2036,8 @@ the mono output, the output level switch and the phones; there is no graph form.
 
 Every route the instrument wires, the control that sets it, its range or depth
 and the constant that sets that (in the modules under
-`lib/vrack/modules/vocoder330/`, the patch in `lib/vrack/instruments/vocoder330.py`
-and the lines in `lib/vrack/dsp/ensemble.py`). Pitch is CV at 0.1 per octave.
+`lib/audioinstruments/_rack/modules/vocoder330/`, the patch in `lib/audioinstruments/_rack/instruments/vocoder330.py`
+and the lines in `lib/audioinstruments/_rack/dsp/ensemble.py`). Pitch is CV at 0.1 per octave.
 
 | Route | Control | Range or depth | Constant | Test |
 | --- | --- | --- | --- | --- |
@@ -2072,7 +2072,7 @@ key down; the other vocoder patches are silent without one. The ten macros are
 `strings_attack`, `strings_tone`, `voice_attack`, `release`, `vocoder_tone`,
 `mic_level`, `vib_depth`, `vib_rate`, `vib_delay` and `pitch_time`, each
 covering its control's whole range. Set any control by its name in
-`vrack.instruments.vocoder330.SETTINGS` with
+`audioinstruments._rack.instruments.vocoder330.SETTINGS` with
 `inst.patch.set_control(inst.voice_pool, name, value)`.
 
 `examples/vocoder330_demo.py` plays all twelve in order, mostly with two hands
@@ -2106,7 +2106,7 @@ pickups, damper felts, active concentric preamp tone controls and the classic
 stereo auto-pan "vibrato".
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="electric_piano")  # ten voices
 audio_out.play(inst.output)
@@ -2119,7 +2119,7 @@ for note in (48, 55, 60, 64):
 ### The mechanism
 
 Each voice is one key of the piano, built from three shared cores in
-`lib/vrack/dsp/keys.py` that the other electromechanical keyboards reuse:
+`lib/audioinstruments/_rack/dsp/keys.py` that the other electromechanical keyboards reuse:
 
 - **The hammer** (`HammerExciter`) pushes the tine with a half-sine pulse.
   A soft blow is a long, round push of about 2.7 ms that mostly moves the
@@ -2203,7 +2203,7 @@ slightly hollow plink. A preamp with a tone control and a stereo auto-pan
 follow the voices.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="reed_piano")      # ten voices
 audio_out.play(inst.output)
@@ -2240,7 +2240,7 @@ values.
   The level does not follow the swing: bass and treble play at the same level.
 - **The pad landing** damps a released key, 20 dB down in about 50 ms, with a
   short low thud whose level is `pad_thud`. The original has no sustain pedal;
-  the pedal (CC 64) works here as on every vrack instrument, an addition.
+  the pedal (CC 64) works here as on every instrument, an addition.
 - **The preamp and auto-pan** (`ReedPianoOutput`) block the pickup's slow
   offset below 15 Hz, tilt the tone with a low shelf at 200 Hz and a high shelf
   at 3 kHz moved in opposite directions (12 dB either way), and pan the sound
@@ -2297,7 +2297,7 @@ is sweet, almost a sine; played hard it snaps into a nasal, buzzy bark. A small
 amplifier and a fixed-rate tremolo follow the voices.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="reed_piano200a")  # ten voices
 audio_out.play(inst.output)
@@ -2393,7 +2393,7 @@ pickups, four tone tabs and a foam mute shape a sound that is bright,
 percussive and nasal, and it gets much brighter the harder you play.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="clavichord")      # ten voices
 audio_out.play(inst.output)
@@ -2428,7 +2428,7 @@ filter after the string.
 about 30 ms. The release pluck is the string's first three partials, as the
 chosen pickup hears them, about 15 dB under the note's attack and gone in
 about 50 ms. The original has no sustain pedal; the pedal (CC 64) works here
-as on every vrack instrument.
+as on every instrument.
 
 **The mute.** `mute` (0 to 10) presses foam against the strings: it shortens
 every note, down to about 0.15 s at 10, rather than only making it quieter.
@@ -2513,7 +2513,7 @@ shimmer of two strings slightly out of tune with each other, and a short,
 twangy bass. A three-band EQ and a tremolo follow the voices.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="electric_grand70")  # ten voices
 audio_out.play(inst.output)
@@ -2614,20 +2614,20 @@ Chorused and held chords on Tremolo) and writes
 
 ## How an instrument is built
 
-- **Modules** in `lib/vrack/modules/<name>/`, a family that shares the
+- **Modules** in `lib/audioinstruments/_rack/modules/<name>/`, a family that shares the
   instrument's name: the voice (`Poly106Voice`), and whatever exists once
   for the whole instrument (`Poly106LFO`, `Poly106Output`). They are
   ordinary modules with jacks and parameters, registered in
   `modules/__init__.py`, and they can be patched by hand like any other.
-- **A built-in effect is a core** in `lib/vrack/dsp/` with a module over it:
+- **A built-in effect is a core** in `lib/audioinstruments/_rack/dsp/` with a module over it:
   `BBDChorusCore` in `dsp/chorus.py`, which another instrument can reuse.
-- **The voice patch** in `lib/vrack/instruments/<name>.py`: a `VoicePatch`
+- **The voice patch** in `lib/audioinstruments/_rack/instruments/<name>.py`: a `VoicePatch`
   whose `build_global()` adds the modules every voice reads, `build()` one
   voice, `build_shared()` the section after the voices. `SETTINGS` names
   every control with its fresh value, `PRESETS` the patches as the controls
   that differ, `apply_patch()` sets a whole patch, and `VOICES` and
   `LATENCY_SAMPLES` say how many voices to build and what the patch delays.
-- **Registered** in `vrack.adapter._PATCH_VOICES`, which puts the name in
+- **Registered** in `audioinstruments._rack.adapter._PATCH_VOICES`, which puts the name in
   `adapter.ALL`; `tests/test_adapter.py` then checks the contract for it.
 - **Tests**: `tests/test_synth_<name>.py` that each control does what its
   name says, `tests/mpy/test_<name>.py` that it plays on MicroPython, and a
@@ -2680,7 +2680,7 @@ a four-pole transistor ladder filter, one ADSR envelope, one free-running LFO
 and a constant-time portamento ([polyphony.md](polyphony.md#one-voice-mono-mode)).
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="mono101")
 audio_out.play(inst.output)
@@ -2783,7 +2783,7 @@ holding an upper note while tapping a lower key trills between them without
 re-firing the contours.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="mono_synth", priority="low")
 audio_out.play(inst.output)
@@ -2913,7 +2913,7 @@ loudness and filter. It plays a huge, round low end: the Roar patch opens with a
 growl and closes to a soft purr.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="bass_pedals")
 audio_out.play(inst.output)
@@ -3040,7 +3040,7 @@ at the top to sit with the others.
 #### Where each source goes
 
 Every rule the voice follows, the control that sets it, its depth at 10 and the
-constant in `lib/vrack/modules/bass_pedals/voice.py` that sets it. A cutoff or
+constant in `lib/audioinstruments/_rack/modules/bass_pedals/voice.py` that sets it. A cutoff or
 pitch CV is 0.1 for an octave (`OCTAVE_CV` (0.1)), and every sum goes through
 unclamped except where the row says so.
 
@@ -3070,7 +3070,7 @@ unclamped except where the row says so.
 | `low_note_priority` | Pedals, pitch | none | the lowest sounds, one trigger | none |
 | `pitch_hold` | Last pedal, pitch | none | held through the release and the rest | none |
 | `glide` | Note, oscillators | `glide`, `glide_amount` | 5 ms to 0.5 s time constant | `GLIDE_TAU` (0.005, 0.5) |
-| `bend` | Bend, both oscillators | `bend_range` | 2 semitones fresh, never glides | `bend_range` in `lib/vrack/instruments/bass_pedals.py` |
+| `bend` | Bend, both oscillators | `bend_range` | 2 semitones fresh, never glides | `bend_range` in `lib/audioinstruments/_rack/instruments/bass_pedals.py` |
 | `foot_loudness` | LOUDNESS foot slider, VCA | CC 11 | 18 dB range | `FOOT_LOUD_R301` (15.0), `FOOT_LOUD_R302` (100.0) |
 | `foot_filter` | FILTER foot slider, cutoff | CC 4 | 3 octaves | `FOOT_FILTER_OCT` (3.0) |
 
@@ -3135,7 +3135,7 @@ The ten macros are `filter_cutoff`, `filter_emphasis`, `filter_amount`,
 `filter_decay`, `loud_decay`, `loud_attack`, `mix`, `osc_b_freq`, `beat` and
 `glide_amount`, each covering its control's whole range (`beat` from -5 to +5).
 `inst.patch.set_control(inst.voice_pool, name, value)` sets any control by its
-name in `vrack.instruments.bass_pedals.SETTINGS`.
+name in `audioinstruments._rack.instruments.bass_pedals.SETTINGS`.
 
 `examples/bass_pedals_demo.py` plays all eleven musical patches as pedal lines,
 writes `wav_exports/bass_pedals_demo.wav`, and checks that every section sounds,
@@ -3169,7 +3169,7 @@ nine drawbars, single-trigger percussion, contact key click, a scanner vibrato
 and chorus, and an overdriven rotary speaker.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="tonewheel3")   # 16 voices
 audio_out.play(inst.output)
@@ -3181,7 +3181,7 @@ The keyboard has 16 voices (`VOICES = 16`). An organ key is a switch, so
 velocity changes nothing: every note plays at the same level. A note sounds
 from key down to key up, with a 3 ms ramp each way for the contacts and no
 envelope beyond that. The sustain pedal (CC 64) holds notes, and the pitch
-bend works as on every vrack instrument, though the original had none.
+bend works as on every instrument, though the original had none.
 
 ### The drawbars and foldback
 
@@ -3276,7 +3276,7 @@ footage buses, a bass section on the lowest octave, and one pitch vibrato for
 the whole keyboard.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="compact_organ")   # 49 voices
 audio_out.play(inst.output)
@@ -3289,7 +3289,7 @@ the whole keyboard never steals a note. The keys are switches: velocity is
 ignored and every note sounds at the same level. A 3 ms ramp at the start and
 end of a note keeps it from clicking, and a voice with nothing to play parks.
 The sustain pedal (CC 64) holds notes, and pitch bend works as on every other
-vrack instrument.
+instrument.
 
 ### Footages and voice tabs
 
@@ -3390,7 +3390,7 @@ vibrato for the whole keyboard. Next to the CompactOrgan it is breathier and
 brighter, and the mixture gives it a shimmer on top.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="combo_organ")     # 49 voices
 audio_out.play(inst.output)
@@ -3402,7 +3402,7 @@ There is a voice for every key from C2 to C6 at 8' (MIDI 48 to 96), so holding
 the whole keyboard never steals a note. Keys are switches: velocity does
 nothing and every note sounds at the same level, with a 3 ms ramp on and off so
 they don't click. Silent voices park. The sustain pedal (CC 64) holds notes, and
-pitch bend works as on the other vrack instruments.
+pitch bend works as on the other instruments.
 
 ### Footage drawbars and the IV mixture
 
@@ -3493,7 +3493,7 @@ generated by analog-style circuitry: bridged-T resonators, filtered noise bursts
 and a six-oscillator metallic bank for cymbals and hats.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="rhythm808")  # 16 voices, 1 per sound
 audio_out.play(inst.output)
@@ -3631,7 +3631,7 @@ a thin dual-tone body under high-passed white noise for the snare, and a
 six-oscillator metallic bank voiced thin and bright for the hats and cymbal.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="rhythm606")  # 7 voices, 1 per sound
 audio_out.play(inst.output)
@@ -3738,7 +3738,7 @@ through the 909's resonant filters and a 6-bit quantization and sample-and-hold 
 at 32 kHz, capturing the iconic aliased sheen of the hardware.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="rhythm909")  # 11 voices, 1 per sound
 audio_out.play(inst.output)
@@ -3838,7 +3838,7 @@ pure white-noise hiss for the hi-hats and cymbal, and a rich palette of analog L
 percussion including maracas, claves, cowbell, tambourine, and guiro.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="rhythm78")   # 14 voices, 1 per sound
 audio_out.play(inst.output)
@@ -3953,7 +3953,7 @@ A drummer plays it dynamically from velocity-sensitive pads, with separate analo
 voice channels for the bass drum, snare drum, and three toms.
 
 ```python
-import vrack.adapter as adapter
+import audioinstruments._rack.adapter as adapter
 
 inst = adapter.create(48000, voice="electronic_drums5")   # 5 voices, 1 per channel
 audio_out.play(inst.output)
@@ -4083,7 +4083,7 @@ Name a bank by the start of its md5, then the preset:
 
 The bank is found through its record in `~/soundfonts/reference/`, and the
 file must still match the record, so a renamed or replaced file cannot pass
-for the one that was studied. The phrase is played through `vrack.soundfont`
+for the one that was studied. The phrase is played through `audioinstruments._rack.soundfont`
 and written as the same traits under `ref.`; with `--vs NAME[:PATCH]` the
 tool prints how the instrument's accepted traits differ from the
 reference's. Banks live in `~/soundfonts/` and never in this repository, and

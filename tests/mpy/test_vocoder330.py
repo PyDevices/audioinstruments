@@ -7,13 +7,13 @@ import array
 import gc
 
 import audiocore
-import vrack.adapter as adapter
-from vrack.core import create_buffer, signal
-from vrack.core.rack import Rack
-from vrack.dsp.ensemble import LATENCY_FRAMES, AlignCore, VibratoCore
-from vrack.modules.midi_cv import MidiCVModule
-from vrack.modules.vocoder330.keys import Vocoder330Keys
-from vrack.modules.vocoder330.voice import TABLETS, Vocoder330Voice
+import audioinstruments._rack.adapter as adapter
+from audioinstruments._rack.core import create_buffer, signal
+from audioinstruments._rack.core.rack import Rack
+from audioinstruments._rack.dsp.ensemble import LATENCY_FRAMES, AlignCore, VibratoCore
+from audioinstruments._rack.modules.midi_cv import MidiCVModule
+from audioinstruments._rack.modules.vocoder330.keys import Vocoder330Keys
+from audioinstruments._rack.modules.vocoder330.voice import TABLETS, Vocoder330Voice
 
 SLACK = 64
 
