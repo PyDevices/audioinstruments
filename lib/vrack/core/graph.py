@@ -490,6 +490,7 @@ class CompiledRack:
         self._tmp = create_buffer(size)
         self._i16 = create_int16_buffer(size)
         self.pumped = False
+        self.since = 0  # the frame an attached graph took over at (recompile)
         self.elapsed = 1
         self.rendered = 1
         self._turn = set()
@@ -866,6 +867,22 @@ class CompiledRack:
         """
         if self.pumped:
             return self.graph
+        self._check_pullable()
+        g = self.graph
+        if not hasattr(g, "hold"):
+            raise RuntimeError("this audiograph cannot be pulled: it has no change queue")
+        _, frame, _, _ = g.sounding()
+        self._seen = frame
+        self._credited = frame
+        self._mask = None
+        self._touched = {}  # group -> changes queued when its last note went in
+        self._depth = 0
+        self.pumped = True
+        self.elapsed = 0
+        return g
+
+    def _check_pullable(self):
+        """Refuse a rack with a module that still runs in Python, naming it."""
         for module in self.rack_side:
             raise ValueError(
                 "%s has no graph fragment and would run in Python every block,"
@@ -886,18 +903,6 @@ class CompiledRack:
                 "%s watches a signal block by block, which an attached graph cannot"
                 " do; feed it from a control" % jack.qualified_name
             )
-        g = self.graph
-        if not hasattr(g, "hold"):
-            raise RuntimeError("this audiograph cannot be pulled: it has no change queue")
-        _, frame, _, _ = g.sounding()
-        self._seen = frame
-        self._credited = frame
-        self._mask = None
-        self._touched = {}  # group -> changes queued when its last note went in
-        self._depth = 0
-        self.pumped = True
-        self.elapsed = 0
-        return g
 
     def hold(self):
         """Start a batch: the graph applies everything until ``commit()`` on one block.
@@ -1013,11 +1018,22 @@ class CompiledRack:
         This graph is dropped and must not be stepped again. ``groups`` are the
         module groups, as for ``compile_rack``. If the compile fails, this graph
         is left as it was and goes on playing.
+
+        On an attached graph, call it from the control side, between two of
+        its turns. The new graph is compiled while the old one plays; then the
+        pump is parked at a block boundary, the state is carried, and the two
+        graphs trade patches (``Graph.swap``), so whatever pulls the graph
+        goes on pulling the same object and hears the new patch from the next
+        block. The pump is parked only for the carry and the swap. A batch
+        held with ``hold()`` lands on the old graph's last block, as the
+        changes before the recompile would have, and the hold carries over to
+        the new graph. ``since`` on the new rack is the frame it took over at.
+        It needs an audiograph with ``Graph.swap``.
         """
-        if self.pumped:
-            raise RuntimeError("an attached graph cannot be recompiled while something pulls it")
         if self.graph is None:
             raise RuntimeError("this graph has been dropped")
+        if self.pumped and not hasattr(self.graph, "swap"):
+            raise RuntimeError("an attached graph needs an audiograph with Graph.swap to change")
         old = [(f.module, f) for f in self.fragments]
         try:
             new = CompiledRack(
@@ -1026,6 +1042,11 @@ class CompiledRack:
                 scale=self._scale0,
                 channel_count=self.channel_count,
             )
+            if self.pumped:
+                new._check_pullable()
+                self._hand_over(new, carry)
+            elif carry:
+                new.take_state(self)
         except BaseException:
             # the failed compile bound the modules it reached: hand them back
             for module in self.rack.modules:
@@ -1038,8 +1059,6 @@ class CompiledRack:
                 module._fragment = f
                 module.reset = f.do_reset
             raise
-        if carry:
-            new.take_state(self)
         now = set(f.module for f in new.fragments)
         for module, _f in old:
             if module not in now:  # taken out of the rack: it gets its own reset() back
@@ -1054,6 +1073,53 @@ class CompiledRack:
         if hasattr(graph, "deinit"):
             graph.deinit()
         return new
+
+    def _hand_over(self, new, carry):
+        """Put ``new`` in this attached graph's place on a block boundary (see ``recompile``).
+
+        On success ``self.graph`` is the spare, holding the old patch, and
+        ``new.graph`` the object that is pulled. On a failure nothing has
+        changed: the old patch plays on and ``new`` is dropped.
+        """
+        g = self.graph
+        depth = self._depth
+        if depth:
+            g.commit()  # the held batch belongs to the old patch's last block
+        mask = 0
+        for module in new.grouped:
+            if module.enabled:
+                mask |= module._fragment.bits
+        new.graph.enable(mask)
+        resume = _park()
+        try:
+            if carry:
+                new.take_state(self)
+            frame = g.sounding()[1]
+            g.swap(new.graph)
+        except BaseException:
+            if resume is not None:
+                resume()
+            if depth:
+                g.hold()
+            new.graph.deinit()
+            raise
+        if resume is not None:
+            resume()
+        spare = new.graph
+        new.graph = g
+        self.graph = spare
+        new.since = frame
+        new.pumped = True
+        new._seen = self._seen
+        new._credited = self._credited
+        new._mask = mask
+        new._touched = {}  # the carry applied every queued change
+        new._turn = self._turn
+        new.elapsed = self.elapsed
+        new.rendered = self.rendered
+        new._depth = depth
+        if depth:
+            g.hold()  # the rest of the caller's batch goes to the new patch
 
     def take_state(self, old):
         """Take over the running state of ``old``, a graph of the same rack.
@@ -1123,6 +1189,21 @@ class CompiledRack:
             except AttributeError:
                 pass
         self.graph = None
+
+
+def _park():
+    """Park the audio pump at a block boundary, if one is running; returns what
+    resumes it, or None when nothing needed parking. Raises when the pump does
+    not park in time, so a change waits rather than racing a block."""
+    try:
+        import audiopump
+    except ImportError:
+        return None
+    if not audiopump.running():
+        return None
+    if not audiopump.park():
+        raise RuntimeError("the audio pump did not park; the patch is unchanged")
+    return audiopump.unpark
 
 
 def compile_rack(rack, groups=(), scale=1.0, channel_count=2):

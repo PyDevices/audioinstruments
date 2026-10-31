@@ -415,6 +415,7 @@ class Instrument:
             output = "ring" if _pull_is_native_only() else "pull"
         self._ring = None
         self._attached = False
+        self._due = False  # a patch change waits for its recompile (attached)
         if output == "graph":
             if self._compiled is None:
                 raise ValueError(
@@ -813,7 +814,8 @@ class Instrument:
         ``"vcf.cv"``) while the instrument plays. On a graph the patch is
         compiled again beside the running one and swapped in at the block
         ``sample_position`` falls in, with every voice, envelope and filter
-        carrying on where it was."""
+        carrying on where it was. On a graph the audio pump plays, every change
+        made in one turn lands together, on the block after the turn."""
         self._live(sample_position, self.rack.connect, source, dest)
 
     def disconnect(self, dest, sample_position=0):
@@ -833,19 +835,27 @@ class Instrument:
 
     def _live(self, sample_position, change, *args):
         self._check_live()
-        if self._attached:
-            raise RuntimeError(
-                'an instrument with output="graph" cannot change its patch while it plays yet'
-            )
         self._at(_sample_position(sample_position), self._swap, change, args)
+        if self._due:
+            with self._lock:
+                self._recompile()
 
     def _swap(self, change, args):
-        """Change the rack, then compile it beside the running graph and swap that in."""
+        """Change the rack, then compile it beside the running graph and swap that in.
+        On an attached graph the recompile waits for the end of the turn, so a
+        turn's changes land on one block whether or not the patch changed."""
         change(*args)
         if self._compiled is not None:
-            self._compiled = self._compiled.recompile(
-                groups=[voice.members for voice in self._pool.voices]
-            )
+            if self._attached:
+                self._due = True
+            else:
+                self._recompile()
+
+    def _recompile(self):
+        self._due = False
+        self._compiled = self._compiled.recompile(
+            groups=[voice.members for voice in self._pool.voices]
+        )
 
     # -- rendering ----------------------------------------------------------------------
 
@@ -922,7 +932,10 @@ class Instrument:
         self._check_live()
         if self._attached:
             with self._lock:
-                return self._compiled.control(self._run_events if self._events else None)
+                blocks = self._compiled.control(self._run_events if self._events else None)
+                if self._due:
+                    self._recompile()
+                return blocks
         ring = self._ring
         if ring is None:
             return 0
