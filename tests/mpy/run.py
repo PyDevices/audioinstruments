@@ -43,6 +43,7 @@ MODULES = (
     "test_polyxa",
     "test_bass_pedals",
     "test_compact_organ",
+    "test_combo_organ",
     "test_poly80",
     "test_duosynth",
     "test_electric_piano",

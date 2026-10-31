@@ -273,6 +273,22 @@ SPECS = {
         "ring": 0.5,
         "tail": 0.3,
     },
+    "combo_organ": {
+        "patches": (0, 1, 2, 3, 4, 5),
+        "controls": {
+            0: {"vibrato": False},
+            2: {"vibrato": False},
+            3: {"vibrato": False},
+            5: {"vibrato": False},
+        },
+        "notes": (36, 48, 60, 72, 84),
+        "velocity": 100,
+        "velocities": (32, 80, 127),
+        "velocity_note": 60,
+        "hold": 1.5,
+        "ring": 0.5,
+        "tail": 0.3,
+    },
     "compact_organ": {
         "patches": (0, 1, 2, 3, 4, 5),
         "controls": {

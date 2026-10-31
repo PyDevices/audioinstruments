@@ -138,6 +138,9 @@ MODULES = [
     vrack.CompactOrganVoice,
     vrack.CompactOrganVibrato,
     vrack.CompactOrganOutput,
+    vrack.ComboOrganVoice,
+    vrack.ComboOrganVibrato,
+    vrack.ComboOrganOutput,
 ]
 
 
