@@ -31,11 +31,8 @@ HEADER = (
 
 
 def version():
-    with open(os.path.join(ROOT, "pyproject.toml")) as f:
-        for line in f:
-            if line.startswith("version"):
-                return line.split("=", 1)[1].strip().strip('"')
-    raise SystemExit("pyproject.toml has no version")
+    with open(os.path.join(ROOT, "VERSION")) as f:
+        return f.read().strip()
 
 
 def text(s):

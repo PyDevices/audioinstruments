@@ -1,0 +1,36 @@
+# A pull request that changes VERSION (and the faces, with tools/make_faces.py)
+# becomes, once merged, the vX.Y.Z tag and GitHub Release, created with the App
+# token so publication triggers.
+name: Tag release
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    # The reusable tags whatever VERSION says, verbatim, and any string that
+    # is a legal git ref would become a tag and a Release. VERSION here holds
+    # a placeholder until the maintainer names the release, so refuse to tag anything
+    # that is not a release version -- the same grammar the publish chain
+    # accepts (vX.Y.Z[{a|b|rc}N|.devN]).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Refuse to tag anything but a release version
+        run: |
+          V=$(tr -d '[:space:]' < VERSION)
+          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+|\.dev[0-9]+)?$ ]]; then
+            echo "VERSION is '$V', not a release version X.Y.Z[{a|b|rc}N|.devN]; refusing to tag." >&2
+            exit 1
+          fi
+          echo "VERSION is $V"
+
+  tag:
+    needs: validate
+    uses: PyDevices/.github/.github/workflows/reusable-tag-on-release-merge.yml@publishing-v6
+    secrets: inherit
