@@ -1162,9 +1162,14 @@ class BitDepthRateCore:
         elif audioshaper is not None:
             self.bridge = NodeBridge(block_size, self.sample_rate)
             self.sample_hold = audioshaper.SampleHold(
-                self.bridge.source, self.sample_rate, int(round(self.rate))
+                self.bridge.source, self.sample_rate, self._hold_rate()
             )
             self.bridge.chain(self.sample_hold, direct=False)
+
+    def _hold_rate(self):
+        # The hold only drops frames, so it cannot run faster than the output:
+        # callers that ask for 32 kHz on a 24 kHz output get a hold of 24 kHz.
+        return min(int(round(self.rate)), self.sample_rate)
 
     def _hold_clear(self):
         # Armed so that the first frames refresh, the way the node's clear() leaves it.
@@ -1177,7 +1182,7 @@ class BitDepthRateCore:
         Every array is made once in _build_hold, so a block allocates nothing.
         """
         num = self.sample_rate
-        den = int(round(self.rate))
+        den = self._hold_rate()
         n = len(src)
         count = self._count[:n]
         np.multiply(self._ahead[:n], den, out=count)
@@ -1212,7 +1217,7 @@ class BitDepthRateCore:
             self.rate = r
             self._update_anti_alias()
             if self.sample_hold is not None:
-                self.sample_hold.set(self.sample_rate, int(round(self.rate)))
+                self.sample_hold.set(self.sample_rate, self._hold_rate())
 
     def _update_anti_alias(self):
         cutoff = min(self.rate * 0.45, self.sample_rate * 0.45)

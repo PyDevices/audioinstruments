@@ -164,3 +164,16 @@ def test_crusher_follows_its_input_and_settles_to_zero():
     for _ in range(6):
         crusher.process(src, dst)
     assert max(abs(dst[i]) for i in range(128)) == 0.0
+
+
+def test_builds_and_sounds_below_32_khz():
+    """The crusher's 32 kHz hold cannot exceed the output rate: 22.05 and 24 kHz must build."""
+    for rate in (22050, 24000):
+        inst = adapter.create(rate, voice="rhythm909", engine="rack")
+        for pad in VOICE_PADS:
+            inst.note_on(pad, 100)
+            top = peak(pulled(inst, 15))
+            assert top > 300, "Pad %d at %d Hz is too quiet: %d" % (pad, rate, top)
+            inst.all_notes_off()
+            pulled(inst, 20)
+        inst.deinit()
