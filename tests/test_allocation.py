@@ -138,6 +138,19 @@ MODULES = [
     vrack.CompactOrganVoice,
     vrack.CompactOrganVibrato,
     vrack.CompactOrganOutput,
+    vrack.Rhythm808BassDrum,
+    vrack.Rhythm808Clap,
+    vrack.Rhythm808Claves,
+    vrack.Rhythm808ClosedHat,
+    vrack.Rhythm808Conga,
+    vrack.Rhythm808Cowbell,
+    vrack.Rhythm808Cymbal,
+    vrack.Rhythm808Maracas,
+    vrack.Rhythm808OpenHat,
+    vrack.Rhythm808Output,
+    vrack.Rhythm808RimShot,
+    vrack.Rhythm808Snare,
+    vrack.Rhythm808Tom,
 ]
 
 

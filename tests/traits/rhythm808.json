@@ -1,0 +1,2422 @@
+{
+ "instrument": "rhythm808",
+ "spec": {
+  "drums": true,
+  "notes": [
+   36,
+   37,
+   38,
+   39,
+   42,
+   46,
+   41,
+   45,
+   48,
+   49,
+   56,
+   62,
+   63,
+   64,
+   75,
+   70
+  ],
+  "patches": [
+   0,
+   1
+  ],
+  "ring": 10.0,
+  "tail": 0.3,
+  "velocities": [
+   40,
+   100,
+   127
+  ],
+  "velocity": 100
+ },
+ "traits": {
+  "p0.d36.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -31.7
+  },
+  "p0.d36.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.246
+  },
+  "p0.d36.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -12.647
+  },
+  "p0.d36.centroid_hz": {
+   "kind": "hz",
+   "tol": 46.451,
+   "value": 929.021
+  },
+  "p0.d36.decay20_ms": {
+   "kind": "ms",
+   "tol": 27.6,
+   "value": 184.0
+  },
+  "p0.d36.decay40_ms": {
+   "kind": "ms",
+   "tol": 54.0,
+   "value": 360.0
+  },
+  "p0.d36.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 1.608,
+   "value": 53.608
+  },
+  "p0.d36.length_ms": {
+   "kind": "ms_long",
+   "tol": 131.5,
+   "value": 526.0
+  },
+  "p0.d36.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -5.019
+  },
+  "p0.d36.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": -1.181
+  },
+  "p0.d36.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 46.451,
+   "value": 929.021
+  },
+  "p0.d36.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.302
+  },
+  "p0.d36.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 48.377,
+   "value": 967.541
+  },
+  "p0.d36.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -15.511
+  },
+  "p0.d36.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 42.918,
+   "value": 858.37
+  },
+  "p0.d36.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -30.163
+  },
+  "p0.d37.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -13.78
+  },
+  "p0.d37.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -18.568
+  },
+  "p0.d37.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.249
+  },
+  "p0.d37.centroid_hz": {
+   "kind": "hz",
+   "tol": 131.275,
+   "value": 2625.504
+  },
+  "p0.d37.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 10.0
+  },
+  "p0.d37.decay40_ms": {
+   "kind": "ms",
+   "tol": 7.2,
+   "value": 48.0
+  },
+  "p0.d37.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 52.0
+  },
+  "p0.d37.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 40.0
+  },
+  "p0.d37.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 131.275,
+   "value": 2625.504
+  },
+  "p0.d37.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.368
+  },
+  "p0.d37.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 130.413,
+   "value": 2608.263
+  },
+  "p0.d37.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -15.66
+  },
+  "p0.d37.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 120.562,
+   "value": 2411.245
+  },
+  "p0.d37.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -30.493
+  },
+  "p0.d38.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.681
+  },
+  "p0.d38.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -14.434
+  },
+  "p0.d38.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -9.625
+  },
+  "p0.d38.centroid_hz": {
+   "kind": "hz",
+   "tol": 485.408,
+   "value": 9708.16
+  },
+  "p0.d38.decay20_ms": {
+   "kind": "ms",
+   "tol": 8.7,
+   "value": 58.0
+  },
+  "p0.d38.decay40_ms": {
+   "kind": "ms",
+   "tol": 17.7,
+   "value": 118.0
+  },
+  "p0.d38.length_ms": {
+   "kind": "ms_long",
+   "tol": 44.5,
+   "value": 178.0
+  },
+  "p0.d38.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 12.236
+  },
+  "p0.d38.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 485.408,
+   "value": 9708.16
+  },
+  "p0.d38.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -16.784
+  },
+  "p0.d38.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 488.621,
+   "value": 9772.424
+  },
+  "p0.d38.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -12.405
+  },
+  "p0.d38.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 503.314,
+   "value": 10066.29
+  },
+  "p0.d38.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.629
+  },
+  "p0.d39.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -7.07
+  },
+  "p0.d39.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -26.883
+  },
+  "p0.d39.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.96
+  },
+  "p0.d39.centroid_hz": {
+   "kind": "hz",
+   "tol": 206.976,
+   "value": 4139.515
+  },
+  "p0.d39.decay20_ms": {
+   "kind": "ms",
+   "tol": 19.5,
+   "value": 130.0
+  },
+  "p0.d39.decay40_ms": {
+   "kind": "ms",
+   "tol": 41.4,
+   "value": 276.0
+  },
+  "p0.d39.length_ms": {
+   "kind": "ms_long",
+   "tol": 111.5,
+   "value": 446.0
+  },
+  "p0.d39.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 206.976,
+   "value": 4139.515
+  },
+  "p0.d39.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.278
+  },
+  "p0.d39.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 199.452,
+   "value": 3989.035
+  },
+  "p0.d39.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.171
+  },
+  "p0.d39.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 209.046,
+   "value": 4180.923
+  },
+  "p0.d39.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -34.848
+  },
+  "p0.d41.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -26.58
+  },
+  "p0.d41.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.129
+  },
+  "p0.d41.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -15.688
+  },
+  "p0.d41.centroid_hz": {
+   "kind": "hz",
+   "tol": 132.319,
+   "value": 2646.384
+  },
+  "p0.d41.decay20_ms": {
+   "kind": "ms",
+   "tol": 24.3,
+   "value": 162.0
+  },
+  "p0.d41.decay40_ms": {
+   "kind": "ms",
+   "tol": 50.1,
+   "value": 334.0
+  },
+  "p0.d41.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 2.708,
+   "value": 90.276
+  },
+  "p0.d41.length_ms": {
+   "kind": "ms_long",
+   "tol": 107.5,
+   "value": 430.0
+  },
+  "p0.d41.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -6.543
+  },
+  "p0.d41.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": -77.708
+  },
+  "p0.d41.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 132.319,
+   "value": 2646.384
+  },
+  "p0.d41.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -28.104
+  },
+  "p0.d41.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 136.369,
+   "value": 2727.381
+  },
+  "p0.d41.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -25.493
+  },
+  "p0.d41.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 139.349,
+   "value": 2786.971
+  },
+  "p0.d41.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -40.482
+  },
+  "p0.d42.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.002
+  },
+  "p0.d42.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -43.925
+  },
+  "p0.d42.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -32.75
+  },
+  "p0.d42.centroid_hz": {
+   "kind": "hz",
+   "tol": 410.451,
+   "value": 8209.016
+  },
+  "p0.d42.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 26.0
+  },
+  "p0.d42.decay40_ms": {
+   "kind": "ms",
+   "tol": 7.8,
+   "value": 52.0
+  },
+  "p0.d42.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 82.0
+  },
+  "p0.d42.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 15.036
+  },
+  "p0.d42.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 410.451,
+   "value": 8209.016
+  },
+  "p0.d42.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -18.272
+  },
+  "p0.d42.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.601,
+   "value": 8192.016
+  },
+  "p0.d42.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -13.421
+  },
+  "p0.d42.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 414.571,
+   "value": 8291.412
+  },
+  "p0.d42.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -27.094
+  },
+  "p0.d45.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -25.213
+  },
+  "p0.d45.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.101
+  },
+  "p0.d45.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -17.016
+  },
+  "p0.d45.centroid_hz": {
+   "kind": "hz",
+   "tol": 142.201,
+   "value": 2844.016
+  },
+  "p0.d45.decay20_ms": {
+   "kind": "ms",
+   "tol": 16.2,
+   "value": 108.0
+  },
+  "p0.d45.decay40_ms": {
+   "kind": "ms",
+   "tol": 33.6,
+   "value": 224.0
+  },
+  "p0.d45.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 4.222,
+   "value": 140.723
+  },
+  "p0.d45.length_ms": {
+   "kind": "ms_long",
+   "tol": 78.5,
+   "value": 314.0
+  },
+  "p0.d45.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -4.793
+  },
+  "p0.d45.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": -149.774
+  },
+  "p0.d45.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 142.201,
+   "value": 2844.016
+  },
+  "p0.d45.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -29.41
+  },
+  "p0.d45.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 138.346,
+   "value": 2766.917
+  },
+  "p0.d45.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -24.748
+  },
+  "p0.d45.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 140.756,
+   "value": 2815.116
+  },
+  "p0.d45.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -39.679
+  },
+  "p0.d46.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.001
+  },
+  "p0.d46.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -48.516
+  },
+  "p0.d46.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -36.351
+  },
+  "p0.d46.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.162,
+   "value": 8183.241
+  },
+  "p0.d46.decay20_ms": {
+   "kind": "ms",
+   "tol": 20.4,
+   "value": 136.0
+  },
+  "p0.d46.decay40_ms": {
+   "kind": "ms",
+   "tol": 42.9,
+   "value": 286.0
+  },
+  "p0.d46.length_ms": {
+   "kind": "ms_long",
+   "tol": 106.0,
+   "value": 424.0
+  },
+  "p0.d46.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -9.027
+  },
+  "p0.d46.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.162,
+   "value": 8183.241
+  },
+  "p0.d46.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -16.08
+  },
+  "p0.d46.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.651,
+   "value": 8193.029
+  },
+  "p0.d46.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -11.486
+  },
+  "p0.d46.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 413.23,
+   "value": 8264.608
+  },
+  "p0.d46.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -25.777
+  },
+  "p0.d48.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -25.896
+  },
+  "p0.d48.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.772
+  },
+  "p0.d48.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -7.954
+  },
+  "p0.d48.centroid_hz": {
+   "kind": "hz",
+   "tol": 133.435,
+   "value": 2668.709
+  },
+  "p0.d48.decay20_ms": {
+   "kind": "ms",
+   "tol": 19.2,
+   "value": 128.0
+  },
+  "p0.d48.decay40_ms": {
+   "kind": "ms",
+   "tol": 40.5,
+   "value": 270.0
+  },
+  "p0.d48.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 5.793,
+   "value": 193.096
+  },
+  "p0.d48.length_ms": {
+   "kind": "ms_long",
+   "tol": 91.5,
+   "value": 366.0
+  },
+  "p0.d48.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -7.427
+  },
+  "p0.d48.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": 4.618
+  },
+  "p0.d48.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 133.435,
+   "value": 2668.709
+  },
+  "p0.d48.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -27.696
+  },
+  "p0.d48.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 137.544,
+   "value": 2750.874
+  },
+  "p0.d48.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -25.199
+  },
+  "p0.d48.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 138.009,
+   "value": 2760.19
+  },
+  "p0.d48.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -39.502
+  },
+  "p0.d49.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.99
+  },
+  "p0.d49.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -37.84
+  },
+  "p0.d49.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -6.909
+  },
+  "p0.d49.centroid_hz": {
+   "kind": "hz",
+   "tol": 241.934,
+   "value": 4838.674
+  },
+  "p0.d49.decay20_ms": {
+   "kind": "ms",
+   "tol": 64.5,
+   "value": 430.0
+  },
+  "p0.d49.decay40_ms": {
+   "kind": "ms",
+   "tol": 131.7,
+   "value": 878.0
+  },
+  "p0.d49.length_ms": {
+   "kind": "ms_long",
+   "tol": 335.0,
+   "value": 1340.0
+  },
+  "p0.d49.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -9.421
+  },
+  "p0.d49.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 241.934,
+   "value": 4838.674
+  },
+  "p0.d49.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -10.803
+  },
+  "p0.d49.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 241.475,
+   "value": 4829.492
+  },
+  "p0.d49.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -7.616
+  },
+  "p0.d49.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 205.823,
+   "value": 4116.46
+  },
+  "p0.d49.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -14.303
+  },
+  "p0.d56.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.961
+  },
+  "p0.d56.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -27.224
+  },
+  "p0.d56.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -7.062
+  },
+  "p0.d56.centroid_hz": {
+   "kind": "hz",
+   "tol": 168.473,
+   "value": 3369.458
+  },
+  "p0.d56.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 20.0
+  },
+  "p0.d56.decay40_ms": {
+   "kind": "ms",
+   "tol": 15.6,
+   "value": 104.0
+  },
+  "p0.d56.length_ms": {
+   "kind": "ms_long",
+   "tol": 47.5,
+   "value": 190.0
+  },
+  "p0.d56.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 0.387
+  },
+  "p0.d56.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 168.473,
+   "value": 3369.458
+  },
+  "p0.d56.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -14.863
+  },
+  "p0.d56.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 174.853,
+   "value": 3497.061
+  },
+  "p0.d56.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -10.062
+  },
+  "p0.d56.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 151.743,
+   "value": 3034.855
+  },
+  "p0.d56.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -27.48
+  },
+  "p0.d62.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -26.047
+  },
+  "p0.d62.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -6.624
+  },
+  "p0.d62.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -1.079
+  },
+  "p0.d62.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.699,
+   "value": 1393.97
+  },
+  "p0.d62.decay20_ms": {
+   "kind": "ms",
+   "tol": 9.6,
+   "value": 64.0
+  },
+  "p0.d62.decay40_ms": {
+   "kind": "ms",
+   "tol": 21.3,
+   "value": 142.0
+  },
+  "p0.d62.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 12.38,
+   "value": 412.681
+  },
+  "p0.d62.length_ms": {
+   "kind": "ms_long",
+   "tol": 52.5,
+   "value": 210.0
+  },
+  "p0.d62.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -3.737
+  },
+  "p0.d62.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": -224.08
+  },
+  "p0.d62.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.699,
+   "value": 1393.97
+  },
+  "p0.d62.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -26.839
+  },
+  "p0.d62.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 67.096,
+   "value": 1341.921
+  },
+  "p0.d62.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -24.293
+  },
+  "p0.d62.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 71.692,
+   "value": 1433.834
+  },
+  "p0.d62.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -38.011
+  },
+  "p0.d63.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -26.29
+  },
+  "p0.d63.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -7.221
+  },
+  "p0.d63.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.926
+  },
+  "p0.d63.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.321,
+   "value": 1386.414
+  },
+  "p0.d63.decay20_ms": {
+   "kind": "ms",
+   "tol": 11.1,
+   "value": 74.0
+  },
+  "p0.d63.decay40_ms": {
+   "kind": "ms",
+   "tol": 24.0,
+   "value": 160.0
+  },
+  "p0.d63.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 8.407,
+   "value": 280.225
+  },
+  "p0.d63.length_ms": {
+   "kind": "ms_long",
+   "tol": 61.0,
+   "value": 244.0
+  },
+  "p0.d63.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -3.775
+  },
+  "p0.d63.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": -101.861
+  },
+  "p0.d63.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.321,
+   "value": 1386.414
+  },
+  "p0.d63.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -26.793
+  },
+  "p0.d63.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 72.281,
+   "value": 1445.618
+  },
+  "p0.d63.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.814
+  },
+  "p0.d63.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.793,
+   "value": 1395.862
+  },
+  "p0.d63.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -38.29
+  },
+  "p0.d64.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -26.905
+  },
+  "p0.d64.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.488
+  },
+  "p0.d64.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -9.817
+  },
+  "p0.d64.centroid_hz": {
+   "kind": "hz",
+   "tol": 66.178,
+   "value": 1323.558
+  },
+  "p0.d64.decay20_ms": {
+   "kind": "ms",
+   "tol": 14.4,
+   "value": 96.0
+  },
+  "p0.d64.decay40_ms": {
+   "kind": "ms",
+   "tol": 30.6,
+   "value": 204.0
+  },
+  "p0.d64.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 5.773,
+   "value": 192.428
+  },
+  "p0.d64.length_ms": {
+   "kind": "ms_long",
+   "tol": 72.5,
+   "value": 290.0
+  },
+  "p0.d64.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -2.517
+  },
+  "p0.d64.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 60.185,
+   "value": -300.925
+  },
+  "p0.d64.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 66.178,
+   "value": 1323.558
+  },
+  "p0.d64.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -28.434
+  },
+  "p0.d64.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 70.001,
+   "value": 1400.011
+  },
+  "p0.d64.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.679
+  },
+  "p0.d64.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 68.845,
+   "value": 1376.906
+  },
+  "p0.d64.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -38.532
+  },
+  "p0.d70.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.004
+  },
+  "p0.d70.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -60.0
+  },
+  "p0.d70.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -30.432
+  },
+  "p0.d70.centroid_hz": {
+   "kind": "hz",
+   "tol": 569.956,
+   "value": 11399.114
+  },
+  "p0.d70.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 24.0
+  },
+  "p0.d70.decay40_ms": {
+   "kind": "ms",
+   "tol": 6.9,
+   "value": 46.0
+  },
+  "p0.d70.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 78.0
+  },
+  "p0.d70.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 40.0
+  },
+  "p0.d70.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 569.956,
+   "value": 11399.114
+  },
+  "p0.d70.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -10.532
+  },
+  "p0.d70.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 559.702,
+   "value": 11194.034
+  },
+  "p0.d70.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -7.252
+  },
+  "p0.d70.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 567.22,
+   "value": 11344.408
+  },
+  "p0.d70.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.437
+  },
+  "p0.d75.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -8.347
+  },
+  "p0.d75.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -1.987
+  },
+  "p0.d75.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -6.559
+  },
+  "p0.d75.centroid_hz": {
+   "kind": "hz",
+   "tol": 113.862,
+   "value": 2277.238
+  },
+  "p0.d75.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 8.0
+  },
+  "p0.d75.decay40_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 20.0
+  },
+  "p0.d75.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 34.0
+  },
+  "p0.d75.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 40.0
+  },
+  "p0.d75.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 113.862,
+   "value": 2277.238
+  },
+  "p0.d75.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.199
+  },
+  "p0.d75.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 113.985,
+   "value": 2279.702
+  },
+  "p0.d75.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -18.432
+  },
+  "p0.d75.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 106.993,
+   "value": 2139.86
+  },
+  "p0.d75.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -33.71
+  },
+  "p0.noise_floor_db": {
+   "kind": "floor_db",
+   "tol": 6.0,
+   "value": -120.0
+  },
+  "p1.d36.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -44.52
+  },
+  "p1.d36.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.038
+  },
+  "p1.d36.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -20.658
+  },
+  "p1.d36.centroid_hz": {
+   "kind": "hz",
+   "tol": 24.135,
+   "value": 482.708
+  },
+  "p1.d36.decay20_ms": {
+   "kind": "ms",
+   "tol": 114.3,
+   "value": 762.0
+  },
+  "p1.d36.decay40_ms": {
+   "kind": "ms",
+   "tol": 233.4,
+   "value": 1556.0
+  },
+  "p1.d36.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 1.598,
+   "value": 53.269
+  },
+  "p1.d36.length_ms": {
+   "kind": "ms_long",
+   "tol": 534.5,
+   "value": 2138.0
+  },
+  "p1.d36.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -12.966
+  },
+  "p1.d36.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": 74.987
+  },
+  "p1.d36.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 24.135,
+   "value": 482.708
+  },
+  "p1.d36.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.831
+  },
+  "p1.d36.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 24.675,
+   "value": 493.491
+  },
+  "p1.d36.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -15.888
+  },
+  "p1.d36.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 23.363,
+   "value": 467.261
+  },
+  "p1.d36.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -33.723
+  },
+  "p1.d37.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -13.78
+  },
+  "p1.d37.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -18.568
+  },
+  "p1.d37.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.249
+  },
+  "p1.d37.centroid_hz": {
+   "kind": "hz",
+   "tol": 131.275,
+   "value": 2625.504
+  },
+  "p1.d37.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 10.0
+  },
+  "p1.d37.decay40_ms": {
+   "kind": "ms",
+   "tol": 7.2,
+   "value": 48.0
+  },
+  "p1.d37.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 52.0
+  },
+  "p1.d37.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 40.0
+  },
+  "p1.d37.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 131.275,
+   "value": 2625.504
+  },
+  "p1.d37.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.368
+  },
+  "p1.d37.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 130.413,
+   "value": 2608.263
+  },
+  "p1.d37.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -15.66
+  },
+  "p1.d37.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 120.072,
+   "value": 2401.45
+  },
+  "p1.d37.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -30.52
+  },
+  "p1.d38.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.499
+  },
+  "p1.d38.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -16.077
+  },
+  "p1.d38.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -10.76
+  },
+  "p1.d38.centroid_hz": {
+   "kind": "hz",
+   "tol": 490.178,
+   "value": 9803.567
+  },
+  "p1.d38.decay20_ms": {
+   "kind": "ms",
+   "tol": 8.7,
+   "value": 58.0
+  },
+  "p1.d38.decay40_ms": {
+   "kind": "ms",
+   "tol": 17.4,
+   "value": 116.0
+  },
+  "p1.d38.length_ms": {
+   "kind": "ms_long",
+   "tol": 44.5,
+   "value": 178.0
+  },
+  "p1.d38.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 13.443
+  },
+  "p1.d38.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 490.178,
+   "value": 9803.567
+  },
+  "p1.d38.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -17.082
+  },
+  "p1.d38.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 493.962,
+   "value": 9879.231
+  },
+  "p1.d38.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -11.676
+  },
+  "p1.d38.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 506.524,
+   "value": 10130.471
+  },
+  "p1.d38.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -21.233
+  },
+  "p1.d39.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -7.07
+  },
+  "p1.d39.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -26.883
+  },
+  "p1.d39.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.96
+  },
+  "p1.d39.centroid_hz": {
+   "kind": "hz",
+   "tol": 206.976,
+   "value": 4139.515
+  },
+  "p1.d39.decay20_ms": {
+   "kind": "ms",
+   "tol": 19.5,
+   "value": 130.0
+  },
+  "p1.d39.decay40_ms": {
+   "kind": "ms",
+   "tol": 41.4,
+   "value": 276.0
+  },
+  "p1.d39.length_ms": {
+   "kind": "ms_long",
+   "tol": 111.5,
+   "value": 446.0
+  },
+  "p1.d39.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 206.976,
+   "value": 4139.515
+  },
+  "p1.d39.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.278
+  },
+  "p1.d39.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 199.452,
+   "value": 3989.035
+  },
+  "p1.d39.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -19.171
+  },
+  "p1.d39.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 209.045,
+   "value": 4180.909
+  },
+  "p1.d39.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -34.848
+  },
+  "p1.d41.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -26.597
+  },
+  "p1.d41.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.127
+  },
+  "p1.d41.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -15.759
+  },
+  "p1.d41.centroid_hz": {
+   "kind": "hz",
+   "tol": 132.589,
+   "value": 2651.77
+  },
+  "p1.d41.decay20_ms": {
+   "kind": "ms",
+   "tol": 24.3,
+   "value": 162.0
+  },
+  "p1.d41.decay40_ms": {
+   "kind": "ms",
+   "tol": 49.8,
+   "value": 332.0
+  },
+  "p1.d41.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 2.528,
+   "value": 84.255
+  },
+  "p1.d41.length_ms": {
+   "kind": "ms_long",
+   "tol": 109.0,
+   "value": 436.0
+  },
+  "p1.d41.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -6.41
+  },
+  "p1.d41.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": -158.856
+  },
+  "p1.d41.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 132.589,
+   "value": 2651.77
+  },
+  "p1.d41.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -28.178
+  },
+  "p1.d41.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 149.645,
+   "value": 2992.894
+  },
+  "p1.d41.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -26.957
+  },
+  "p1.d41.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 140.503,
+   "value": 2810.063
+  },
+  "p1.d41.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -40.652
+  },
+  "p1.d42.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.002
+  },
+  "p1.d42.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -43.925
+  },
+  "p1.d42.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -32.75
+  },
+  "p1.d42.centroid_hz": {
+   "kind": "hz",
+   "tol": 410.451,
+   "value": 8209.016
+  },
+  "p1.d42.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 26.0
+  },
+  "p1.d42.decay40_ms": {
+   "kind": "ms",
+   "tol": 7.8,
+   "value": 52.0
+  },
+  "p1.d42.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 82.0
+  },
+  "p1.d42.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 15.036
+  },
+  "p1.d42.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 410.451,
+   "value": 8209.016
+  },
+  "p1.d42.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -18.272
+  },
+  "p1.d42.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.601,
+   "value": 8192.016
+  },
+  "p1.d42.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -13.421
+  },
+  "p1.d42.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 414.571,
+   "value": 8291.412
+  },
+  "p1.d42.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -27.094
+  },
+  "p1.d45.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -25.141
+  },
+  "p1.d45.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.109
+  },
+  "p1.d45.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -16.631
+  },
+  "p1.d45.centroid_hz": {
+   "kind": "hz",
+   "tol": 143.221,
+   "value": 2864.414
+  },
+  "p1.d45.decay20_ms": {
+   "kind": "ms",
+   "tol": 16.5,
+   "value": 110.0
+  },
+  "p1.d45.decay40_ms": {
+   "kind": "ms",
+   "tol": 33.9,
+   "value": 226.0
+  },
+  "p1.d45.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 3.859,
+   "value": 128.623
+  },
+  "p1.d45.length_ms": {
+   "kind": "ms_long",
+   "tol": 78.5,
+   "value": 314.0
+  },
+  "p1.d45.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -4.539
+  },
+  "p1.d45.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": -118.117
+  },
+  "p1.d45.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 143.221,
+   "value": 2864.414
+  },
+  "p1.d45.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -29.616
+  },
+  "p1.d45.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 145.336,
+   "value": 2906.711
+  },
+  "p1.d45.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -25.122
+  },
+  "p1.d45.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 139.576,
+   "value": 2791.52
+  },
+  "p1.d45.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -39.679
+  },
+  "p1.d46.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.001
+  },
+  "p1.d46.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -48.516
+  },
+  "p1.d46.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -36.351
+  },
+  "p1.d46.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.162,
+   "value": 8183.241
+  },
+  "p1.d46.decay20_ms": {
+   "kind": "ms",
+   "tol": 20.4,
+   "value": 136.0
+  },
+  "p1.d46.decay40_ms": {
+   "kind": "ms",
+   "tol": 42.9,
+   "value": 286.0
+  },
+  "p1.d46.length_ms": {
+   "kind": "ms_long",
+   "tol": 106.0,
+   "value": 424.0
+  },
+  "p1.d46.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -9.027
+  },
+  "p1.d46.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.162,
+   "value": 8183.241
+  },
+  "p1.d46.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -16.08
+  },
+  "p1.d46.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 409.651,
+   "value": 8193.029
+  },
+  "p1.d46.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -11.486
+  },
+  "p1.d46.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 413.23,
+   "value": 8264.608
+  },
+  "p1.d46.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -25.777
+  },
+  "p1.d48.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -25.277
+  },
+  "p1.d48.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.521
+  },
+  "p1.d48.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -9.581
+  },
+  "p1.d48.centroid_hz": {
+   "kind": "hz",
+   "tol": 138.558,
+   "value": 2771.154
+  },
+  "p1.d48.decay20_ms": {
+   "kind": "ms",
+   "tol": 21.0,
+   "value": 140.0
+  },
+  "p1.d48.decay40_ms": {
+   "kind": "ms",
+   "tol": 42.0,
+   "value": 280.0
+  },
+  "p1.d48.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 5.3,
+   "value": 176.656
+  },
+  "p1.d48.length_ms": {
+   "kind": "ms_long",
+   "tol": 91.5,
+   "value": 366.0
+  },
+  "p1.d48.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -8.534
+  },
+  "p1.d48.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.0,
+   "value": 26.866
+  },
+  "p1.d48.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 138.558,
+   "value": 2771.154
+  },
+  "p1.d48.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -28.144
+  },
+  "p1.d48.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 140.349,
+   "value": 2806.987
+  },
+  "p1.d48.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -24.684
+  },
+  "p1.d48.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 137.555,
+   "value": 2751.103
+  },
+  "p1.d48.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -39.502
+  },
+  "p1.d49.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.99
+  },
+  "p1.d49.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -37.84
+  },
+  "p1.d49.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -6.909
+  },
+  "p1.d49.centroid_hz": {
+   "kind": "hz",
+   "tol": 241.934,
+   "value": 4838.674
+  },
+  "p1.d49.decay20_ms": {
+   "kind": "ms",
+   "tol": 64.5,
+   "value": 430.0
+  },
+  "p1.d49.decay40_ms": {
+   "kind": "ms",
+   "tol": 131.7,
+   "value": 878.0
+  },
+  "p1.d49.length_ms": {
+   "kind": "ms_long",
+   "tol": 335.0,
+   "value": 1340.0
+  },
+  "p1.d49.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -9.421
+  },
+  "p1.d49.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 241.934,
+   "value": 4838.674
+  },
+  "p1.d49.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -10.803
+  },
+  "p1.d49.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 241.475,
+   "value": 4829.492
+  },
+  "p1.d49.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -7.616
+  },
+  "p1.d49.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 205.828,
+   "value": 4116.555
+  },
+  "p1.d49.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -14.304
+  },
+  "p1.d56.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.961
+  },
+  "p1.d56.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -27.224
+  },
+  "p1.d56.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -7.062
+  },
+  "p1.d56.centroid_hz": {
+   "kind": "hz",
+   "tol": 168.473,
+   "value": 3369.458
+  },
+  "p1.d56.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 20.0
+  },
+  "p1.d56.decay40_ms": {
+   "kind": "ms",
+   "tol": 15.6,
+   "value": 104.0
+  },
+  "p1.d56.length_ms": {
+   "kind": "ms_long",
+   "tol": 47.5,
+   "value": 190.0
+  },
+  "p1.d56.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 0.387
+  },
+  "p1.d56.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 168.473,
+   "value": 3369.458
+  },
+  "p1.d56.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -14.863
+  },
+  "p1.d56.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 174.853,
+   "value": 3497.061
+  },
+  "p1.d56.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -10.062
+  },
+  "p1.d56.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 151.743,
+   "value": 3034.855
+  },
+  "p1.d56.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -27.48
+  },
+  "p1.d62.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -25.245
+  },
+  "p1.d62.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -6.953
+  },
+  "p1.d62.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.995
+  },
+  "p1.d62.centroid_hz": {
+   "kind": "hz",
+   "tol": 72.845,
+   "value": 1456.896
+  },
+  "p1.d62.decay20_ms": {
+   "kind": "ms",
+   "tol": 10.2,
+   "value": 68.0
+  },
+  "p1.d62.decay40_ms": {
+   "kind": "ms",
+   "tol": 21.9,
+   "value": 146.0
+  },
+  "p1.d62.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 11.626,
+   "value": 387.528
+  },
+  "p1.d62.length_ms": {
+   "kind": "ms_long",
+   "tol": 55.0,
+   "value": 220.0
+  },
+  "p1.d62.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -3.892
+  },
+  "p1.d62.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 50.749,
+   "value": -253.745
+  },
+  "p1.d62.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 72.845,
+   "value": 1456.896
+  },
+  "p1.d62.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -26.661
+  },
+  "p1.d62.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 70.81,
+   "value": 1416.208
+  },
+  "p1.d62.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.836
+  },
+  "p1.d62.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 71.549,
+   "value": 1430.978
+  },
+  "p1.d62.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -38.053
+  },
+  "p1.d63.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -25.535
+  },
+  "p1.d63.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -7.271
+  },
+  "p1.d63.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.917
+  },
+  "p1.d63.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.16,
+   "value": 1383.198
+  },
+  "p1.d63.decay20_ms": {
+   "kind": "ms",
+   "tol": 12.0,
+   "value": 80.0
+  },
+  "p1.d63.decay40_ms": {
+   "kind": "ms",
+   "tol": 24.9,
+   "value": 166.0
+  },
+  "p1.d63.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 7.871,
+   "value": 262.378
+  },
+  "p1.d63.length_ms": {
+   "kind": "ms_long",
+   "tol": 62.0,
+   "value": 248.0
+  },
+  "p1.d63.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -2.732
+  },
+  "p1.d63.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 52.055,
+   "value": -260.276
+  },
+  "p1.d63.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.16,
+   "value": 1383.198
+  },
+  "p1.d63.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -27.405
+  },
+  "p1.d63.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 70.735,
+   "value": 1414.705
+  },
+  "p1.d63.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.708
+  },
+  "p1.d63.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 69.502,
+   "value": 1390.035
+  },
+  "p1.d63.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -38.311
+  },
+  "p1.d64.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -27.346
+  },
+  "p1.d64.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.134
+  },
+  "p1.d64.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -15.433
+  },
+  "p1.d64.centroid_hz": {
+   "kind": "hz",
+   "tol": 67.839,
+   "value": 1356.771
+  },
+  "p1.d64.decay20_ms": {
+   "kind": "ms",
+   "tol": 13.8,
+   "value": 92.0
+  },
+  "p1.d64.decay40_ms": {
+   "kind": "ms",
+   "tol": 30.0,
+   "value": 200.0
+  },
+  "p1.d64.fundamental_hz": {
+   "kind": "pitch_hz",
+   "tol": 5.276,
+   "value": 175.871
+  },
+  "p1.d64.length_ms": {
+   "kind": "ms_long",
+   "tol": 72.5,
+   "value": 290.0
+  },
+  "p1.d64.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": -2.722
+  },
+  "p1.d64.pitch_drop_cents": {
+   "kind": "drop_cents",
+   "tol": 51.167,
+   "value": -255.837
+  },
+  "p1.d64.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 67.839,
+   "value": 1356.771
+  },
+  "p1.d64.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -28.097
+  },
+  "p1.d64.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 67.889,
+   "value": 1357.772
+  },
+  "p1.d64.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -24.023
+  },
+  "p1.d64.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 68.605,
+   "value": 1372.103
+  },
+  "p1.d64.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -38.577
+  },
+  "p1.d70.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -0.004
+  },
+  "p1.d70.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -60.0
+  },
+  "p1.d70.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -30.432
+  },
+  "p1.d70.centroid_hz": {
+   "kind": "hz",
+   "tol": 569.956,
+   "value": 11399.114
+  },
+  "p1.d70.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 24.0
+  },
+  "p1.d70.decay40_ms": {
+   "kind": "ms",
+   "tol": 6.9,
+   "value": 46.0
+  },
+  "p1.d70.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 78.0
+  },
+  "p1.d70.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 40.0
+  },
+  "p1.d70.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 569.956,
+   "value": 11399.114
+  },
+  "p1.d70.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -10.532
+  },
+  "p1.d70.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 559.702,
+   "value": 11194.034
+  },
+  "p1.d70.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -7.252
+  },
+  "p1.d70.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 567.22,
+   "value": 11344.408
+  },
+  "p1.d70.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.437
+  },
+  "p1.d75.band_high_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -8.347
+  },
+  "p1.d75.band_low_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -1.987
+  },
+  "p1.d75.band_mid_db": {
+   "kind": "band_db",
+   "tol": 2.0,
+   "value": -6.559
+  },
+  "p1.d75.centroid_hz": {
+   "kind": "hz",
+   "tol": 113.862,
+   "value": 2277.238
+  },
+  "p1.d75.decay20_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 8.0
+  },
+  "p1.d75.decay40_ms": {
+   "kind": "ms",
+   "tol": 6.0,
+   "value": 20.0
+  },
+  "p1.d75.length_ms": {
+   "kind": "ms_long",
+   "tol": 30.0,
+   "value": 34.0
+  },
+  "p1.d75.noise_tone_db": {
+   "kind": "ratio_db",
+   "tol": 3.0,
+   "value": 40.0
+  },
+  "p1.d75.v100.centroid_hz": {
+   "kind": "hz",
+   "tol": 113.862,
+   "value": 2277.238
+  },
+  "p1.d75.v100.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -22.199
+  },
+  "p1.d75.v127.centroid_hz": {
+   "kind": "hz",
+   "tol": 113.985,
+   "value": 2279.702
+  },
+  "p1.d75.v127.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -18.432
+  },
+  "p1.d75.v40.centroid_hz": {
+   "kind": "hz",
+   "tol": 107.017,
+   "value": 2140.343
+  },
+  "p1.d75.v40.peak_db": {
+   "kind": "db",
+   "tol": 1.0,
+   "value": -33.723
+  },
+  "p1.noise_floor_db": {
+   "kind": "floor_db",
+   "tol": 6.0,
+   "value": -120.0
+  }
+ },
+ "unsteady": [
+  "p0.d39.noise_tone_db",
+  "p1.d39.noise_tone_db"
+ ]
+}

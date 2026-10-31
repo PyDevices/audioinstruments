@@ -72,7 +72,10 @@ RACK_VOICES = tuple(name for name in adapter.ALL if name not in adapter.SAMPLERS
 
 @pytest.fixture(params=RACK_VOICES)
 def inst(request):
-    voices = 1 if adapter.voice_patch(request.param).MONO else 4
+    patch = adapter.voice_patch(request.param)
+    voices = (
+        1 if patch.MONO else (getattr(patch, "VOICES", 4) if getattr(patch, "PADS", None) else 4)
+    )
     instrument = adapter.create(48000, voice=request.param, voices=voices)
     yield instrument
     instrument.deinit()

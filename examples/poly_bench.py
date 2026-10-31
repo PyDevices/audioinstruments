@@ -10,6 +10,12 @@ output does and prints the cost of a buffer and the real-time factor: the
 seconds of audio made per second of work, so 1.0 is the edge and 2.0 leaves
 half the processor free. The 0 row is the rack with nothing playing. It runs
 at the rack's 64-frame block, at the adapter's default 128 and at 256.
+
+A drum kit (an instrument with ``pads``) is struck rather than held: "held"
+is how many of its sounds are struck at once, each on its own pad, and they
+are struck again every ``RESTRIKE`` buffers so that short sounds keep
+sounding through the measure. That is the kit at its busiest: every sound
+it has, ringing together, retriggered about every 85 ms.
 """
 
 import sys
@@ -37,6 +43,16 @@ except AttributeError:  # MicroPython
 NOTES = (48, 55, 60, 64, 67, 72, 76, 79, 50, 57, 62, 65, 69, 74, 77, 81)
 SAMPLE_RATE = 48000
 BUFFER_FRAMES = 1024
+RESTRIKE = 4
+
+
+def kit_keys(inst):
+    """One key for each sound of a kit, the lowest that sounds it."""
+    first = {}
+    for key, voice in sorted(inst.pads.items()):
+        if voice not in first:
+            first[voice] = key
+    return tuple(first[v] for v in sorted(first))
 
 
 def measure(voice, block_size, held, voices=None, buffers=40):
@@ -48,12 +64,18 @@ def measure(voice, block_size, held, voices=None, buffers=40):
         buffer_frames=BUFFER_FRAMES,
         output="pull",
     )
-    for note in NOTES[:held]:
+    pads = inst.pads
+    notes = kit_keys(inst)[:held] if pads else NOTES[:held]
+    for note in notes:
         inst.note_on(note, 100)
     for _ in range(10):
         inst._pull()
     start = _now()
-    for _ in range(buffers):
+    for b in range(buffers):
+        if pads and b % RESTRIKE == 0:
+            for note in notes:
+                inst.note_off(note)
+                inst.note_on(note, 100)
         inst._pull()
     spent = _elapsed(start, _now())
     inst.deinit()

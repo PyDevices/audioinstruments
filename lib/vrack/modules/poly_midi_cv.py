@@ -305,7 +305,23 @@ class PolyMidiCV(MidiCVModule):
         if listener is not None:
             listener.wake(v)
         self._key_press[v] = 0.0
-        if stolen or self._phase[v] != IDLE:
+        if stolen and self.alloc.pads is not None:
+            # A drum pad struck again: no fade, the circuit rings on and
+            # takes the new strike. The gate must fall before it can rise,
+            # so a gate still up drops for this block and rises at the next.
+            if self._phase[v] == IDLE and not self._v_gate[v] and self._w_gate[v] != 1.0:
+                self._v_pitch[v] = cv
+                self._v_vel[v] = velocity
+                self._v_press[v] = 0.0
+                self._v_gate[v] = True
+                if listener is not None:
+                    listener.open_channel(v, pan)
+            else:
+                self._pending[v] = (cv, velocity, pan, False)
+                self._release_next[v] = False
+                if self._phase[v] == IDLE:
+                    self._phase[v] = GAP
+        elif stolen or self._phase[v] != IDLE:
             # The voice is sounding, or still finishing a steal: the new note
             # waits for the fade, and replaces any note that was waiting.
             self._pending[v] = (cv, velocity, pan, False)
