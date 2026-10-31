@@ -28,6 +28,7 @@ from ...core.signal import (
     copy_into,
     scaled_into,
 )
+from ...dsp.blocks import Ramp
 from ...dsp.envelope import EnvelopeCore
 from ...dsp.glide import GlideCore
 from ...dsp.noise import NoiseGenerator
@@ -264,6 +265,9 @@ class Poly80Voice(Module):
         self._sub_buf = None
         self._ribbon_offset = 0.0
         self.rendered = (True, True)
+        # each channel's last gain into the mix, ramped from block to block
+        self._gains = [None, None]
+        self.ramp = Ramp(n)
 
         # Precalculate deterministic circuit slop offsets
         s = _seed(self.id)
@@ -348,6 +352,7 @@ class Poly80Voice(Module):
             "_ch1_out",
             "_ch2_out",
             "_tmp",
+            "_gramp",
         ):
             self.add_scratch(name)
 
@@ -364,6 +369,7 @@ class Poly80Voice(Module):
 
     def set_block_size(self, block_size):
         super().set_block_size(block_size)
+        self.ramp = Ramp(block_size)
         self.pulse_env.set_block_size(block_size)
         self.glide.set_block_size(block_size)
         self.ch1.set_block_size(block_size)
@@ -559,11 +565,9 @@ class Poly80Voice(Module):
             + AFTER_LEVEL_GAIN * p.get(pfx + "after_level", 0.0) * pressure
         )
 
-        gain = p.get(pfx + "level", 0.7) * touch_level * vca_common_gain * VCA_GAIN
-
         copy_into(out_buf, vca_in)
         out_buf *= self._aenv_buf
-        out_buf *= gain
+        return p.get(pfx + "level", 0.7) * touch_level * vca_common_gain * VCA_GAIN
 
     def process(self, block_size):
         if not self._scattered:
@@ -572,7 +576,6 @@ class Poly80Voice(Module):
         n = block_size
         p = self.params
         sr = self.sample_rate
-        tmp = self._tmp
 
         gate_buf = jack_signal(self.gate_in)
         gate_high = bool(gate_buf[-1] > 0.5) if gate_buf is not None else False
@@ -709,15 +712,18 @@ class Poly80Voice(Module):
 
         # Channels rendering
         mix_val = p.get("mix", 0.5)
-        run_ch1 = mix_val < 1.0
-        run_ch2 = mix_val > 0.0
+        gains = self._gains
+        # a channel the mix just closed renders one more block while its gain ramps out
+        run_ch1 = mix_val < 1.0 or bool(gains[0])
+        run_ch2 = mix_val > 0.0 or bool(gains[1])
         self.rendered = (run_ch1, run_ch2)
+        gain1 = gain2 = 0.0
 
         out_l = self._ch1_out
         out_r = self._ch2_out
 
         if run_ch1:
-            self._render_channel(
+            gain1 = self._render_channel(
                 self.ch1,
                 n,
                 "ch1_",
@@ -743,7 +749,7 @@ class Poly80Voice(Module):
             )
 
         if run_ch2:
-            self._render_channel(
+            gain2 = self._render_channel(
                 self.ch2,
                 n,
                 "ch2_",
@@ -768,15 +774,32 @@ class Poly80Voice(Module):
                 out_r,
             )
 
-        # 13. Channel Mix
+        # 13. Channel Mix: (1 - m) * channel I + m * channel II, each channel's whole
+        # gain (level, touch, keyboard, tremolo and mix) ramped across the block from
+        # the last one, so a moved control or the block-rate tremolo never steps
         final_out = self.audio_out.buffer
-        if run_ch1 and run_ch2:
-            # final_out = (1 - m) * ch1 + m * ch2
-            scaled_into(final_out, out_l, 1.0 - mix_val)
-            add_scaled(final_out, out_r, mix_val, tmp)
-        elif run_ch1:
-            copy_into(final_out, out_l)
-        elif run_ch2:
-            copy_into(final_out, out_r)
+        final_out[:] = 0.0
+        if run_ch1:
+            self._mix_in(final_out, out_l, 0, (1.0 - mix_val) * gain1, n)
         else:
-            final_out[:] = 0.0
+            gains[0] = 0.0
+        if run_ch2:
+            self._mix_in(final_out, out_r, 1, mix_val * gain2, n)
+        else:
+            gains[1] = 0.0
+
+    def _mix_in(self, out, src, index, gain, n):
+        """Add ``src`` into ``out`` at ``gain``, ramped from the channel's last gain."""
+        prev = self._gains[index]
+        if prev is None:
+            prev = gain
+        self._gains[index] = gain
+        if prev == gain:
+            if gain != 0.0:
+                add_scaled(out, src, gain, self._tmp)
+            return
+        ramp = self._gramp
+        scaled_into(ramp, self.ramp.view(n), (gain - prev) / n)
+        ramp += prev
+        src *= ramp
+        out += src

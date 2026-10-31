@@ -109,6 +109,9 @@ def sine_partial(harmonic, length=TABLE_LEN):
     return table
 
 
+_SCRATCH = {}
+
+
 class DrawbarToneCore:
     """One voice's footages, summed into a single-cycle table that synthio plays.
 
@@ -116,7 +119,9 @@ class DrawbarToneCore:
     to play (their partials are fetched once, here); ``partial(h)`` gives the
     table of one footage at harmonic ``h`` (:func:`sine_partial` by default);
     ``base_ratio`` is the table's pitch against the key's (0.5: the table is at
-    16', so the 8' is its second harmonic); ``level`` scales the sum.
+    16', so the 8' is its second harmonic); ``level`` scales the sum;
+    ``table_len`` is the table's length, which every partial shares (synthio
+    plays the table without interpolating, so a longer one sounds cleaner).
 
     :meth:`set_levels` rebuilds the table when a level or a harmonic changes,
     in buffers the core owns. :meth:`render` plays it through a
@@ -137,15 +142,21 @@ class DrawbarToneCore:
         partial=sine_partial,
         base_ratio=0.5,
         level=0.12,
+        table_len=TABLE_LEN,
     ):
         self.sample_rate = sample_rate
         self.block_size = block_size
         self.base_ratio = base_ratio
         self.level = level
         self._partials = {h: partial(h) for h in harmonics}
-        self._table_f = create_buffer(TABLE_LEN)
-        self._table_i16 = create_int16_buffer(TABLE_LEN)
-        self._tmp = create_buffer(TABLE_LEN)
+        self._table_i16 = create_int16_buffer(table_len)
+        # the float table and its scratch serve only while one is rebuilt, so
+        # every core of a length shares them
+        scratch = _SCRATCH.get(table_len)
+        if scratch is None:
+            scratch = (create_buffer(table_len), create_buffer(table_len))
+            _SCRATCH[table_len] = scratch
+        self._table_f, self._tmp = scratch
         self._silence = create_buffer(block_size)
         self._raw = create_buffer(block_size)
 
