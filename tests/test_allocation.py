@@ -72,6 +72,8 @@ MODULES = [
     vrack.ElectricGrand70Output,
     vrack.ElectricPianoVoice,
     vrack.ElectricPianoOutput,
+    vrack.ClavichordVoice,
+    vrack.ClavichordOutput,
     vrack.ReedPianoVoice,
     vrack.ReedPianoOutput,
     vrack.ReedPiano200AVoice,
@@ -562,4 +564,36 @@ def test_the_tonewheel3_creates_no_arrays_with_every_effect_on_and_a_steal():
     finally:
         TRACING[0] = False
     inst.deinit()
+    assert EVENTS == [], "arrays created:\n" + "\n".join("%d B at %s" % e for e in EVENTS)
+
+
+def test_the_clavichord_creates_no_arrays_with_the_wah_a_release_pluck_and_a_steal():
+    """Every tab, the wah and the tremolo on, a key let go (its release pluck), and a steal."""
+    import vrack.adapter as adapter
+
+    inst = adapter.create(48000, voice="clavichord", output="pull", block_size=BLOCK, voices=4)
+    inst.program_change(5)  # Auto-Wah
+    for name in ("brilliant", "treble", "medium", "soft"):
+        inst.patch.set_control(inst.voice_pool, name, 1.0)
+    inst.patch.set_control(inst.voice_pool, "tremolo_depth", 5.0)
+    rack = inst.rack
+    for note in (48, 55, 60, 64):
+        inst.note_on(note, 120)
+    for _ in range(20):
+        rack.step()
+    inst.note_off(64)
+    del EVENTS[:]
+    TRACING[0] = True
+    try:
+        for _ in range(4):
+            rack.step()
+        inst.note_on(72, 100)
+        inst.note_on(76, 100)  # a fifth note on four voices: a steal
+        for _ in range(12):
+            rack.step()
+    finally:
+        TRACING[0] = False
+    stolen = inst.voice_pool.stolen
+    inst.deinit()
+    assert stolen >= 1
     assert EVENTS == [], "arrays created:\n" + "\n".join("%d B at %s" % e for e in EVENTS)

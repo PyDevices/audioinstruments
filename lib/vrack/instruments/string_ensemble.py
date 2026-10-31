@@ -219,10 +219,18 @@ class StringEnsemble(VoicePatch):
     """The StringEnsemble voice patch for ``vrack.adapter.create()``."""
 
     NAME = "string_ensemble"
+    DISPLAY_NAME = "String Ensemble"
     VOICES = VOICES
     LATENCY_SAMPLES = LATENCY_SAMPLES
     MACRO_LABELS = MACROS
-    MACRO_MODES = {}
+    MACRO_MODES = {
+        0: "UNIPOLAR",
+        1: "UNIPOLAR",
+        2: "UNIPOLAR",
+        3: "UNIPOLAR",
+        4: "BIPOLAR",
+        5: "UNIPOLAR",
+    }
     PATCHES = {
         i: (PRESETS[i][0], tuple(_macro_value(m, settings(i)) for m in MACROS))
         for i in range(len(PRESETS))

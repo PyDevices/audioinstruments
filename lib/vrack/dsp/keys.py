@@ -15,6 +15,8 @@ modelled by what it is rather than by one instrument:
 - ``PickupCore``: a pickup's nonlinearity, electromagnetic (a coil and magnet)
   or electrostatic (a charged comb), where the part sits against it
   (``offset``) and how far it swings (``drive``).
+- ``pickup_weight``, ``pickup_weights``: a pickup at position x along a string
+  sees partial n weighted by sin(n·π·x).
 - ``key_curve``: a per-key value read off a few anchor keys, for the decay
   times, gains and ratios that change along a keyboard.
 """
@@ -54,6 +56,25 @@ def key_curve(note, points):
             return prev[1] * (point[1] / prev[1]) ** frac
         prev = point
     return prev[1]
+
+
+def pickup_weight(n, x):
+    """The sensitivity of a pickup at string position ``x`` to partial ``n``.
+
+    A pickup at position ``x`` (a fraction of the string length from the
+    bridge) sees partial ``n`` (1-indexed) weighted by ``sin(n * pi * x)``.
+    """
+    return math.sin(float(n) * math.pi * float(x))
+
+
+def pickup_weights(modes, pos):
+    """A pickup's sensitivity to ``modes`` harmonic partials at string position ``pos``.
+
+    Returns a tuple of ``modes`` weights, where partial ``n`` (1 to ``modes``)
+    is weighted by ``sin(n * pi * pos)``.
+    """
+    p = float(pos) * math.pi
+    return tuple(math.sin((m + 1) * p) for m in range(modes))
 
 
 class HammerExciter:
@@ -216,7 +237,7 @@ class StruckBarCore:
                 f = f0 * ratio
                 if f >= top:
                     f, gain = top, 0.0
-                self.bank.set_mode(m, f, max(0.001, decay), max(0.0, gain))
+                self.bank.set_mode(m, f, max(0.001, decay), float(gain))
             else:
                 self.bank.set_mode(m, f0, 0.001, 0.0)
 
