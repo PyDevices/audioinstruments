@@ -30,6 +30,55 @@ HEADER = (
 )
 
 
+#: What a drum kit's voice is called in its ``NOTE_MAP``, by the short name
+#: the kit's ``VOICE_NAMES`` gives it.
+SOUNDS = {
+    "bd": "Bass Drum",
+    "sd": "Snare Drum",
+    "rs": "Rim Shot",
+    "cp": "Hand Clap",
+    "ch": "Closed Hi-Hat",
+    "oh": "Open Hi-Hat",
+    "hh": "Hi-Hat",
+    "lt": "Low Tom",
+    "mt": "Mid Tom",
+    "ht": "High Tom",
+    "t1": "Tom 1",
+    "t2": "Tom 2",
+    "t3": "Tom 3",
+    "cy": "Cymbal",
+    "cr": "Crash Cymbal",
+    "rd": "Ride Cymbal",
+    "cb": "Cowbell",
+    "hc": "High Conga",
+    "mc": "Mid Conga",
+    "lc": "Low Conga",
+    "hb": "High Bongo",
+    "lb": "Low Bongo",
+    "cl": "Claves",
+    "ma": "Maracas",
+    "tb": "Tambourine",
+    "gu_s": "Guiro Short",
+    "gu_l": "Guiro Long",
+}
+
+
+def note_map(meta, module):
+    """``(key, label)`` pairs: the instrument's own, or a kit's ``PADS`` named."""
+    value = getattr(meta, "NOTE_MAP", None)
+    pads = getattr(meta, "PADS", None)
+    if value or not pads:
+        return value
+    names = sys.modules[module].VOICE_NAMES
+    out, seen = [], {}
+    # a sound on several keys: the lowest is "Bass Drum", the next "Bass Drum 2"
+    for key, voice in sorted(pads):
+        label = SOUNDS[names[voice]]
+        seen[label] = seen.get(label, 0) + 1
+        out.append((key, label if seen[label] == 1 else "%s %d" % (label, seen[label])))
+    return tuple(out)
+
+
 def version():
     with open(os.path.join(ROOT, "VERSION")) as f:
         return f.read().strip()
@@ -79,6 +128,7 @@ def face(name):
     out = [HEADER % origin, '"""%s"""\n\n' % summary(doc)]
     out.append("NAME = %s\n" % text(meta.NAME))
     out.append("DISPLAY_NAME = %s\n" % text(display))
+    drums = note_map(meta, doc)
     out.append("CATEGORIES = %s\n" % inline(getattr(meta, "CATEGORIES", ("Synth",))))
     out.append("VERSION = %s\n" % text(version()))
     out.append("VENDOR = %s\n\n" % text(getattr(meta, "VENDOR", "PyDevices")))
@@ -95,7 +145,7 @@ def face(name):
         )
     )
     for field in ("NOTE_MAP", "PAD_MAP"):
-        value = getattr(meta, field, None)
+        value = drums if field == "NOTE_MAP" else getattr(meta, field, None)
         if value:
             out.append(
                 "\n%s = (\n%s)\n"
@@ -112,7 +162,7 @@ def face(name):
 
 def names_module(faces, metas):
     instruments = [n for n in faces if n not in adapter.SAMPLERS]
-    drums = [n for n in instruments if getattr(metas[n], "NOTE_MAP", None)]
+    drums = [n for n in instruments if note_map(*metas[n])]
     melodic = [n for n in instruments if n not in drums]
     return "".join(
         [
@@ -131,7 +181,7 @@ def names_module(faces, metas):
 def wanted():
     names = list(adapter.ALL)
     files = {"%s.py" % n: face(n) for n in names}
-    files["_names.py"] = names_module(names, {n: source(n)[0] for n in names})
+    files["_names.py"] = names_module(names, {n: source(n)[::2] for n in names})
     return files
 
 

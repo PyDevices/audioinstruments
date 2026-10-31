@@ -4,8 +4,8 @@
 """Rhythm909, a drum machine with eleven synthesized sounds, inspired by the Roland TR-909."""
 
 NAME = "rhythm909"
-DISPLAY_NAME = "rhythm909"
-CATEGORIES = ("Synth",)
+DISPLAY_NAME = "Rhythm909"
+CATEGORIES = ("Drum",)
 VERSION = "0.5.0.dev2"
 VENDOR = "PyDevices"
 
@@ -39,9 +39,31 @@ PATCHES = {
     4: ("Clean Metal", (64, 64, 64, 64, 64, 64, 64, 89)),
 }
 
+NOTE_MAP = (
+    (35, "Bass Drum"),
+    (36, "Bass Drum 2"),
+    (37, "Rim Shot"),
+    (38, "Snare Drum"),
+    (39, "Hand Clap"),
+    (40, "Snare Drum 2"),
+    (41, "Low Tom"),
+    (42, "Closed Hi-Hat"),
+    (43, "Low Tom 2"),
+    (44, "Closed Hi-Hat 2"),
+    (45, "Mid Tom"),
+    (46, "Open Hi-Hat"),
+    (47, "Mid Tom 2"),
+    (48, "High Tom"),
+    (49, "Crash Cymbal"),
+    (50, "High Tom 2"),
+    (51, "Ride Cymbal"),
+    (57, "Crash Cymbal 2"),
+    (59, "Ride Cymbal 2"),
+)
+
 
 def create(sample_rate, channel_count=2, transport=None, **options):
-    """A live rhythm909. See ``audioinstruments.create`` for the options."""
+    """A live Rhythm909. See ``audioinstruments.create`` for the options."""
     from . import _build
 
     return _build(NAME, sample_rate, channel_count, transport, options)

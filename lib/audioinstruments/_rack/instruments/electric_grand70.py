@@ -150,6 +150,7 @@ class ElectricGrand70(VoicePatch):
     """The ElectricGrand70 as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "electric_grand70"
+    DISPLAY_NAME = "ElectricGrand70"
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS

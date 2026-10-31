@@ -4,7 +4,7 @@
 """ReedPiano, a ten-voice plucked-reed electric piano inspired by the Hohner Pianet."""
 
 NAME = "reed_piano"
-DISPLAY_NAME = "reed_piano"
+DISPLAY_NAME = "ReedPiano"
 CATEGORIES = ("Synth",)
 VERSION = "0.5.0.dev2"
 VENDOR = "PyDevices"
@@ -38,7 +38,7 @@ PATCHES = {
 
 
 def create(sample_rate, channel_count=2, transport=None, **options):
-    """A live reed_piano. See ``audioinstruments.create`` for the options."""
+    """A live ReedPiano. See ``audioinstruments.create`` for the options."""
     from . import _build
 
     return _build(NAME, sample_rate, channel_count, transport, options)

@@ -173,6 +173,7 @@ class Clavichord(VoicePatch):
     """The Clavichord as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "clavichord"
+    DISPLAY_NAME = "Clavichord"
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS

@@ -171,8 +171,10 @@ class Rhythm909(VoicePatch):
     """The Rhythm909 drum machine as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "rhythm909"
+    DISPLAY_NAME = "Rhythm909"
     VOICES = 11
     LATENCY_SAMPLES = 0
+    CATEGORIES = ("Drum",)
     PADS = PADS
     CHOKE = CHOKE
     MACRO_LABELS = MACROS

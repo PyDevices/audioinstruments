@@ -104,6 +104,7 @@ class ReedPiano(VoicePatch):
     """The ReedPiano as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "reed_piano"
+    DISPLAY_NAME = "ReedPiano"
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS

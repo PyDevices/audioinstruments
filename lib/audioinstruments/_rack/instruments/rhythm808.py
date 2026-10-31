@@ -196,8 +196,10 @@ class Rhythm808(VoicePatch):
     """The Rhythm808 analog drum machine as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "rhythm808"
+    DISPLAY_NAME = "Rhythm808"
     VOICES = 16
     LATENCY_SAMPLES = 0
+    CATEGORIES = ("Drum",)
     PADS = PADS
     CHOKE = CHOKE
     MACRO_LABELS = MACROS

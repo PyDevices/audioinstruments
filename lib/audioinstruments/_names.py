@@ -41,7 +41,13 @@ ALL = (
 )
 
 #: The ones with a ``NOTE_MAP``: a drum machine.
-DRUM_MACHINES = ()
+DRUM_MACHINES = (
+    "electronic_drums5",
+    "rhythm606",
+    "rhythm78",
+    "rhythm808",
+    "rhythm909",
+)
 
 #: The rest.
 MELODIC = (
@@ -54,7 +60,6 @@ MELODIC = (
     "duosynth",
     "electric_grand70",
     "electric_piano",
-    "electronic_drums5",
     "hybrid_mono",
     "mono101",
     "mono_one",
@@ -69,10 +74,6 @@ MELODIC = (
     "polyxa",
     "reed_piano",
     "reed_piano200a",
-    "rhythm606",
-    "rhythm78",
-    "rhythm808",
-    "rhythm909",
     "state_variable_mono",
     "string_ensemble",
     "tonewheel3",

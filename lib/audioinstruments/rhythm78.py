@@ -4,8 +4,8 @@
 """Rhythm78, an analog preset rhythm machine with fourteen sounds, inspired by the Roland CR-78."""
 
 NAME = "rhythm78"
-DISPLAY_NAME = "rhythm78"
-CATEGORIES = ("Synth",)
+DISPLAY_NAME = "Rhythm78"
+CATEGORIES = ("Drum",)
 VERSION = "0.5.0.dev2"
 VENDOR = "PyDevices"
 
@@ -34,9 +34,34 @@ PATCHES = {
     3: ("Dark", (64, 64, 25, 89, 89, 89)),
 }
 
+NOTE_MAP = (
+    (35, "Bass Drum"),
+    (36, "Bass Drum 2"),
+    (37, "Rim Shot"),
+    (38, "Snare Drum"),
+    (40, "Snare Drum 2"),
+    (42, "Hi-Hat"),
+    (44, "Hi-Hat 2"),
+    (46, "Hi-Hat 3"),
+    (49, "Cymbal"),
+    (51, "Cymbal 2"),
+    (54, "Tambourine"),
+    (56, "Cowbell"),
+    (57, "Cymbal 3"),
+    (60, "High Bongo"),
+    (61, "Low Bongo"),
+    (62, "Low Conga"),
+    (63, "Low Conga 2"),
+    (64, "Low Conga 3"),
+    (70, "Maracas"),
+    (73, "Guiro Short"),
+    (74, "Guiro Long"),
+    (75, "Claves"),
+)
+
 
 def create(sample_rate, channel_count=2, transport=None, **options):
-    """A live rhythm78. See ``audioinstruments.create`` for the options."""
+    """A live Rhythm78. See ``audioinstruments.create`` for the options."""
     from . import _build
 
     return _build(NAME, sample_rate, channel_count, transport, options)

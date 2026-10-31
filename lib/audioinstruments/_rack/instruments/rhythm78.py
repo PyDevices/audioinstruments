@@ -131,6 +131,9 @@ ALL_VOICE_MODS = (
     "lc",
 )
 
+#: Each voice's sound, by voice index.
+VOICE_NAMES = ALL_VOICE_MODS
+
 
 def settings(index):
     """Every control of patch ``index``: SETTINGS with the patch's own on top."""
@@ -148,8 +151,10 @@ class Rhythm78(VoicePatch):
     """The Rhythm78 analog drum machine as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "rhythm78"
+    DISPLAY_NAME = "Rhythm78"
     VOICES = 14
     LATENCY_SAMPLES = 0
+    CATEGORIES = ("Drum",)
     PADS = PADS
     CHOKE = CHOKE
     MACRO_LABELS = MACROS

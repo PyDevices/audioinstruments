@@ -125,8 +125,10 @@ class Rhythm606(VoicePatch):
     """The Rhythm606 analog drum machine as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "rhythm606"
+    DISPLAY_NAME = "Rhythm606"
     VOICES = 7
     LATENCY_SAMPLES = 0
+    CATEGORIES = ("Drum",)
     PADS = PADS
     CHOKE = CHOKE
     MACRO_LABELS = MACROS

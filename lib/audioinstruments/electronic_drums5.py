@@ -4,8 +4,8 @@
 """ElectronicDrums5, a five-channel electronic drum kit with swept tones, inspired by the Simmons SDS-V."""
 
 NAME = "electronic_drums5"
-DISPLAY_NAME = "electronic_drums5"
-CATEGORIES = ("Synth",)
+DISPLAY_NAME = "ElectronicDrums5"
+CATEGORIES = ("Drum",)
 VERSION = "0.5.0.dev2"
 VENDOR = "PyDevices"
 
@@ -39,9 +39,24 @@ PATCHES = {
     4: ("Gated", (64, 28, 108, 114, 89, 38, 64, 89)),
 }
 
+NOTE_MAP = (
+    (35, "Bass Drum"),
+    (36, "Bass Drum 2"),
+    (37, "Snare Drum"),
+    (38, "Snare Drum 2"),
+    (39, "Snare Drum 3"),
+    (40, "Snare Drum 4"),
+    (41, "Tom 3"),
+    (43, "Tom 3 2"),
+    (45, "Tom 2"),
+    (47, "Tom 2 2"),
+    (48, "Tom 1"),
+    (50, "Tom 1 2"),
+)
+
 
 def create(sample_rate, channel_count=2, transport=None, **options):
-    """A live electronic_drums5. See ``audioinstruments.create`` for the options."""
+    """A live ElectronicDrums5. See ``audioinstruments.create`` for the options."""
     from . import _build
 
     return _build(NAME, sample_rate, channel_count, transport, options)

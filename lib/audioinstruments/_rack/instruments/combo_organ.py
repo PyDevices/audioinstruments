@@ -162,6 +162,7 @@ class ComboOrgan(VoicePatch):
     """The ComboOrgan voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "combo_organ"
+    DISPLAY_NAME = "ComboOrgan"
     VOICES = VOICES
     LATENCY_SAMPLES = LATENCY_SAMPLES
     BUSES = BUSES

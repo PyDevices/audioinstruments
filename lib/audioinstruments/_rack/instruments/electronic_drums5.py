@@ -195,8 +195,10 @@ class ElectronicDrums5(VoicePatch):
     """The ElectronicDrums5 electronic drum kit as a voice patch for ``audioinstruments._rack.adapter.create()``."""
 
     NAME = "electronic_drums5"
+    DISPLAY_NAME = "ElectronicDrums5"
     VOICES = 5
     LATENCY_SAMPLES = 0
+    CATEGORIES = ("Drum",)
     PADS = PADS
     CHOKE = CHOKE
     MACRO_LABELS = MACROS
