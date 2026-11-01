@@ -197,3 +197,116 @@ class ReedPiano200AVoice(Module):
         # take the drive back out so velocity alone sets the level
         level = (v**VELOCITY_LEVEL) / max(0.01, bark_curve(v) * bark_scale**0.5)
         out *= VOICE_GAIN * level * key_curve(note, KEY_LEVEL) / (max(0.1, gain_norm) ** 0.25)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    graph_fold_gain = 1.0
+
+    def graph_fold(self, gain):
+        self.graph_fold_gain = gain
+        if getattr(self, "_fragment", None) is not None:
+            self._dirty = True
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_bar = f.buffer()
+        b_env = f.output(self.env_out)
+        b_damped = f.buffer()
+        b_out = f.output(self.audio_out)
+
+        self._n_struck = f.add(ag.STRUCK, (gate,), b_bar)
+        f.set(self._n_struck, ag.STRUCK_SHAPE, ag.STRUCK_HAMMER)
+        f.set(self._n_struck, ag.STRUCK_LEVEL, STRIKE_LEVEL)
+
+        self._n_env = f.add(ag.ENV, (gate,), b_env)
+
+        self._n_vca = f.add(ag.VCA, (b_bar, b_env, None), b_damped)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        f.set(self._n_vca, ag.VCA_GAIN, 1.0)
+
+        self._n_pickup = f.add(ag.PICKUP, (b_damped,), b_out)
+        f.set(self._n_pickup, ag.PICKUP_MODE, ag.PICKUP_ELECTROSTATIC)
+
+        self._cv = 0.0
+        self._velocity = 0.8
+        self._tuned = None
+        self._dirty = True
+
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.bind(("bark", "voicing", "decay", "damper"), self._graph_params)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_update()
+
+    def _graph_pitch(self, val):
+        self._cv = val
+        self._dirty = True
+
+    def _graph_velocity(self, val):
+        self._velocity = val
+        self._dirty = True
+
+    def _graph_params(self):
+        self._dirty = True
+
+    def _graph_reset(self):
+        self._tuned = None
+        self._dirty = True
+        f = self._fragment
+        f.reset(self._n_struck)
+        f.reset(self._n_env)
+        f.reset(self._n_pickup)
+
+    def _graph_block(self):
+        if self._dirty:
+            self._graph_update()
+
+    def _graph_update(self):
+        self._dirty = False
+        f = self._fragment
+        ag = self._ag
+        cv = self._cv
+        note = 60.0 + cv * 120.0
+        f0 = BASE_FREQ_C4 * (2.0 ** (cv * 10.0))
+        v = max(0.0, min(1.0, self._velocity))
+
+        p = self.params
+        key = (cv, v, p["decay"])
+        if key != self._tuned:
+            self._tuned = key
+            scale = decay_scale(p["decay"])
+            modes = reed_modes(note, scale, v)
+            f.set(self._n_struck, ag.STRUCK_FREQUENCY, f0)
+            f.table(self._n_struck, modes)
+
+        hardness = 0.08 + 0.88 * (v**1.3)
+        strike_lvl = STRIKE_LEVEL * (0.4 + 0.6 * v)
+        f.set(self._n_struck, ag.STRUCK_HARDNESS, hardness)
+        f.set(self._n_struck, ag.STRUCK_LEVEL, strike_lvl)
+
+        f.set(self._n_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_env, ag.ENV_RELEASE, damp_time(p["damper"]))
+
+        bark_scale = 0.15 + 1.25 * p["bark"]
+        drive = DRIVE_BASE * bark_scale * bark_curve(v) * key_curve(note, DRIVE_KEY)
+        offset = OFFSET_MAX * p["voicing"]
+        f.set(self._n_pickup, ag.PICKUP_OFFSET, offset)
+        f.set(self._n_pickup, ag.PICKUP_DRIVE, drive)
+
+        gain_norm = PickupCore.gain_at(offset, curve="electrostatic")
+        level_raw = (v**VELOCITY_LEVEL) / max(0.01, bark_curve(v) * bark_scale**0.5)
+        level = (
+            self.graph_fold_gain
+            * VOICE_GAIN
+            * level_raw
+            * key_curve(note, KEY_LEVEL)
+            / (max(0.1, gain_norm) ** 0.25)
+        )
+        f.set(self._n_pickup, ag.PICKUP_LEVEL, level)
