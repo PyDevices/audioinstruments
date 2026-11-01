@@ -520,7 +520,10 @@ class Instrument:
             if engine == "graph":
                 raise ImportError("engine='graph' needs audiograph, which this build does not have")
             return
-        if engine == "auto" and any(module.fragment is None for module in self.rack.modules):
+        if engine == "auto" and (
+            not getattr(self.patch, "COMPILES", True)
+            or any(module.fragment is None for module in self.rack.modules)
+        ):
             return  # a module without a fragment: the rack renders
         from .core.graph import TooManyGroups, compile_rack
 

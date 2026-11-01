@@ -151,6 +151,33 @@ def test_vibrato_patches_swing_in_stereo(patch):
     assert abs(20 * np.log10(g_rms / r_rms)) < 0.5
 
 
+def test_the_bell_is_gone_in_a_third_of_a_second_against_rack():
+    """Patch 3 (Glass Tines) bell mode rings at attack and decays by > 25 dB more than fundamental on both graph and rack."""
+
+    def band(x, low, high):
+        mag = np.abs(np.fft.rfft(x * np.hanning(len(x))))
+        freqs = np.fft.rfftfreq(len(x), 1.0 / 48000)
+        return float(np.sum(mag[(freqs >= low) & (freqs < high)]))
+
+    def tone(x, hz, width=25.0):
+        return band(x, hz - width, hz + width) + 1e-9
+
+    phrase = held_note(key=60, vel=127, wait=0, hold=230)
+    for engine in ("rack", "graph"):
+        pcm, lat = render(engine, 3, phrase, controls={"vibrato_depth": 0.0})
+        x = pcm[:, 0].astype(np.float64)
+        f0 = 261.63
+        bell = f0 * (6.0 + 2.0 * 32.0 / 72.0)
+        early = x[lat + 400 : lat + 5200]
+        late = x[lat + 23000 : lat + 27800]
+        bell_drop = 20 * np.log10(tone(early, bell) / tone(late, bell))
+        fund_drop = 20 * np.log10(tone(early, f0) / tone(late, f0))
+        assert tone(early, bell) > 0.03 * tone(early, f0), f"{engine}: no bell at the attack"
+        assert bell_drop > fund_drop + 25.0, (
+            f"{engine}: bell drop insufficient: {bell_drop} vs {fund_drop}"
+        )
+
+
 # -- individual controls ----------------------------------------------------------------
 
 

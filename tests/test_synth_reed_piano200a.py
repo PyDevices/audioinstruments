@@ -19,7 +19,7 @@ CLIP = 27000
 
 
 def make(patch=0, **options):
-    inst = adapter.create(48000, voice="reed_piano200a", output="pull", **options)
+    inst = adapter.create(48000, voice="reed_piano200a", output="pull", engine="rack", **options)
     inst.program_change(patch)
     return inst
 

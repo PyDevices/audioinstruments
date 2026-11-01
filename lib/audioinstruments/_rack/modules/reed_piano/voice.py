@@ -255,6 +255,12 @@ class ReedPianoVoice(Module):
         b_bar = f.buffer()
         b_env = f.output(self.env_out)
         b_damped = f.buffer()
+        b_pickup = f.buffer()
+        b_not_gate = f.buffer()
+        b_rel_env_raw = f.buffer()
+        b_rel_env = f.buffer()
+        b_thud_osc = f.buffer()
+        b_thud = f.buffer()
         b_out = f.output(self.audio_out)
 
         self._n_struck = f.add(ag.STRUCK, (gate,), b_bar)
@@ -267,8 +273,40 @@ class ReedPianoVoice(Module):
         f.set(self._n_vca, ag.VCA_SELECT, 0.0)
         f.set(self._n_vca, ag.VCA_GAIN, 1.0)
 
-        self._n_pickup = f.add(ag.PICKUP, (b_damped,), b_out)
+        self._n_pickup = f.add(ag.PICKUP, (b_damped,), b_pickup)
         f.set(self._n_pickup, ag.PICKUP_MODE, ag.PICKUP_ELECTROMAGNETIC)
+
+        # Inverted gate for release thud: not_gate = 1 - gate
+        self._n_not_gate = f.add(ag.MIX, (gate,), b_not_gate)
+        f.set(self._n_not_gate, ag.MIX_OFFSET, ag.UNIT)
+        f.set(self._n_not_gate, 0, -1.0)
+
+        # Release envelope: tau = 0.004 s -> release = 4 * 0.004 = 0.016 s
+        self._n_rel_env = f.add(ag.ENV, (gate,), b_rel_env_raw)
+        f.set(self._n_rel_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_rel_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_rel_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_rel_env, ag.ENV_RELEASE, 0.016)
+
+        # Gated release envelope: rel_env = rel_env_raw * not_gate
+        self._n_rel_gate = f.add(ag.VCA, (b_rel_env_raw, b_not_gate, None), b_rel_env)
+        f.set(self._n_rel_gate, ag.VCA_SELECT, 0.0)
+        f.set(self._n_rel_gate, ag.VCA_GAIN, 1.0)
+
+        # 90 Hz sine wave oscillator for thud
+        self._n_thud_osc = f.add(ag.OSC, (None, None, None, None), b_thud_osc)
+        f.set(self._n_thud_osc, ag.OSC_WAVEFORM, 8)
+        f.set(self._n_thud_osc, ag.OSC_FREQUENCY, 90.0)
+        f.set(self._n_thud_osc, ag.OSC_LEVEL, 1.0)
+
+        # Scaled thud = thud_osc * rel_env * thud_gain
+        self._n_thud_vca = f.add(ag.VCA, (b_thud_osc, b_rel_env, None), b_thud)
+        f.set(self._n_thud_vca, ag.VCA_SELECT, 0.0)
+
+        # Sum string pickup and release thud
+        self._n_sum = f.add(ag.MIX, (b_pickup, b_thud), b_out)
+        f.set(self._n_sum, 0, 1.0)
+        f.set(self._n_sum, 1, 1.0)
 
         self._cv = 0.0
         self._velocity = 0.8
@@ -300,6 +338,8 @@ class ReedPianoVoice(Module):
         f.reset(self._n_struck)
         f.reset(self._n_env)
         f.reset(self._n_pickup)
+        f.reset(self._n_rel_env)
+        f.reset(self._n_thud_osc)
 
     def _graph_block(self):
         if self._dirty:
@@ -348,3 +388,6 @@ class ReedPianoVoice(Module):
             / (gain_norm**0.5)
         )
         f.set(self._n_pickup, ag.PICKUP_LEVEL, level)
+
+        thud_gain = self.graph_fold_gain * float(p["pad_thud"]) * THUD_SCALE
+        f.set(self._n_thud_vca, ag.VCA_GAIN, thud_gain)

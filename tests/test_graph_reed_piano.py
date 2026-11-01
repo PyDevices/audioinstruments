@@ -143,6 +143,34 @@ def test_vibrato_patches_swing_in_stereo():
     assert abs(20 * np.log10(g_rms / r_rms)) < 0.5
 
 
+def test_pad_thud_level_controls_release_thud_against_rack():
+    """pad_thud controls release thud energy on both rack and graph."""
+    phrase = released_note(key=60, vel=100, wait=10, hold=40, decay=20)
+    for engine in ("rack", "graph"):
+        loud, _ = render(engine, 0, phrase, controls={"vibrato_depth": 0.0, "pad_thud": 10.0})
+        quiet, _ = render(engine, 0, phrase, controls={"vibrato_depth": 0.0, "pad_thud": 0.0})
+        # Release begins at buffer 50 = frame 6400; over 4 buffers (512 samples)
+        start = 50 * BUFFER
+        thud_diff = (loud - quiet)[start : start + 4 * BUFFER, 0].astype(np.float64)
+        thud_rms = float(np.sqrt(np.mean(thud_diff**2)))
+        assert thud_rms > 100.0, f"{engine} thud rms too quiet: {thud_rms}"
+
+
+def test_the_release_thud_is_there_but_quiet_beside_the_note_against_rack():
+    """Release thud is audible but well below note level on both rack and graph."""
+    phrase = released_note(key=60, vel=100, wait=10, hold=30, decay=20)
+    for engine in ("rack", "graph"):
+        pcm_thud, _ = render(engine, 0, phrase, controls={"vibrato_depth": 0.0, "pad_thud": 4.0})
+        pcm_clean, _ = render(engine, 0, phrase, controls={"vibrato_depth": 0.0, "pad_thud": 0.0})
+        note_slice = pcm_thud[10 * BUFFER : 40 * BUFFER, 0].astype(np.float64)
+        rel_slice = (pcm_thud - pcm_clean)[40 * BUFFER : 48 * BUFFER, 0].astype(np.float64)
+        thud_peak = float(np.max(np.abs(rel_slice)))
+        note_peak = float(np.max(np.abs(note_slice)))
+        assert thud_peak > 50.0, f"{engine}: thud peak too low: {thud_peak}"
+        db_under = float(20 * np.log10(note_peak / thud_peak))
+        assert db_under > 14.0, f"{engine}: thud not quiet enough under note: {db_under} dB"
+
+
 # -- individual controls ----------------------------------------------------------------
 
 

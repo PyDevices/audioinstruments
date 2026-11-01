@@ -174,6 +174,7 @@ class Clavichord(VoicePatch):
 
     NAME = "clavichord"
     DISPLAY_NAME = "Clavichord"
+    COMPILES = False
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS

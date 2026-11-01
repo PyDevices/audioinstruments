@@ -123,12 +123,19 @@ def worst(patch=0, phrase=None, controls=None, skip_strike_block=False):
 
 
 def test_compiles_to_graph_engine():
-    inst = adapter.create(48000, voice="clavichord")
+    # Explicit engine="graph" compiles to audiograph
+    inst_g = adapter.create(48000, voice="clavichord", engine="graph")
     try:
-        assert inst.engine == "graph"
-        assert inst.latency_samples == 0
+        assert inst_g.engine == "graph"
+        assert inst_g.latency_samples == 0
     finally:
-        inst.deinit()
+        inst_g.deinit()
+    # Default engine="auto" leaves clavichord on rack for dynamic auto-wah
+    inst_a = adapter.create(48000, voice="clavichord")
+    try:
+        assert inst_a.engine == "rack"
+    finally:
+        inst_a.deinit()
 
 
 # -- sound against the rack ------------------------------------------------------------
@@ -171,6 +178,38 @@ def test_patch_5_auto_wah_sound():
     assert latency == 0
     peak = float(np.max(np.abs(pcm)))
     assert peak > 500.0, f"Auto-Wah peak too low: {peak}"
+
+
+def test_clavichord_auto_engine_reports_rack_for_dynamic_wah():
+    """Clavichord renders on rack by default so dynamic envelope-following wah is preserved."""
+    inst = adapter.create(48000, voice="clavichord")
+    assert inst.engine == "rack"
+    assert inst.latency_samples == 256
+    inst.deinit()
+
+    # Explicit engine='graph' compiles the graph form
+    inst_g = adapter.create(48000, voice="clavichord", engine="graph")
+    assert inst_g.engine == "graph"
+    assert inst_g.latency_samples == 0
+    inst_g.deinit()
+
+
+def test_release_pluck_sounds_on_both_rack_and_graph():
+    """Release pluck sounds at key release on both rack and graph."""
+    from audioinstruments._rack.modules.clavichord import voice
+
+    phrase = released_note(key=60, vel=100, wait=10, hold=20, decay=40)
+    for engine in ("rack", "graph"):
+        with_pluck, _ = render(engine, 0, phrase, controls={"tremolo_depth": 0.0})
+        orig_gain = voice.REL_PLUCK_GAIN
+        voice.REL_PLUCK_GAIN = 0.0
+        try:
+            without_pluck, _ = render(engine, 0, phrase, controls={"tremolo_depth": 0.0})
+        finally:
+            voice.REL_PLUCK_GAIN = orig_gain
+        pluck = (with_pluck - without_pluck)[3840 : 3840 + 3840, 0].astype(np.float64)
+        peak = float(np.max(np.abs(pluck)))
+        assert peak > 150.0, f"{engine} release pluck peak too low: {peak}"
 
 
 def test_damper_release_silences_the_note():
