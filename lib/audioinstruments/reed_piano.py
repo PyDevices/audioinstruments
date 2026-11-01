@@ -6,7 +6,7 @@
 NAME = "reed_piano"
 DISPLAY_NAME = "ReedPiano"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.0"
+VERSION = "0.5.1.dev0"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
