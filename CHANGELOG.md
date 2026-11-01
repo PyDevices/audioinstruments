@@ -2,7 +2,7 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
-## Unreleased
+## 0.5.1.dev0
 
 - `audioinstruments.panel`: wrap an instrument in the adapter a control panel
   edits through, with macros, patches, bypass, reload and MIDI changes that
