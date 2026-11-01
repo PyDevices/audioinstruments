@@ -24,6 +24,7 @@ CASES = [
     ("state_variable_mono", 0),
     ("bass_pedals", 0),
     ("electric_piano", 0),
+    ("reed_piano", 0),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 

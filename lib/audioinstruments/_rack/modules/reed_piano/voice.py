@@ -236,3 +236,115 @@ class ReedPianoVoice(Module):
                 self._thud_pos += k
             if self._thud_pos >= THUD_LEN:
                 self._thud_active = False
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    graph_fold_gain = 1.0
+
+    def graph_fold(self, gain):
+        self.graph_fold_gain = gain
+        if getattr(self, "_fragment", None) is not None:
+            self._dirty = True
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_bar = f.buffer()
+        b_env = f.output(self.env_out)
+        b_damped = f.buffer()
+        b_out = f.output(self.audio_out)
+
+        self._n_struck = f.add(ag.STRUCK, (gate,), b_bar)
+        f.set(self._n_struck, ag.STRUCK_SHAPE, ag.STRUCK_PLUCK)
+        f.set(self._n_struck, ag.STRUCK_LEVEL, STRIKE_LEVEL)
+
+        self._n_env = f.add(ag.ENV, (gate,), b_env)
+
+        self._n_vca = f.add(ag.VCA, (b_bar, b_env, None), b_damped)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        f.set(self._n_vca, ag.VCA_GAIN, 1.0)
+
+        self._n_pickup = f.add(ag.PICKUP, (b_damped,), b_out)
+        f.set(self._n_pickup, ag.PICKUP_MODE, ag.PICKUP_ELECTROMAGNETIC)
+
+        self._cv = 0.0
+        self._velocity = 0.8
+        self._tuned = None
+        self._dirty = True
+
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.bind(("pad_stick", "decay", "pad_thud"), self._graph_params)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_update()
+
+    def _graph_pitch(self, val):
+        self._cv = val
+        self._dirty = True
+
+    def _graph_velocity(self, val):
+        self._velocity = val
+        self._dirty = True
+
+    def _graph_params(self):
+        self._dirty = True
+
+    def _graph_reset(self):
+        self._tuned = None
+        self._dirty = True
+        f = self._fragment
+        f.reset(self._n_struck)
+        f.reset(self._n_env)
+        f.reset(self._n_pickup)
+
+    def _graph_block(self):
+        if self._dirty:
+            self._graph_update()
+
+    def _graph_update(self):
+        self._dirty = False
+        f = self._fragment
+        ag = self._ag
+        cv = self._cv
+        note = 60.0 + cv * 120.0
+        f0 = BASE_FREQ_C4 * (2.0 ** (cv * 10.0))
+        v = max(0.0, min(1.0, self._velocity))
+
+        p = self.params
+        stick = p["pad_stick"]
+        key = (cv, p["decay"], stick)
+        if key != self._tuned:
+            self._tuned = key
+            scale = decay_scale(p["decay"])
+            modes = reed_modes(note, scale, stick)
+            f.set(self._n_struck, ag.STRUCK_FREQUENCY, f0)
+            f.table(self._n_struck, modes)
+
+        hardness = max(0.05, min(0.95, 0.1 + 0.8 * stick * (0.6 + 0.4 * v)))
+        f.set(self._n_struck, ag.STRUCK_HARDNESS, hardness)
+
+        f.set(self._n_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_env, ag.ENV_RELEASE, DAMP_TIME)
+
+        key_drive = key_curve(note, DRIVE_KEY) * (0.6 + 0.8 * stick)
+        drive = DRIVE_BASE * key_drive * (0.8 + 0.2 * v)
+        f.set(self._n_pickup, ag.PICKUP_OFFSET, OFFSET)
+        f.set(self._n_pickup, ag.PICKUP_DRIVE, drive)
+
+        gain_norm = PickupCore.gain_at(OFFSET, curve="electromagnetic")
+        vel_level = 0.5 + 0.5 * v
+        level = (
+            self.graph_fold_gain
+            * VOICE_GAIN
+            * vel_level
+            * key_curve(note, KEY_LEVEL)
+            / key_drive
+            / (gain_norm**0.5)
+        )
+        f.set(self._n_pickup, ag.PICKUP_LEVEL, level)
