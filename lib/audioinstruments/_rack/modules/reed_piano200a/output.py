@@ -141,3 +141,96 @@ class ReedPiano200AOutput(Module):
         trem_depth = p["tremolo"] / 10.0
         self.tremolo.set(rate_hz=TREMOLO_RATE_HZ, depth=trem_depth, mode="amplitude")
         self.tremolo.render(eq_out, out_l, out_r)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        import audiobiquad
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        b_left = f.input(self.left_in)
+        b_right = f.input(self.right_in)
+        b_mono = f.buffer()
+        b_dc = f.buffer()
+        b_bass = f.buffer()
+        b_treble = f.buffer()
+        b_tanh = f.buffer()
+        b_vol = f.buffer()
+        b_out_l = f.output(self.left_out)
+        b_out_r = f.output(self.right_out)
+
+        # 1. Sum left + right to mono
+        self._n_sum = f.add(ag.MIX, (b_left, b_right), b_mono)
+        f.set(self._n_sum, 0, 0.5)
+        f.set(self._n_sum, 1, 0.5)
+
+        # 2. Preamp biquads
+        self._n_dc = f.add(ag.BIQUAD, (b_mono,), b_dc)
+        f.set(self._n_dc, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
+        f.set(self._n_dc, ag.BIQUAD_FREQUENCY, LOW_CUT_HZ)
+        f.set(self._n_dc, ag.BIQUAD_Q, 0.7071)
+        f.set(self._n_dc, ag.BIQUAD_GAIN_DB, 0.0)
+
+        self._n_bass = f.add(ag.BIQUAD, (b_dc,), b_bass)
+        f.set(self._n_bass, ag.BIQUAD_MODE, audiobiquad.LOW_SHELF)
+        f.set(self._n_bass, ag.BIQUAD_FREQUENCY, BASS_HZ)
+        f.set(self._n_bass, ag.BIQUAD_Q, 0.7071)
+
+        self._n_treble = f.add(ag.BIQUAD, (b_bass,), b_treble)
+        f.set(self._n_treble, ag.BIQUAD_MODE, audiobiquad.HIGH_SHELF)
+        f.set(self._n_treble, ag.BIQUAD_FREQUENCY, TREBLE_HZ)
+        f.set(self._n_treble, ag.BIQUAD_Q, 0.7071)
+
+        # 3. Saturation (TANH) and Volume (MIX)
+        self._n_tanh = f.add(ag.TANH, (b_treble,), b_tanh)
+
+        # Master volume crossfade/gain between b_treble (clean) and b_tanh (sat)
+        self._n_vol = f.add(ag.MIX, (b_treble, b_tanh), b_vol)
+
+        # 4. Amplitude Tremolo
+        self._n_tremolo = f.add(ag.TREMOLO, (b_vol,), (b_out_l, b_out_r))
+        f.set(self._n_tremolo, ag.TREMOLO_MODE, ag.TREMOLO_AMPLITUDE)
+        f.set(self._n_tremolo, ag.TREMOLO_RATE, TREMOLO_RATE_HZ)
+
+        f.bind(("tone",), self._graph_tone)
+        f.bind(("amp_drive", "volume"), self._graph_amp_vol)
+        f.bind(("tremolo",), self._graph_tremolo)
+        f.on_reset(self._graph_reset)
+
+        self._graph_tone()
+        self._graph_amp_vol()
+        self._graph_tremolo()
+
+    def _graph_tone(self):
+        p = self.params
+        tilt_db = (p["tone"] - 5.0) * 2.4
+        self._fragment.set(self._n_bass, self._ag.BIQUAD_GAIN_DB, -tilt_db)
+        self._fragment.set(self._n_treble, self._ag.BIQUAD_GAIN_DB, tilt_db)
+
+    def _graph_amp_vol(self):
+        p = self.params
+        vol_gain = (p["volume"] / 10.0) * 1.5
+        amp_drive = p["amp_drive"] / 10.0
+        if amp_drive > 0.0:
+            pre_gain = 1.0 + 1.2 * amp_drive
+            post_gain = 1.0 / (1.0 + 0.4 * amp_drive)
+            self._fragment.set(self._n_tanh, self._ag.TANH_DRIVE, pre_gain)
+            self._fragment.set(self._n_tanh, self._ag.TANH_LEVEL, post_gain)
+            self._fragment.set(self._n_vol, 0, 0.0)
+            self._fragment.set(self._n_vol, 1, vol_gain)
+        else:
+            self._fragment.set(self._n_vol, 0, vol_gain)
+            self._fragment.set(self._n_vol, 1, 0.0)
+
+    def _graph_tremolo(self):
+        depth = self.params["tremolo"] / 10.0
+        self._fragment.set(self._n_tremolo, self._ag.TREMOLO_DEPTH, depth)
+
+    def _graph_reset(self):
+        f = self._fragment
+        f.reset(self._n_dc)
+        f.reset(self._n_bass)
+        f.reset(self._n_treble)
+        f.reset(self._n_tremolo)

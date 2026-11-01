@@ -198,3 +198,106 @@ class ClavichordOutput(Module):
         trem_depth = float(p["tremolo_depth"]) / 10.0
         self.tremolo.set(rate_hz=rate_hz, depth=trem_depth, mode="amplitude")
         self.tremolo.render(filt_out, out_l, out_r)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        import audiobiquad
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        b_left = f.input(self.left_in)
+        b_right = f.input(self.right_in)
+        b_mono = f.buffer()
+        b_brilliant = f.buffer()
+        b_treble = f.buffer()
+        b_medium = f.buffer()
+        b_soft = f.buffer()
+        b_wah = f.buffer()
+        b_tanh = f.buffer()
+        b_out_l = f.output(self.left_out)
+        b_out_r = f.output(self.right_out)
+
+        # 1. Sum left + right to mono
+        self._n_sum = f.add(ag.MIX, (b_left, b_right), b_mono)
+        f.set(self._n_sum, 0, 0.5)
+        f.set(self._n_sum, 1, 0.5)
+
+        # 2. Tone tabs and wah biquads
+        self._n_brilliant = f.add(ag.BIQUAD, (b_mono,), b_brilliant)
+        f.set(self._n_brilliant, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
+        f.set(self._n_brilliant, ag.BIQUAD_FREQUENCY, BRILLIANT_HZ)
+        f.set(self._n_brilliant, ag.BIQUAD_Q, 0.7071)
+        f.set(self._n_brilliant, ag.BIQUAD_GAIN_DB, 0.0)
+
+        self._n_treble = f.add(ag.BIQUAD, (b_brilliant,), b_treble)
+        f.set(self._n_treble, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
+        f.set(self._n_treble, ag.BIQUAD_FREQUENCY, TREBLE_HZ)
+        f.set(self._n_treble, ag.BIQUAD_Q, 0.5)
+        f.set(self._n_treble, ag.BIQUAD_GAIN_DB, 0.0)
+
+        self._n_medium = f.add(ag.BIQUAD, (b_treble,), b_medium)
+        f.set(self._n_medium, ag.BIQUAD_MODE, audiobiquad.BAND_PASS)
+        f.set(self._n_medium, ag.BIQUAD_FREQUENCY, MEDIUM_HZ)
+        f.set(self._n_medium, ag.BIQUAD_Q, 0.8)
+        f.set(self._n_medium, ag.BIQUAD_GAIN_DB, 0.0)
+
+        self._n_soft = f.add(ag.BIQUAD, (b_medium,), b_soft)
+        f.set(self._n_soft, ag.BIQUAD_MODE, audiobiquad.LOW_PASS)
+        f.set(self._n_soft, ag.BIQUAD_FREQUENCY, SOFT_HZ)
+        f.set(self._n_soft, ag.BIQUAD_Q, 0.7071)
+        f.set(self._n_soft, ag.BIQUAD_GAIN_DB, 0.0)
+
+        self._n_wah = f.add(ag.BIQUAD, (b_soft,), b_wah)
+        f.set(self._n_wah, ag.BIQUAD_MODE, audiobiquad.BAND_PASS)
+        f.set(self._n_wah, ag.BIQUAD_FREQUENCY, WAH_BASE_HZ)
+        f.set(self._n_wah, ag.BIQUAD_Q, WAH_Q)
+        f.set(self._n_wah, ag.BIQUAD_GAIN_DB, 0.0)
+
+        # 3. Master volume and soft clipping output stage
+        self._n_tanh = f.add(ag.TANH, (b_wah,), b_tanh)
+        f.set(self._n_tanh, ag.TANH_LEVEL, CEILING)
+
+        # 4. Amplitude Tremolo
+        self._n_tremolo = f.add(ag.TREMOLO, (b_tanh,), (b_out_l, b_out_r))
+        f.set(self._n_tremolo, ag.TREMOLO_MODE, ag.TREMOLO_AMPLITUDE)
+
+        f.bind(("brilliant", "treble", "medium", "soft", "wah"), self._graph_filters)
+        f.bind(("volume",), self._graph_volume)
+        f.bind(("tremolo_rate", "tremolo_depth"), self._graph_tremolo)
+        f.on_reset(self._graph_reset)
+
+        self._graph_filters()
+        self._graph_volume()
+        self._graph_tremolo()
+
+    def _graph_filters(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_brilliant, ag.BIQUAD_MIX, 1.0 if float(p["brilliant"]) > 0.5 else 0.0)
+        f.set(self._n_treble, ag.BIQUAD_MIX, 1.0 if float(p["treble"]) > 0.5 else 0.0)
+        f.set(self._n_medium, ag.BIQUAD_MIX, 1.0 if float(p["medium"]) > 0.5 else 0.0)
+        f.set(self._n_soft, ag.BIQUAD_MIX, 1.0 if float(p["soft"]) > 0.5 else 0.0)
+        f.set(self._n_wah, ag.BIQUAD_MIX, 1.0 if float(p["wah"]) > 0.0 else 0.0)
+
+    def _graph_volume(self):
+        drive = (float(self.params["volume"]) / 10.0) * VOLUME_GAIN / CEILING
+        self._fragment.set(self._n_tanh, self._ag.TANH_DRIVE, drive)
+
+    def _graph_tremolo(self):
+        p = self.params
+        rate_hz = 1.0 + (float(p["tremolo_rate"]) / 10.0) * 9.0
+        depth = float(p["tremolo_depth"]) / 10.0
+        self._fragment.set(self._n_tremolo, self._ag.TREMOLO_RATE, rate_hz)
+        self._fragment.set(self._n_tremolo, self._ag.TREMOLO_DEPTH, depth)
+
+    def _graph_reset(self):
+        f = self._fragment
+        f.reset(self._n_brilliant)
+        f.reset(self._n_treble)
+        f.reset(self._n_medium)
+        f.reset(self._n_soft)
+        f.reset(self._n_wah)
+        f.reset(self._n_tremolo)

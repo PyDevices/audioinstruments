@@ -77,19 +77,36 @@ THUD_LEN = 960
 THUD_SCALE = 0.05
 THUD_TABLE = create_buffer(THUD_LEN)
 
+#: The 90 Hz sine's amplitude in the table, in table units: the table is that
+#: sine times a 4 ms envelope, divided by its own peak, so the sine the table
+#: plays is louder than the 1.0 its peak suggests.
+THUD_SINE = 0.0
+
 
 def _init_thud():
+    global THUD_SINE
     for i in range(THUD_LEN):
         t = i / 48000.0
         env = math.exp(-t / 0.004)
         THUD_TABLE[i] = math.sin(2.0 * math.pi * 90.0 * t) * env
     peak = max(abs(float(v)) for v in THUD_TABLE)
     if peak > 0.0:
+        THUD_SINE = 1.0 / peak
         for i in range(THUD_LEN):
             THUD_TABLE[i] /= peak
 
 
 _init_thud()
+
+#: One sine at the wire's unit amplitude: the oscillator's level counts in
+#: 32768ths and the graph's unit is 16384, so a level of 1.0 sounds at twice
+#: the amplitude a unit sine has.
+OSC_UNITY = 0.5
+
+#: The graph's thud oscillator plays what the rack's table plays, so it starts
+#: its sine at the table's amplitude and at the pad's landing (see
+#: ``_graph_gate``), where the rack's table starts.
+THUD_OSC_LEVEL = OSC_UNITY * THUD_SINE
 
 
 def reed_modes(note, decay=1.0, pad_stick=0.5):
@@ -236,3 +253,171 @@ class ReedPianoVoice(Module):
                 self._thud_pos += k
             if self._thud_pos >= THUD_LEN:
                 self._thud_active = False
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    graph_fold_gain = 1.0
+
+    def graph_fold(self, gain):
+        self.graph_fold_gain = gain
+        if getattr(self, "_fragment", None) is not None:
+            self._dirty = True
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_bar = f.buffer()
+        b_env = f.output(self.env_out)
+        b_damped = f.buffer()
+        b_pickup = f.buffer()
+        b_not_gate = f.buffer()
+        b_rel_env_raw = f.buffer()
+        b_rel_env = f.buffer()
+        b_thud_osc = f.buffer()
+        b_thud = f.buffer()
+        b_out = f.output(self.audio_out)
+
+        self._n_struck = f.add(ag.STRUCK, (gate,), b_bar)
+        f.set(self._n_struck, ag.STRUCK_SHAPE, ag.STRUCK_PLUCK)
+        f.set(self._n_struck, ag.STRUCK_LEVEL, STRIKE_LEVEL)
+
+        self._n_env = f.add(ag.ENV, (gate,), b_env)
+
+        self._n_vca = f.add(ag.VCA, (b_bar, b_env, None), b_damped)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        f.set(self._n_vca, ag.VCA_GAIN, 1.0)
+
+        self._n_pickup = f.add(ag.PICKUP, (b_damped,), b_pickup)
+        f.set(self._n_pickup, ag.PICKUP_MODE, ag.PICKUP_ELECTROMAGNETIC)
+
+        # Inverted gate for release thud: not_gate = 1 - gate
+        self._n_not_gate = f.add(ag.MIX, (gate,), b_not_gate)
+        f.set(self._n_not_gate, ag.MIX_OFFSET, ag.UNIT)
+        f.set(self._n_not_gate, 0, -1.0)
+
+        # Release envelope: tau = 0.004 s -> release = 4 * 0.004 = 0.016 s
+        self._n_rel_env = f.add(ag.ENV, (gate,), b_rel_env_raw)
+        f.set(self._n_rel_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_rel_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_rel_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_rel_env, ag.ENV_RELEASE, 0.016)
+
+        # Gated release envelope: rel_env = rel_env_raw * not_gate
+        self._n_rel_gate = f.add(ag.VCA, (b_rel_env_raw, b_not_gate, None), b_rel_env)
+        f.set(self._n_rel_gate, ag.VCA_SELECT, 0.0)
+        f.set(self._n_rel_gate, ag.VCA_GAIN, 1.0)
+
+        # 90 Hz sine wave oscillator for thud
+        self._n_thud_osc = f.add(ag.OSC, (None, None, None, None), b_thud_osc)
+        f.set(self._n_thud_osc, ag.OSC_WAVEFORM, 8)
+        f.set(self._n_thud_osc, ag.OSC_FREQUENCY, 90.0)
+        f.set(self._n_thud_osc, ag.OSC_LEVEL, THUD_OSC_LEVEL)
+
+        # Scaled thud = thud_osc * rel_env * thud_gain
+        self._n_thud_vca = f.add(ag.VCA, (b_thud_osc, b_rel_env, None), b_thud)
+        f.set(self._n_thud_vca, ag.VCA_SELECT, 0.0)
+
+        # Sum string pickup and release thud
+        self._n_sum = f.add(ag.MIX, (b_pickup, b_thud), b_out)
+        f.set(self._n_sum, 0, 1.0)
+        f.set(self._n_sum, 1, 1.0)
+
+        self._cv = 0.0
+        self._velocity = 0.8
+        self._gate = 0.0
+        self._tuned = None
+        self._dirty = True
+
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.watch(self.vel_in, self._graph_velocity)
+        if f.is_control(self.gate_in):
+            f.watch(self.gate_in, self._graph_gate)
+        f.bind(("pad_stick", "decay", "pad_thud"), self._graph_params)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_update()
+
+    def _graph_pitch(self, val):
+        self._cv = val
+        self._dirty = True
+
+    def _graph_velocity(self, val):
+        self._velocity = val
+        self._dirty = True
+
+    def _graph_gate(self, val):
+        # The pad lands on the falling gate, and the thud starts there: the
+        # rack's table starts its sine at zero phase at that sample, so the
+        # graph's oscillator starts there too rather than wherever it happened
+        # to be in its cycle, which made the thud's level follow the note's
+        # length.
+        if self._gate and not val:
+            self._fragment.reset(self._n_thud_osc)
+        self._gate = val
+
+    def _graph_params(self):
+        self._dirty = True
+
+    def _graph_reset(self):
+        self._tuned = None
+        self._dirty = True
+        f = self._fragment
+        f.reset(self._n_struck)
+        f.reset(self._n_env)
+        f.reset(self._n_pickup)
+        f.reset(self._n_rel_env)
+        f.reset(self._n_thud_osc)
+
+    def _graph_block(self):
+        if self._dirty:
+            self._graph_update()
+
+    def _graph_update(self):
+        self._dirty = False
+        f = self._fragment
+        ag = self._ag
+        cv = self._cv
+        note = 60.0 + cv * 120.0
+        f0 = BASE_FREQ_C4 * (2.0 ** (cv * 10.0))
+        v = max(0.0, min(1.0, self._velocity))
+
+        p = self.params
+        stick = p["pad_stick"]
+        key = (cv, p["decay"], stick)
+        if key != self._tuned:
+            self._tuned = key
+            scale = decay_scale(p["decay"])
+            modes = reed_modes(note, scale, stick)
+            f.set(self._n_struck, ag.STRUCK_FREQUENCY, f0)
+            f.table(self._n_struck, modes)
+
+        hardness = max(0.05, min(0.95, 0.1 + 0.8 * stick * (0.6 + 0.4 * v)))
+        f.set(self._n_struck, ag.STRUCK_HARDNESS, hardness)
+
+        f.set(self._n_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_env, ag.ENV_RELEASE, DAMP_TIME)
+
+        key_drive = key_curve(note, DRIVE_KEY) * (0.6 + 0.8 * stick)
+        drive = DRIVE_BASE * key_drive * (0.8 + 0.2 * v)
+        f.set(self._n_pickup, ag.PICKUP_OFFSET, OFFSET)
+        f.set(self._n_pickup, ag.PICKUP_DRIVE, drive)
+
+        gain_norm = PickupCore.gain_at(OFFSET, curve="electromagnetic")
+        vel_level = 0.5 + 0.5 * v
+        level = (
+            self.graph_fold_gain
+            * VOICE_GAIN
+            * vel_level
+            * key_curve(note, KEY_LEVEL)
+            / key_drive
+            / (gain_norm**0.5)
+        )
+        f.set(self._n_pickup, ag.PICKUP_LEVEL, level)
+
+        thud_gain = self.graph_fold_gain * float(p["pad_thud"]) * THUD_SCALE
+        f.set(self._n_thud_vca, ag.VCA_GAIN, thud_gain)

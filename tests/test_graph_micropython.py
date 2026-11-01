@@ -23,6 +23,11 @@ CASES = [
     ("mono_one", 0),
     ("state_variable_mono", 0),
     ("bass_pedals", 0),
+    ("electric_piano", 0),
+    ("reed_piano", 0),
+    ("reed_piano200a", 0),
+    ("electric_grand70", 0),
+    ("clavichord", 0),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 

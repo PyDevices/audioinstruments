@@ -230,3 +230,147 @@ class ElectricGrand70Voice(Module):
         out = self.audio_out.buffer
         copy_into(out, bar)
         out *= VOICE_GAIN * vel_level * key_curve(note, KEY_LEVEL)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    graph_fold_gain = 1.0
+
+    def graph_fold(self, gain):
+        self.graph_fold_gain = gain
+        if getattr(self, "_fragment", None) is not None:
+            self._dirty = True
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_s1 = f.buffer()
+        b_s2 = f.buffer()
+        b_prompt = f.buffer()
+        b_bar = f.buffer()
+        b_env = f.output(self.env_out)
+        b_out = f.output(self.audio_out)
+
+        self._n_s1 = f.add(ag.STRUCK, (gate,), b_s1)
+        f.set(self._n_s1, ag.STRUCK_SHAPE, ag.STRUCK_HAMMER)
+        f.set(self._n_s1, ag.STRUCK_LEVEL, STRIKE_LEVEL)
+
+        self._n_s2 = f.add(ag.STRUCK, (gate,), b_s2)
+        f.set(self._n_s2, ag.STRUCK_SHAPE, ag.STRUCK_HAMMER)
+        f.set(self._n_s2, ag.STRUCK_LEVEL, STRIKE_LEVEL)
+
+        self._n_prompt = f.add(ag.STRUCK, (gate,), b_prompt)
+        f.set(self._n_prompt, ag.STRUCK_SHAPE, ag.STRUCK_HAMMER)
+        f.set(self._n_prompt, ag.STRUCK_LEVEL, STRIKE_LEVEL)
+
+        self._n_mix = f.add(ag.MIX, (b_s1, b_s2, b_prompt), b_bar)
+        f.set(self._n_mix, 0, 1.0)
+        f.set(self._n_mix, 1, 1.0)
+        f.set(self._n_mix, 2, 1.0)
+
+        self._n_env = f.add(ag.ENV, (gate,), b_env)
+
+        self._n_vca = f.add(ag.VCA, (b_bar, b_env, None), b_out)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+
+        self._cv = 0.0
+        self._velocity = 0.8
+        self._tuned = None
+        self._dirty = True
+
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.bind(("brightness", "detune", "decay"), self._graph_params)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_update()
+
+    def _graph_pitch(self, val):
+        self._cv = val
+        self._dirty = True
+
+    def _graph_velocity(self, val):
+        self._velocity = val
+        self._dirty = True
+
+    def _graph_params(self):
+        self._dirty = True
+
+    def _graph_reset(self):
+        self._tuned = None
+        self._dirty = True
+        f = self._fragment
+        f.reset(self._n_s1)
+        f.reset(self._n_s2)
+        f.reset(self._n_prompt)
+        f.reset(self._n_env)
+
+    def _graph_block(self):
+        if self._dirty:
+            self._graph_update()
+
+    def _graph_update(self):
+        self._dirty = False
+        f = self._fragment
+        ag = self._ag
+        cv = self._cv
+        note = 60.0 + cv * 120.0
+        f0 = BASE_FREQ_C4 * (2.0 ** (cv * 10.0))
+        v = max(0.0, min(1.0, self._velocity))
+
+        p = self.params
+        brightness = p["brightness"]
+        detune = p["detune"]
+        decay = p["decay"]
+        key = (cv, v, decay, brightness, detune)
+        if key != self._tuned:
+            self._tuned = key
+            scale = decay_scale(decay)
+            self._ring = key_curve(note, FUNDAMENTAL_DECAY) * scale
+            t_prompt = key_curve(note, PROMPT_DECAY) * scale
+            t_tail = self._ring
+            B = key_curve(note, B_CURVE)
+            half = 2.0 ** (detune_cents(note, detune) / 2400.0)
+            tail_sum = 1.0 + SECOND_STRING
+            prompt = tail_sum * (10.0 ** (key_curve(note, PROMPT_DROP_DB) / 20.0) - 1.0)
+
+            h = 0.4 * v + 0.6 * brightness
+            p_roll = 2.1 - 1.2 * h
+            fc = 500.0 + 4500.0 * (h**1.8)
+
+            first = []
+            second = []
+            early = []
+            for n in range(1, PARTIALS_PER_STRING + 1):
+                ratio = n * math.sqrt((1.0 + B * n * n) / (1.0 + B))
+                amp = _partial_gain(n, f0 * ratio, h, p_roll, fc)
+                d_tail = max(0.04, t_tail / (1.0 + TAIL_SLOPE * (n - 1)))
+                first.append((ratio / half, d_tail, amp))
+                second.append((ratio * half, d_tail, SECOND_STRING * amp))
+                if n <= PROMPT_PARTIALS:
+                    d_prompt = max(0.02, t_prompt / (1.0 + PROMPT_SLOPE * (n - 1)))
+                    early.append((ratio, d_prompt, prompt * amp))
+
+            f.set(self._n_s1, ag.STRUCK_FREQUENCY, f0)
+            f.table(self._n_s1, tuple(first))
+            f.set(self._n_s2, ag.STRUCK_FREQUENCY, f0)
+            f.table(self._n_s2, tuple(second))
+            f.set(self._n_prompt, ag.STRUCK_FREQUENCY, f0)
+            f.table(self._n_prompt, tuple(early))
+
+        hardness = 0.08 + 0.9 * (v**1.2) * (0.3 + 0.7 * brightness)
+        f.set(self._n_s1, ag.STRUCK_HARDNESS, hardness)
+        f.set(self._n_s2, ag.STRUCK_HARDNESS, hardness)
+        f.set(self._n_prompt, ag.STRUCK_HARDNESS, hardness)
+
+        rel = 3.0 * self._ring if note >= UNDAMPED else DAMP_TIME
+        f.set(self._n_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_env, ag.ENV_RELEASE, rel)
+
+        vel_level = 10.0 ** (-VELOCITY_DB * (1.0 - v) / 20.0)
+        gain = self.graph_fold_gain * VOICE_GAIN * vel_level * key_curve(note, KEY_LEVEL)
+        f.set(self._n_vca, ag.VCA_GAIN, gain)
