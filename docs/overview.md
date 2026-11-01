@@ -85,6 +85,13 @@ MIDI File, with the drums on channel 10. [docs/soundfont.md](soundfont.md)
 has the options, and `python examples/soundfont_demo.py` plays a short phrase
 from a bank in `~/soundfonts/`.
 
+## A control panel
+
+`audioinstruments.panel.create("poly106", 48000)` wraps an instrument for a
+control panel: macros on the MIDI scale, patch names, bypass and reload, and
+a callback when a controller moves something. [docs/panel.md](panel.md) lists
+what it has.
+
 ## Loading only what you use
 
 `import audioinstruments._rack` loads the rack and its core and nothing else. A synth is
