@@ -15,6 +15,8 @@ take -5 to +5. Every depth below is a constant in this file, and
 
 import math
 
+from ...core.bridge import OSC_LEVEL, PITCH_OCTAVES
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import (
@@ -77,6 +79,13 @@ FOOT_LOUD_R302 = 100.0
 #: The mixer's gain into the ladder, and the voice's output gain.
 MIX_LEVEL = 1.0
 OUTPUT_GAIN = 1.5
+LADDER_K = 4.0
+WAVE_SAW = 1
+TRIG_SECONDS = 0.002
+GAP_GAIN = 4.0
+GAP_THRESHOLD = 0.9
+GLIDE_SCALE = 3.75
+GLIDE_SHIFT = 3.0 / 120.0
 
 
 def slider_time(norm, span):
@@ -325,6 +334,373 @@ class BassPedalsVoice(Module):
             ramp += prev
             out *= ramp
         self._gain = gain
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    #: The voice mix's level, and the master's scale when nothing stands between, which
+    #: ``VoiceMix`` folds into this voice's last gain so its wire is rounded once.
+    graph_fold_gain = 1.0
+
+    def graph_fold(self, gain):
+        """Take ``gain`` into the voice's last gain (see ``graph_fold_gain``)."""
+        self.graph_fold_gain = gain
+        if getattr(self, "_fragment", None) is not None:
+            self._graph_vca()
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        gate = f.input(self.gate_in)
+        src_note = self.note_in if self.note_in.cable is not None else self.pitch_in
+        self._has_note = self.note_in.cable is not None
+        self._has_pitch = self.pitch_in.cable is not None
+        self._note_control = (self._has_note or self._has_pitch) and f.is_control(src_note)
+        self._pitch_control = self._has_pitch and f.is_control(self.pitch_in)
+        self._gate_control = gate is not None and f.is_control(self.gate_in)
+        self._trig_control = self.trig_in.cable is not None and f.is_control(self.trig_in)
+        self._has_legato = self.legato_in.cable is not None
+        self._legato_control = self._has_legato and f.is_control(self.legato_in)
+        self._vel_control = self.vel_in.cable is not None and f.is_control(self.vel_in)
+        self._expr_control = self.expr_in.cable is not None and f.is_control(self.expr_in)
+        self._foot_control = self.foot_in.cable is not None and f.is_control(self.foot_in)
+
+        self._key = 0.0
+        self._note = 0.0
+        self._gate = 0.0
+        self._trig = 0.0
+        self._legato = 0.0
+        self._velocity = 1.0
+        self._expr = 1.0
+        self._foot = 1.0
+        self._egate_high = False
+
+        b_pgate, b_pulse, b_egate = f.buffer(), f.buffer(), f.buffer()
+        b_fenv, b_lenv, b_pcv = f.buffer(), f.buffer(), f.buffer()
+        b_a, b_b, b_mix = f.buffer(), f.buffer(), f.buffer()
+        b_fcv, b_filt, b_vca = f.buffer(), f.buffer(), f.buffer()
+
+        self._n_pgate = f.add(ag.CONST, (), b_pgate)
+        self._n_pulse = f.add(ag.ENV, (b_pgate,), b_pulse)
+        self._n_egate = f.add(ag.MIX, (gate, b_pulse), b_egate)
+        f.set(self._n_egate, 0, 1.0)
+        f.set(self._n_egate, 1, -GAP_GAIN)
+        self._graph_pulse_shape()
+
+        self._n_fenv = f.add(ag.ENV, (b_egate,), b_fenv)
+        self._n_lenv = f.add(ag.ENV, (b_egate,), b_lenv)
+
+        if self._note_control:
+            b_note = f.buffer()
+            b_fine = f.buffer()
+            self._n_note = f.add(ag.CONST, (), b_note)
+            self._n_lag = f.add(ag.LAG, (b_note, None, None), b_fine)
+            f.set(self._n_lag, ag.LAG_SHAPE, ag.LAG_ONE_POLE)
+            self._n_pcv = f.add(ag.MIX, (b_fine,), b_pcv)
+            f.set(self._n_pcv, 0, 1.0 / GLIDE_SCALE)
+            f.set(self._n_pcv, ag.MIX_OFFSET, GLIDE_SHIFT * UNIT)
+        elif self._has_note or self._has_pitch:
+            b_in = f.input(src_note)
+            b_slid = f.buffer()
+            self._n_note = None
+            self._n_lag = f.add(ag.LAG, (b_in, None, None), b_slid)
+            f.set(self._n_lag, ag.LAG_SHAPE, ag.LAG_ONE_POLE)
+            if self._has_note and self._has_pitch:
+                self._n_pcv = f.add(
+                    ag.MIX, (b_slid, f.input(self.pitch_in), f.input(self.note_in)), b_pcv
+                )
+                f.set(self._n_pcv, 0, 1.0)
+                f.set(self._n_pcv, 1, 1.0)
+                f.set(self._n_pcv, 2, -1.0)
+            else:
+                self._n_pcv = f.add(ag.MIX, (b_slid,), b_pcv)
+                f.set(self._n_pcv, 0, 1.0)
+        else:
+            self._n_note = None
+            self._n_lag = None
+            self._n_pcv = f.add(ag.MIX, (), b_pcv)
+
+        self._n_osc_a = f.add(ag.OSC, (b_pcv, None, None, None), b_a)
+        self._n_osc_b = f.add(ag.OSC, (b_pcv, None, None, None), b_b)
+        for node in (self._n_osc_a, self._n_osc_b):
+            f.set(node, ag.OSC_WAVEFORM, WAVE_SAW)
+            f.set(node, ag.OSC_LEVEL, OSC_LEVEL)
+            f.set(node, ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+
+        self._n_mix = f.add(ag.MIX, (b_a, b_b), b_mix)
+        self._n_fcv = f.add(ag.MIX, (b_fenv,), b_fcv)
+        self._n_vcf = f.add(ag.LADDER, (b_mix, b_fcv), b_filt)
+        f.set(self._n_vcf, ag.LADDER_DRIVE, 2.0)
+        f.set(self._n_vcf, ag.LADDER_CUTOFF_OCTAVES, 20.0)
+        f.set(self._n_vcf, ag.LADDER_POLES, 4.0)
+        f.set(self._n_vcf, ag.LADDER_PASSBAND_COMP, 0.0)
+        f.set(self._n_vcf, ag.LADDER_CUTOFF_HZ, FILTER_LOW_HZ)
+
+        self._n_vca = f.add(ag.VCA, (b_filt, b_lenv, None), b_vca)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        f.set(self._n_vca, ag.VCA_GAIN, 0.5)
+        self._n_out = f.add(ag.MIX, (b_vca,), f.output(self.audio_out))
+
+        f.bind(("glide", "glide_amount"), self._graph_glide)
+        f.bind(("range", "octave", "tune", "osc_b_freq", "beat"), self._graph_freq)
+        f.bind(("mix",), self._graph_mix)
+        f.bind(("filter_attack", "filter_decay"), self._graph_fenv)
+        f.bind(("loud_attack", "loud_decay", "decay"), self._graph_lenv)
+        f.bind(("filter_emphasis",), self._graph_vcf)
+        f.bind(
+            ("filter_cutoff", "filter_amount", "vel_vcf", "range", "octave"),
+            self._graph_fcv,
+        )
+        f.bind(("loud_sustain", "vel_vca"), self._graph_vca)
+
+        if self._pitch_control:
+            f.watch(self.pitch_in, self._graph_key)
+        if self._note_control:
+            f.watch(src_note, self._graph_note)
+        if self._gate_control:
+            f.watch(self.gate_in, self._graph_gate)
+        if self._trig_control:
+            f.watch(self.trig_in, self._graph_trig)
+        if self._legato_control:
+            f.watch(self.legato_in, self._graph_legato)
+        if self._vel_control:
+            f.watch(self.vel_in, self._graph_velocity)
+        if self._expr_control:
+            f.watch(self.expr_in, self._graph_expr)
+        if self._foot_control:
+            f.watch(self.foot_in, self._graph_foot)
+
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        f.prime(self._graph_scatter)
+
+    def _graph_pulse_shape(self, length=None):
+        f = self._fragment
+        ag = self._ag
+        if length is None:
+            length = min(int(self.sample_rate * TRIG_SECONDS), self.block_size)
+        decay = math.exp(math.log(GAP_THRESHOLD / GAP_GAIN) / (length - 1.5))
+        f.set(self._n_pulse, ag.ENV_ATTACK, 0.0)
+        f.set(self._n_pulse, ag.ENV_DECAY, -1.0 / math.log(decay) / (0.25 * self.sample_rate))
+        f.set(self._n_pulse, ag.ENV_SUSTAIN, 0.0)
+        f.set(self._n_pulse, ag.ENV_RELEASE, 0.01)
+
+    def _graph_key(self, value):
+        self._key = value
+        if not self._has_note:
+            self._note = value
+        self._graph_bend()
+
+    def _graph_note(self, value):
+        self._note = value
+        if not self._has_pitch:
+            self._key = value
+        if self._n_note is not None:
+            self._fragment.set(self._n_note, 0, (value - GLIDE_SHIFT) * GLIDE_SCALE * UNIT)
+        self._graph_bend()
+
+    def _graph_bend(self):
+        if self._note_control:
+            self._fragment.set(
+                self._n_pcv, self._ag.MIX_OFFSET, (self._key - self._note + GLIDE_SHIFT) * UNIT
+            )
+
+    def _graph_gate(self, value):
+        self._gate = value
+
+    def _graph_trig(self, value):
+        self._trig = value
+
+    def _graph_legato(self, value):
+        self._legato = value
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_fcv()
+        self._graph_vca()
+
+    def _graph_expr(self, value):
+        self._expr = value
+        self._graph_vca()
+
+    def _graph_foot(self, value):
+        self._foot = value
+        self._graph_fcv()
+
+    def _graph_glide(self):
+        if self._n_lag is None:
+            return
+        p = self.params
+        if p["glide"] >= 0.5 and self._glided is not None:
+            t = slider_time(p["glide_amount"], GLIDE_TAU) * CORE_ATTACK_PER_TAU
+        else:
+            t = 0.0
+        self._fragment.set(self._n_lag, self._ag.LAG_TIME, t)
+
+    def _graph_freq(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        footage = switch_index(p["range"] + 0.5, 3) + (1 if p["octave"] >= 0.5 else 0)
+        mult = FOOTAGE_MULT[footage]
+        base_a = BASE_FREQ_C4 * mult * (1.0 + TUNE_RATIO * p["tune"] / 5.0)
+        ratio = OSC_B_LOW + (OSC_B_HIGH - OSC_B_LOW) * p["osc_b_freq"]
+        base_b = base_a * ratio * (1.0 + BEAT_RATIO * p["beat"] / 5.0)
+        f.set(self._n_osc_a, ag.OSC_FREQUENCY, base_a)
+        f.set(self._n_osc_b, ag.OSC_FREQUENCY, base_b)
+
+    def _graph_mix(self):
+        m = self.params["mix"]
+        f = self._fragment
+        f.set(self._n_mix, 0, m * MIX_LEVEL)
+        f.set(self._n_mix, 1, (1.0 - m) * MIX_LEVEL)
+
+    def _graph_fenv(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        decay = slider_time(p["filter_decay"], DECAY_TAU) * CORE_DECAY_PER_TAU
+        f.set(
+            self._n_fenv,
+            ag.ENV_ATTACK,
+            slider_time(p["filter_attack"], FILTER_ATTACK_TAU) * CORE_ATTACK_PER_TAU,
+        )
+        f.set(self._n_fenv, ag.ENV_DECAY, decay)
+        f.set(self._n_fenv, ag.ENV_SUSTAIN, 0.0)
+        f.set(self._n_fenv, ag.ENV_RELEASE, decay)
+
+    def _graph_lenv(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        release = slider_time(p["loud_decay"], DECAY_TAU) if p["decay"] >= 0.5 else NO_DECAY_TAU
+        f.set(
+            self._n_lenv,
+            ag.ENV_ATTACK,
+            slider_time(p["loud_attack"], LOUD_ATTACK_TAU) * CORE_ATTACK_PER_TAU,
+        )
+        f.set(self._n_lenv, ag.ENV_DECAY, NO_DECAY_TAU * CORE_DECAY_PER_TAU)
+        f.set(self._n_lenv, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_lenv, ag.ENV_RELEASE, release * CORE_DECAY_PER_TAU)
+
+    def _graph_vcf(self):
+        self._fragment.set(
+            self._n_vcf,
+            self._ag.LADDER_RESONANCE,
+            EMPHASIS_TOP * self.params["filter_emphasis"] * LADDER_K,
+        )
+
+    def _graph_fcv(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_fcv, 0, CONTOUR_OCT * OCTAVE_CV * p["filter_amount"])
+        footage = switch_index(p["range"] + 0.5, 3) + (1 if p["octave"] >= 0.5 else 0)
+        mult = FOOTAGE_MULT[footage]
+        slid_end = self._glided if self._glided is not None else self._note
+        f_key = BASE_FREQ_C4 * mult * (2.0 ** (10.0 * slid_end))
+        offset = OCTAVE_CV * (
+            CUTOFF_OCT * p["filter_cutoff"] + FOOT_FILTER_OCT * self._foot + keyboard_octaves(f_key)
+        )
+        if p["vel_vcf"] > 0.0:
+            offset += (self._velocity - 1.0) * p["vel_vcf"] * VEL_FILTER
+        f.set(self._n_fcv, ag.MIX_OFFSET, offset * UNIT)
+
+    def _graph_vca(self):
+        p = self.params
+        gain = p["loud_sustain"] * foot_loudness(self._expr) * OUTPUT_GAIN
+        if p["vel_vca"] > 0.0:
+            gain *= 1.0 - p["vel_vca"] * (1.0 - self._velocity)
+        self._fragment.set(self._n_out, 0, gain * self.graph_fold_gain)
+
+    def _graph_block(self):
+        if not self.enabled:
+            return
+        f = self._fragment
+        steps = f.blocks
+        n = self.block_size
+        p = self.params
+
+        if not self._gate_control:
+            g = jack_signal(self.gate_in)
+            self._gate = float(g[0]) if g is not None else 0.0
+        if not self._trig_control:
+            tr = jack_signal(self.trig_in)
+            self._trig = float(sum(1 for v in tr if v > 0.5)) / float(n) if tr is not None else 0.0
+        if self._has_legato and not self._legato_control:
+            lg = jack_signal(self.legato_in)
+            self._legato = float(lg[0]) if lg is not None else 0.0
+        if not self._vel_control and self.vel_in.cable is not None:
+            vl = jack_signal(self.vel_in)
+            if vl is not None:
+                self._velocity = float(vl[0])
+        if not self._expr_control and self.expr_in.cable is not None:
+            ex = jack_signal(self.expr_in)
+            if ex is not None:
+                self._expr = float(ex[0])
+        if not self._foot_control and self.foot_in.cable is not None:
+            ft = jack_signal(self.foot_in)
+            if ft is not None:
+                self._foot = float(ft[0])
+        if not self._note_control:
+            nt = jack_signal(self.note_in if self._has_note else self.pitch_in)
+            self._note = float(nt[0]) if nt is not None else 0.0
+
+        cut = 0
+        retrig_ready = self._legato > 0.5 if self._has_legato else self._egate_high
+        if self._trig > 0.0 and steps >= 1 and retrig_ready and self._egate_high:
+            cut = max(1, int(self._trig * n + 0.5))
+            self._graph_pulse_shape(cut)
+            f.set(self._n_pgate, 0, UNIT)
+            f.reset(self._n_pulse)
+        self._egate_high = self._gate > 0.5 and not (cut >= n and steps <= 1)
+
+        target = self._note
+        if self._glided is None:
+            self._glided = target
+            if self._n_lag is not None:
+                f.set(self._n_lag, self._ag.LAG_TIME, 0.0)
+        elif steps >= 1:
+            if p["glide"] >= 0.5:
+                tau = slider_time(p["glide_amount"], GLIDE_TAU)
+                if self._n_lag is not None:
+                    f.set(self._n_lag, self._ag.LAG_TIME, tau * CORE_ATTACK_PER_TAU)
+                if self._glided != target:
+                    coeff = math.exp(-float(n * steps) / (tau * self.sample_rate))
+                    self._glided = target + (self._glided - target) * coeff
+            else:
+                if self._n_lag is not None:
+                    f.set(self._n_lag, self._ag.LAG_TIME, 0.0)
+                self._glided = target
+
+        if self._glided is not None:
+            self._slid[:] = self._glided
+
+        self._graph_fcv()
+        if not self._vel_control or not self._expr_control:
+            self._graph_vca()
+
+    def _graph_scatter(self, run):
+        f = self._fragment
+        ag = self._ag
+        h = _seed(self.id)
+        f.set(self._n_osc_a, ag.OSC_FREQUENCY, 50.0 + h % 997)
+        f.set(self._n_osc_b, ag.OSC_FREQUENCY, 70.0 + (h // 7) % 991)
+        f.set(self._n_pcv, 0, 0.0)
+        f.set(self._n_pcv, ag.MIX_OFFSET, 0.0)
+        mask = (1 << f.group) if f.group < 32 else 0
+        run(mask, (self._n_osc_a, self._n_osc_b))
+        f.set(self._n_pcv, 0, 1.0 / GLIDE_SCALE if self._note_control else 1.0)
+        self._graph_bend()
+        self._graph_freq()
+
+    def _graph_reset(self):
+        f = self._fragment
+        for node in (self._n_vcf, self._n_fenv, self._n_lenv, self._n_pulse):
+            f.reset(node)
+        f.set(self._n_pgate, 0, 0.0)
+        self._egate_high = False
+        self._trig = 0.0
 
 
 def _seed(text):
