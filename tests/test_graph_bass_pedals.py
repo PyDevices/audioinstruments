@@ -39,6 +39,8 @@ import audioinstruments._rack.core.signal as signal
 import audioinstruments._rack.dsp.ladder as ladder
 import numpy as np
 import pytest
+from audioinstruments._rack.core import Module, Rack, SignalType, compile_rack, fill
+from audioinstruments._rack.core.graph import UNIT
 from audioinstruments._rack.modules.bass_pedals.voice import BassPedalsVoice
 from audioinstruments._rack.modules.poly_midi_cv import PolyMidiCV
 
@@ -212,6 +214,75 @@ def test_the_glide_roar_preset_matches_the_rack():
         _peak, top8, rms, level = worst(GLIDE_PATCH, phrase)
         assert level > 200.0
         assert top8 <= GLIDE_MATCH and rms <= GLIDE_RMS, (top8, rms)
+
+
+def keeps_every_wire(fn):
+    """Run ``fn`` with buffer sharing off: it reads a wire by its id after a block."""
+    import functools
+
+    import audioinstruments._rack.core.graph as vgraph
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        old, vgraph.REUSE = vgraph.REUSE, False
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            vgraph.REUSE = old
+
+    return wrapper
+
+
+class _GlideSource(Module):
+    NAME = "GlideSource"
+
+    def _build(self):
+        self.pitch = self.add_output("pitch", signal_type=SignalType.CV)
+        self.gate = self.add_output("gate", signal_type=SignalType.GATE)
+        self.pitch_val = 0.0
+        self.gate_val = 0.0
+
+    def process(self, block_size):
+        fill(self.pitch.buffer, self.pitch_val)
+        fill(self.gate.buffer, self.gate_val)
+
+
+@keeps_every_wire
+def _glide_wire_curve(compiled, glide_amount=5.0):
+    rack = Rack(block_size=128, sample_rate=48000)
+    src = rack.add_module(_GlideSource("src", sample_rate=48000, block_size=128))
+    voice = rack.add_module(BassPedalsVoice("voice", sample_rate=48000, block_size=128))
+    rack.connect(src.pitch, voice.pitch_in)
+    rack.connect(src.gate, voice.gate_in)
+    rack.connect(voice.audio_out, rack.master_left_in)
+    voice.set_param("glide", 1.0)
+    voice.set_param("glide_amount", glide_amount)
+
+    src.gate_val = 1.0
+    keys = {0: 0.1, 40: 0.4, 80: 0.2}
+    engine = compile_rack(rack, scale=1.0) if compiled else None
+    raw = bytearray(128 * 4)
+    i16 = np.zeros(128, dtype=np.int16)
+    curve = []
+    for k in range(120):
+        if k in keys:
+            src.pitch_val = keys[k]
+        if engine is None:
+            rack.step()
+            curve.append(np.round(np.array(voice._slid) * UNIT))
+        else:
+            engine.step(raw, 0)
+            engine.graph.read(voice._b_glided, i16)
+            curve.append(i16.astype(np.float64))
+    return np.concatenate(curve)
+
+
+@pytest.mark.parametrize("glide_amount", [1.0, 3.0, 5.0, 8.0])
+def test_the_glided_pitch_wire_is_the_rack_glide_to_a_count(glide_amount):
+    rack = _glide_wire_curve(False, glide_amount)
+    graph = _glide_wire_curve(True, glide_amount)
+    diff = np.abs(rack - graph)
+    assert diff.max() <= 1.0, diff.max()
 
 
 # -- the controls and foot sliders ------------------------------------------------------
