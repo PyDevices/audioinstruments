@@ -213,25 +213,45 @@ def test_release_pluck_sounds_on_both_rack_and_graph():
 
 
 def test_release_pluck_tail_energy_matches_rack():
-    """Release tail RMS over 80 ms after note-off matches rack."""
-    phrase = released_note(key=60, vel=100, wait=10, hold=20, decay=40)
-    pcm_g, _ = render("graph", 0, phrase, controls={"tremolo_depth": 0.0})
-    pcm_r, lat_r = render("rack", 0, phrase, controls={"tremolo_depth": 0.0})
+    """The release pluck's energy over 80 ms after note-off matches the rack's.
 
+    The pluck is measured on its own, by differencing each engine's render
+    against one with ``REL_PLUCK_GAIN`` at zero, because the damped bar cannot
+    be lined up between the two: the rack's bridge hands the bar's ring to the
+    output 256 frames late while its damper envelope closes on time, so the
+    two tails carry the same envelope on rings 256 frames apart, and no one
+    window matches both. The pluck is added after the bridge, so it starts at
+    the note-off frame in both engines.
+    """
+    from audioinstruments._rack.modules.clavichord import voice
+
+    phrase = released_note(key=60, vel=100, wait=10, hold=20, decay=40)
     # Note-off is at buffer 30 = frame 3840; 80 ms is 3840 samples at 48 kHz
     off_frame = 30 * BUFFER
-    tail_g = pcm_g[off_frame : off_frame + 3840, 0].astype(np.float64)
-    tail_r = pcm_r[off_frame : off_frame + 3840, 0].astype(np.float64)
+
+    def pluck_tail(engine):
+        controls = {"tremolo_depth": 0.0}
+        with_pluck, _ = render(engine, 0, phrase, controls)
+        orig_gain = voice.REL_PLUCK_GAIN
+        voice.REL_PLUCK_GAIN = 0.0
+        try:
+            without_pluck, _ = render(engine, 0, phrase, controls)
+        finally:
+            voice.REL_PLUCK_GAIN = orig_gain
+        tail = (with_pluck - without_pluck)[off_frame : off_frame + 3840, 0]
+        return tail.astype(np.float64)
+
+    tail_g = pluck_tail("graph")
+    tail_r = pluck_tail("rack")
 
     rms_g = float(np.sqrt(np.mean(tail_g**2)))
     rms_r = float(np.sqrt(np.mean(tail_r**2)))
     assert rms_g > 10.0 and rms_r > 10.0, f"release pluck too quiet: graph={rms_g}, rack={rms_r}"
     ratio = rms_g / rms_r
-    # The graph's tail measures 1.61x the rack's; the bound pins it there so a
-    # change in the release pluck's level or length fails. The offset itself is
-    # not yet explained.
-    assert 1.50 <= ratio <= 1.70, (
-        f"release tail energy mismatch: graph={rms_g:.2f}, rack={rms_r:.2f}, ratio={ratio:.3f}"
+    # The oscillator's level counts in 32768ths and the graph's unit is
+    # 16384, so a pluck sine at level 1.0 sounds twice the rack's own.
+    assert 0.95 <= ratio <= 1.05, (
+        f"release pluck energy mismatch: graph={rms_g:.2f}, rack={rms_r:.2f}, ratio={ratio:.3f}"
     )
 
 

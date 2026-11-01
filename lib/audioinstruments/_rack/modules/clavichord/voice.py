@@ -94,6 +94,11 @@ REL_PLUCK_TAU = 0.008
 #: How long after a strike the voice watches its own peak (s), for the pluck.
 ATTACK_WATCH = 0.03
 
+#: One sine at the wire's unit amplitude: the oscillator's level counts in
+#: 32768ths and the graph's unit is 16384, so a level of 1.0 sounds at twice
+#: the amplitude the rack's own sine has.
+OSC_UNITY = 0.5
+
 
 def clav_modes(note, pickup="both", mute=0.0, velocity=1.0):
     """The mode table, rows of ``(ratio, decay, gain)``, for one key, pickup, mute and velocity."""
@@ -377,15 +382,15 @@ class ClavichordVoice(Module):
         # 7. Additive sines for release pluck (harmonics 1, 2, 3)
         self._n_osc0 = f.add(ag.OSC, (None, None, None, None), b_osc0)
         f.set(self._n_osc0, ag.OSC_WAVEFORM, 8)
-        f.set(self._n_osc0, ag.OSC_LEVEL, 1.0)
+        f.set(self._n_osc0, ag.OSC_LEVEL, OSC_UNITY)
 
         self._n_osc1 = f.add(ag.OSC, (None, None, None, None), b_osc1)
         f.set(self._n_osc1, ag.OSC_WAVEFORM, 8)
-        f.set(self._n_osc1, ag.OSC_LEVEL, 1.0)
+        f.set(self._n_osc1, ag.OSC_LEVEL, OSC_UNITY)
 
         self._n_osc2 = f.add(ag.OSC, (None, None, None, None), b_osc2)
         f.set(self._n_osc2, ag.OSC_WAVEFORM, 8)
-        f.set(self._n_osc2, ag.OSC_LEVEL, 1.0)
+        f.set(self._n_osc2, ag.OSC_LEVEL, OSC_UNITY)
 
         # 8. Mix partials with pickup weights
         self._n_rel_mix = f.add(ag.MIX, (b_osc0, b_osc1, b_osc2), b_rel_sines)
