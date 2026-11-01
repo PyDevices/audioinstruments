@@ -227,7 +227,10 @@ def test_release_pluck_tail_energy_matches_rack():
     rms_r = float(np.sqrt(np.mean(tail_r**2)))
     assert rms_g > 10.0 and rms_r > 10.0, f"release pluck too quiet: graph={rms_g}, rack={rms_r}"
     ratio = rms_g / rms_r
-    assert 1.45 <= ratio <= 1.75, (
+    # The graph's tail measures 1.61x the rack's; the bound pins it there so a
+    # change in the release pluck's level or length fails. The offset itself is
+    # not yet explained.
+    assert 1.50 <= ratio <= 1.70, (
         f"release tail energy mismatch: graph={rms_g:.2f}, rack={rms_r:.2f}, ratio={ratio:.3f}"
     )
 
