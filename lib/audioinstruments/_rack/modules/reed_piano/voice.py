@@ -77,19 +77,36 @@ THUD_LEN = 960
 THUD_SCALE = 0.05
 THUD_TABLE = create_buffer(THUD_LEN)
 
+#: The 90 Hz sine's amplitude in the table, in table units: the table is that
+#: sine times a 4 ms envelope, divided by its own peak, so the sine the table
+#: plays is louder than the 1.0 its peak suggests.
+THUD_SINE = 0.0
+
 
 def _init_thud():
+    global THUD_SINE
     for i in range(THUD_LEN):
         t = i / 48000.0
         env = math.exp(-t / 0.004)
         THUD_TABLE[i] = math.sin(2.0 * math.pi * 90.0 * t) * env
     peak = max(abs(float(v)) for v in THUD_TABLE)
     if peak > 0.0:
+        THUD_SINE = 1.0 / peak
         for i in range(THUD_LEN):
             THUD_TABLE[i] /= peak
 
 
 _init_thud()
+
+#: One sine at the wire's unit amplitude: the oscillator's level counts in
+#: 32768ths and the graph's unit is 16384, so a level of 1.0 sounds at twice
+#: the amplitude a unit sine has.
+OSC_UNITY = 0.5
+
+#: The graph's thud oscillator plays what the rack's table plays, so it starts
+#: its sine at the table's amplitude and at the pad's landing (see
+#: ``_graph_gate``), where the rack's table starts.
+THUD_OSC_LEVEL = OSC_UNITY * THUD_SINE
 
 
 def reed_modes(note, decay=1.0, pad_stick=0.5):
@@ -297,7 +314,7 @@ class ReedPianoVoice(Module):
         self._n_thud_osc = f.add(ag.OSC, (None, None, None, None), b_thud_osc)
         f.set(self._n_thud_osc, ag.OSC_WAVEFORM, 8)
         f.set(self._n_thud_osc, ag.OSC_FREQUENCY, 90.0)
-        f.set(self._n_thud_osc, ag.OSC_LEVEL, 1.0)
+        f.set(self._n_thud_osc, ag.OSC_LEVEL, THUD_OSC_LEVEL)
 
         # Scaled thud = thud_osc * rel_env * thud_gain
         self._n_thud_vca = f.add(ag.VCA, (b_thud_osc, b_rel_env, None), b_thud)
@@ -310,11 +327,14 @@ class ReedPianoVoice(Module):
 
         self._cv = 0.0
         self._velocity = 0.8
+        self._gate = 0.0
         self._tuned = None
         self._dirty = True
 
         f.watch(self.pitch_in, self._graph_pitch)
         f.watch(self.vel_in, self._graph_velocity)
+        if f.is_control(self.gate_in):
+            f.watch(self.gate_in, self._graph_gate)
         f.bind(("pad_stick", "decay", "pad_thud"), self._graph_params)
         f.before_run(self._graph_block)
         f.on_reset(self._graph_reset)
@@ -327,6 +347,16 @@ class ReedPianoVoice(Module):
     def _graph_velocity(self, val):
         self._velocity = val
         self._dirty = True
+
+    def _graph_gate(self, val):
+        # The pad lands on the falling gate, and the thud starts there: the
+        # rack's table starts its sine at zero phase at that sample, so the
+        # graph's oscillator starts there too rather than wherever it happened
+        # to be in its cycle, which made the thud's level follow the note's
+        # length.
+        if self._gate and not val:
+            self._fragment.reset(self._n_thud_osc)
+        self._gate = val
 
     def _graph_params(self):
         self._dirty = True

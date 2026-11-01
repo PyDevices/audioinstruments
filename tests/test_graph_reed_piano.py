@@ -169,6 +169,42 @@ def test_tremolo_modulation_depth_matches_rack():
     assert abs(g_r / r_r - 1.0) < 0.10, f"right modulation depth mismatch: graph={g_r}, rack={r_r}"
 
 
+def test_release_thud_energy_matches_rack():
+    """The pad thud's energy after note-off matches the rack's.
+
+    The thud is measured on its own, by differencing each engine's render
+    against one with ``pad_thud`` at zero. The rack's table is a 90 Hz sine
+    times a 4 ms envelope, divided by its own peak, so the sine it plays is
+    1.82 units and its peak is 1.0; the graph's oscillator plays that sine
+    (see ``THUD_OSC_LEVEL``) from zero phase at the pad's landing, where the
+    table starts, so the two play the same waveform.
+    """
+    phrase = released_note(key=60, vel=100, wait=10, hold=40, decay=20)
+    # Note-off is at buffer 50 = frame 6400
+    off_frame = 50 * BUFFER
+
+    def thud_tail(engine):
+        loud, _ = render(engine, 0, phrase, {"vibrato_depth": 0.0, "pad_thud": 4.0})
+        quiet, _ = render(engine, 0, phrase, {"vibrato_depth": 0.0, "pad_thud": 0.0})
+        tail = (loud - quiet)[off_frame : off_frame + 4 * BUFFER, 0]
+        return tail.astype(np.float64)
+
+    tail_g = thud_tail("graph")
+    tail_r = thud_tail("rack")
+
+    rms_g = float(np.sqrt(np.mean(tail_g**2)))
+    rms_r = float(np.sqrt(np.mean(tail_r**2)))
+    assert rms_g > 10.0 and rms_r > 10.0, f"release thud too quiet: graph={rms_g}, rack={rms_r}"
+    ratio = rms_g / rms_r
+    # The graph's thud at OSC_LEVEL 1.0 measured 1.38x the rack's, because the
+    # rack's table is normalized to its own peak: its sine plays at 1.82
+    # units, not the 1.0 its peak suggests. The graph's oscillator now plays
+    # that sine, from zero phase at the pad's landing.
+    assert 0.95 <= ratio <= 1.05, (
+        f"release thud energy mismatch: graph={rms_g:.2f}, rack={rms_r:.2f}, ratio={ratio:.3f}"
+    )
+
+
 def test_pad_thud_level_controls_release_thud_against_rack():
     """pad_thud controls release thud energy on both rack and graph."""
     phrase = released_note(key=60, vel=100, wait=10, hold=40, decay=20)
