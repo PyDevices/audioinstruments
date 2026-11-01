@@ -310,3 +310,183 @@ class ClavichordVoice(Module):
                 self._rel_amp = amp1
                 if amp1 < 1e-3 * REL_PLUCK_GAIN * self._atk_peak or amp1 < 1e-7:
                     self._rel_active = False
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    graph_fold_gain = 1.0
+
+    def graph_fold(self, gain):
+        self.graph_fold_gain = gain
+        if getattr(self, "_fragment", None) is not None:
+            self._dirty = True
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_bar = f.buffer()
+        b_env = f.output(self.env_out)
+        b_damped = f.buffer()
+        f.keep(b_damped)
+        self._b_damped = b_damped
+        b_not_gate = f.buffer()
+        b_rel_env_raw = f.buffer()
+        b_rel_env = f.buffer()
+        b_osc0 = f.buffer()
+        b_osc1 = f.buffer()
+        b_osc2 = f.buffer()
+        b_rel_sines = f.buffer()
+        b_rel_out = f.buffer()
+        b_out = f.output(self.audio_out)
+
+        # 1. Main struck string
+        self._n_struck = f.add(ag.STRUCK, (gate,), b_bar)
+        f.set(self._n_struck, ag.STRUCK_SHAPE, ag.STRUCK_HAMMER)
+        f.set(self._n_struck, ag.STRUCK_LEVEL, STRIKE_LEVEL)
+
+        # 2. Damper envelope: open on gate, release closes in DAMP_TIME (30 ms)
+        self._n_env = f.add(ag.ENV, (gate,), b_env)
+        f.set(self._n_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_env, ag.ENV_RELEASE, DAMP_TIME)
+
+        # 3. Main VCA: bar damped by damper envelope
+        self._n_vca = f.add(ag.VCA, (b_bar, b_env, None), b_damped)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+
+        # 4. Inverted gate for release pluck: not_gate = 1 - gate
+        self._n_not_gate = f.add(ag.MIX, (gate,), b_not_gate)
+        f.set(self._n_not_gate, ag.MIX_OFFSET, ag.UNIT)
+        f.set(self._n_not_gate, 0, -1.0)
+
+        # 5. Release envelope: decay time constant REL_PLUCK_TAU = 0.008 s (~0.032 s release)
+        self._n_rel_env = f.add(ag.ENV, (gate,), b_rel_env_raw)
+        f.set(self._n_rel_env, ag.ENV_ATTACK, 0.001)
+        f.set(self._n_rel_env, ag.ENV_DECAY, 30.0)
+        f.set(self._n_rel_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_rel_env, ag.ENV_RELEASE, 0.032)
+
+        # 6. Gated release env = rel_env_raw * not_gate (0 while held, decays upon release)
+        self._n_rel_gate = f.add(ag.VCA, (b_rel_env_raw, b_not_gate, None), b_rel_env)
+        f.set(self._n_rel_gate, ag.VCA_SELECT, 0.0)
+        f.set(self._n_rel_gate, ag.VCA_GAIN, 1.0)
+
+        # 7. Additive sines for release pluck (harmonics 1, 2, 3)
+        self._n_osc0 = f.add(ag.OSC, (None, None, None, None), b_osc0)
+        f.set(self._n_osc0, ag.OSC_WAVEFORM, 8)
+        f.set(self._n_osc0, ag.OSC_LEVEL, 1.0)
+
+        self._n_osc1 = f.add(ag.OSC, (None, None, None, None), b_osc1)
+        f.set(self._n_osc1, ag.OSC_WAVEFORM, 8)
+        f.set(self._n_osc1, ag.OSC_LEVEL, 1.0)
+
+        self._n_osc2 = f.add(ag.OSC, (None, None, None, None), b_osc2)
+        f.set(self._n_osc2, ag.OSC_WAVEFORM, 8)
+        f.set(self._n_osc2, ag.OSC_LEVEL, 1.0)
+
+        # 8. Mix partials with pickup weights
+        self._n_rel_mix = f.add(ag.MIX, (b_osc0, b_osc1, b_osc2), b_rel_sines)
+
+        # 9. Release pluck VCA: scaled by rel_gain and release envelope
+        self._n_rel_vca = f.add(ag.VCA, (b_rel_sines, b_rel_env, None), b_rel_out)
+        f.set(self._n_rel_vca, ag.VCA_SELECT, 0.0)
+
+        # 10. Voice sum: main damped string + release pluck
+        self._n_sum = f.add(ag.MIX, (b_damped, b_rel_out), b_out)
+        f.set(self._n_sum, 0, 1.0)
+        f.set(self._n_sum, 1, 1.0)
+
+        self._cv = 0.0
+        self._velocity = 0.8
+        self._tuned = None
+        self._dirty = True
+        self._atk_left = 0
+        self._atk_peak_counts = 0
+
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.bind(("pickup", "mute"), self._graph_params)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_update()
+
+    def _graph_pitch(self, val):
+        self._cv = val
+        self._dirty = True
+
+    def _graph_velocity(self, val):
+        self._velocity = val
+        self._dirty = True
+
+    def _graph_params(self):
+        self._dirty = True
+
+    def _graph_reset(self):
+        self._tuned = None
+        self._dirty = True
+        self._atk_left = 0
+        self._atk_peak_counts = 0
+        f = self._fragment
+        f.reset(self._n_struck)
+        f.reset(self._n_env)
+        f.reset(self._n_rel_env)
+        f.reset(self._n_osc0)
+        f.reset(self._n_osc1)
+        f.reset(self._n_osc2)
+
+    def _graph_block(self):
+        if self._dirty:
+            self._graph_update()
+        if self._atk_left > 0:
+            pk = self._fragment.peak(self._b_damped)
+            if pk > self._atk_peak_counts:
+                self._atk_peak_counts = pk
+                rel_gain = self.graph_fold_gain * REL_PLUCK_GAIN * (pk / self._ag.UNIT)
+                self._fragment.set(self._n_rel_vca, self._ag.VCA_GAIN, rel_gain)
+            self._atk_left -= 1
+
+    def _graph_update(self):
+        self._dirty = False
+        f = self._fragment
+        ag = self._ag
+        cv = self._cv
+        note = 60.0 + cv * 120.0
+        f0 = BASE_FREQ_C4 * (2.0 ** (cv * 10.0))
+        v = max(0.0, min(1.0, self._velocity))
+
+        p = self.params
+        pickup = p["pickup"]
+        mute = float(p["mute"])
+
+        key = (cv, v, pickup, mute)
+        if key != self._tuned:
+            self._tuned = key
+            table = clav_modes(note, pickup, mute, v)
+            f.set(self._n_struck, ag.STRUCK_FREQUENCY, f0)
+            f.table(self._n_struck, tuple(table))
+
+            total = 0.0
+            for k in range(REL_PLUCK_PARTIALS):
+                total += abs(table[k][2])
+            for k in range(REL_PLUCK_PARTIALS):
+                w = table[k][2] / total if total > 0.0 else 0.0
+                f.set(self._n_rel_mix, k, w)
+
+            f.set(self._n_osc0, ag.OSC_FREQUENCY, f0)
+            f.set(self._n_osc1, ag.OSC_FREQUENCY, 2.0 * f0)
+            f.set(self._n_osc2, ag.OSC_FREQUENCY, 3.0 * f0)
+
+        hardness = 0.15 + 0.85 * v
+        f.set(self._n_struck, ag.STRUCK_HARDNESS, hardness)
+
+        vel_level = v**1.35
+        gain = self.graph_fold_gain * VOICE_GAIN * vel_level * key_curve(note, KEY_LEVEL)
+        f.set(self._n_vca, ag.VCA_GAIN, gain)
+
+        self._atk_left = int(ATTACK_WATCH * self.sample_rate / self.block_size) + 1
+        self._atk_peak_counts = 0
+        initial_rel_gain = self.graph_fold_gain * REL_PLUCK_GAIN * (gain * 0.6)
+        f.set(self._n_rel_vca, ag.VCA_GAIN, initial_rel_gain)
