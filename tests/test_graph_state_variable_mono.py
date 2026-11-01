@@ -19,10 +19,14 @@ What matches to how many counts, and why:
   graph's 16-bit wires: the VCO mix and the two biquad outputs round to a count
   on the way into the morph mixer and the VCA.
 * When Env 1 or the LFO moves the cutoff once a block as the rack does,
-  ``synthio.Biquad`` (Direct Form II Transposed) and the graph's ``BIQUAD``
-  (Direct Form I) have a different transient at each step of the coefficients
-  and converge when the cutoff settles, matching within 12% of the level in
-  rms over the note (as on the PolyA6's Filter 1).
+  ``synthio.Biquad`` in the rack steps direct-form coefficients instantly
+  without slewing, whereas ``audiograph.BIQUAD`` runs a 20 ms (1024-sample,
+  ``AUDIODSP_BIQUAD_F32_RAMP_MS``) parameter walk through an internal SVF
+  topology whenever coefficients move. Because cutoff updates every block
+  (5.3 ms), the graph filter continuously slews across the 20 ms window.
+  At slow LFO rates (0.25 Hz) the difference is 19 counts rms (0.84% of
+  level); at 6 Hz it is 258 counts rms (11% of level) and converges when
+  modulation settles. Over the note it matches within 11% rms of level.
 * Over a phrase with voice steals the held chord matches to 32 counts and
   1.5 counts rms.
 * The LFO's triangle on ``lfo_tri_out`` matches within two counts and the
@@ -223,10 +227,10 @@ MOVING = [
 
 
 @pytest.mark.parametrize("controls", MOVING, ids=_ids)
-def test_a_moving_filter_is_the_rack_to_a_few_percent(controls):
+def test_a_moving_filter_matches_the_rack_within_eleven_percent_rms(controls):
     top, rms, level, tail, last = compare(controls)
     assert level > 500.0
-    assert top <= 3600.0 and rms <= 0.12 * level, (top, rms, level)
+    assert top <= 3600.0 and rms <= 0.11 * level + 1.0, (top, rms, level)
     assert tail <= QUIET and last == 0.0, (tail, last)
 
 
