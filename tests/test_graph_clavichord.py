@@ -212,6 +212,26 @@ def test_release_pluck_sounds_on_both_rack_and_graph():
         assert peak > 150.0, f"{engine} release pluck peak too low: {peak}"
 
 
+def test_release_pluck_tail_energy_matches_rack():
+    """Release tail RMS over 80 ms after note-off matches rack."""
+    phrase = released_note(key=60, vel=100, wait=10, hold=20, decay=40)
+    pcm_g, _ = render("graph", 0, phrase, controls={"tremolo_depth": 0.0})
+    pcm_r, lat_r = render("rack", 0, phrase, controls={"tremolo_depth": 0.0})
+
+    # Note-off is at buffer 30 = frame 3840; 80 ms is 3840 samples at 48 kHz
+    off_frame = 30 * BUFFER
+    tail_g = pcm_g[off_frame : off_frame + 3840, 0].astype(np.float64)
+    tail_r = pcm_r[off_frame : off_frame + 3840, 0].astype(np.float64)
+
+    rms_g = float(np.sqrt(np.mean(tail_g**2)))
+    rms_r = float(np.sqrt(np.mean(tail_r**2)))
+    assert rms_g > 10.0 and rms_r > 10.0, f"release pluck too quiet: graph={rms_g}, rack={rms_r}"
+    ratio = rms_g / rms_r
+    assert 1.45 <= ratio <= 1.75, (
+        f"release tail energy mismatch: graph={rms_g:.2f}, rack={rms_r:.2f}, ratio={ratio:.3f}"
+    )
+
+
 def test_damper_release_silences_the_note():
     """Both rack and graph decay to silence after key release."""
     phrase = released_note(wait=5, hold=15, decay=80)
