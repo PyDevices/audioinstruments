@@ -11,6 +11,7 @@ from ...core.signal import (
     scale,
 )
 from ...dsp.drums import MetallicBankCore, OneShotEnvelopeCore
+from .._drums_graph import MetallicBankGraph
 
 
 class Rhythm808ClosedHat(Module):
@@ -77,6 +78,37 @@ class Rhythm808ClosedHat(Module):
         gain = (self.level / 10.0) * accent_gain * 2.8
         mul(out, self._env_buf)
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s hats bank under a fixed 55 ms ``OneShotEnvelopeCore``."""
+        self._fragment = f
+        self._bank = MetallicBankGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), kind="hats"
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bank.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._bank.apply(
+            decay_sec=0.055,
+            gain_low=(self.level / 10.0) * accent_gain * 2.8,
+            velocity=v,
+        )
 
 
 class Rhythm808OpenHat(Module):
@@ -148,3 +180,36 @@ class Rhythm808OpenHat(Module):
         gain = (self.level / 10.0) * accent_gain * 2.8
         mul(out, self._env_buf)
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s hats bank under a ``OneShotEnvelopeCore`` of ``decay``."""
+        self._fragment = f
+        self._bank = MetallicBankGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), kind="hats"
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "decay", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bank.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        d = self.decay / 10.0
+        decay_sec = 0.10 * ((0.80 / 0.10) ** d)
+        self._bank.apply(
+            decay_sec=decay_sec,
+            gain_low=(self.level / 10.0) * accent_gain * 2.8,
+            velocity=v,
+        )

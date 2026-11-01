@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import scale
 from ...dsp.drums import BridgedTDrumCore
+from .._drums_graph import BridgedTGraph
 
 
 class Rhythm808Claves(Module):
@@ -59,3 +60,39 @@ class Rhythm808Claves(Module):
 
         gain = (self.level / 10.0) * accent_gain * 1.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``BridgedTDrumCore``'s sine, amp-minus-rise and click; no pitch bend."""
+        self._fragment = f
+        self._bt = BridgedTGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), sample_rate=self.sample_rate
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bt.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._bt.apply(
+            frequency=2500.0,
+            decay_sec=0.025,
+            drop_cents=0.0,
+            bend_time_sec=0.035,
+            click_level=0.3,
+            click_tone_hz=4000.0,
+            gain=(self.level / 10.0) * accent_gain * 1.5,
+            velocity=v,
+        )

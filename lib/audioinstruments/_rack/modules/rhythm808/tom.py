@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import DEFAULT_BLOCK_SIZE, DEFAULT_SAMPLE_RATE, scale
 from ...dsp.drums import BridgedTDrumCore
+from .._drums_graph import BridgedTGraph
 
 TOM_SPECS = {
     "low": {"freq_range": (80.0, 100.0), "decay": 0.35, "drop": 60.0, "hpf": 30.0},
@@ -90,3 +91,48 @@ class Rhythm808Tom(Module):
 
         gain = (self.level / 10.0) * accent_gain * 1.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``BridgedTDrumCore`` as nodes, with the tom's pink noise mix."""
+        self._fragment = f
+        self._bt = BridgedTGraph(
+            f,
+            f.input(self.gate_in),
+            f.output(self.audio_out),
+            sample_rate=self.sample_rate,
+            noise=True,
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "tuning", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bt.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        spec = TOM_SPECS.get(self.which, TOM_SPECS["low"])
+        lo, hi = spec["freq_range"]
+        t = max(0.0, min(1.0, self.tuning / 10.0))
+        self._bt.apply(
+            frequency=lo + t * (hi - lo),
+            decay_sec=spec["decay"],
+            drop_cents=spec["drop"],
+            bend_time_sec=0.025,
+            click_level=0.15,
+            click_tone_hz=1500.0,
+            noise_mix=0.08,
+            noise_decay_sec=0.025,
+            gain=(self.level / 10.0) * accent_gain * 1.5,
+            velocity=v,
+        )

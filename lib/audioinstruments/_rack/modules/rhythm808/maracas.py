@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import scale
 from ...dsp.drums import MaracasCore
+from .._drums_graph import MaracasGraph
 
 
 class Rhythm808Maracas(Module):
@@ -52,3 +53,28 @@ class Rhythm808Maracas(Module):
 
         gain = (self.level / 10.0) * accent_gain * 1.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MaracasCore``'s high-passed noise on a soft-attack DECAY as nodes."""
+        self._fragment = f
+        self._ma = MaracasGraph(f, f.input(self.gate_in), f.output(self.audio_out))
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._ma.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._ma.apply(gain=(self.level / 10.0) * accent_gain * 1.5, velocity=v)
