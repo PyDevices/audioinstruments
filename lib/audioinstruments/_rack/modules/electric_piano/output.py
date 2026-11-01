@@ -136,3 +136,79 @@ class ElectricPianoOutput(Module):
 
         self.tremolo.set(rate_hz=rate_hz, depth=depth, mode="pan")
         self.tremolo.render(eq_out, out_l, out_r)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        left = f.input(self.left_in)
+        right = f.input(self.right_in)
+        out_l = f.output(self.left_out)
+        out_r = f.output(self.right_out)
+
+        if left is not None and right is not None:
+            b_mono = f.buffer()
+            mix = f.add(ag.MIX, (left, right), b_mono)
+            f.set(mix, 0, 0.5)
+            f.set(mix, 1, 0.5)
+        elif left is not None:
+            b_mono = left
+        else:
+            b_mono = right
+
+        b_dc = f.buffer()
+        self._n_dc = f.add(ag.BIQUAD, (b_mono,), b_dc)
+        f.set(self._n_dc, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
+        f.set(self._n_dc, ag.BIQUAD_FREQUENCY, DC_HZ)
+
+        b_bass = f.buffer()
+        self._n_bass = f.add(ag.BIQUAD, (b_dc,), b_bass)
+        f.set(self._n_bass, ag.BIQUAD_MODE, audiobiquad.LOW_SHELF)
+        f.set(self._n_bass, ag.BIQUAD_FREQUENCY, BASS_HZ)
+
+        b_treble = f.buffer()
+        self._n_treble = f.add(ag.BIQUAD, (b_bass,), b_treble)
+        f.set(self._n_treble, ag.BIQUAD_MODE, audiobiquad.HIGH_SHELF)
+        f.set(self._n_treble, ag.BIQUAD_FREQUENCY, TREBLE_HZ)
+
+        b_vol = f.buffer()
+        self._n_vol = f.add(ag.MIX, (b_treble,), b_vol)
+
+        self._n_tremolo = f.add(ag.TREMOLO, (b_vol,), (out_l, out_r))
+        f.set(self._n_tremolo, ag.TREMOLO_MODE, ag.TREMOLO_PAN)
+
+        f.bind(("bass",), self._graph_bass)
+        f.bind(("treble",), self._graph_treble)
+        f.bind(("volume",), self._graph_volume)
+        f.bind(("vibrato_rate", "vibrato_depth"), self._graph_tremolo)
+        f.on_reset(self._graph_reset)
+
+    def _graph_bass(self):
+        bass_db = (self.params["bass"] - 5.0) * 2.4
+        self._fragment.set(self._n_bass, self._ag.BIQUAD_GAIN_DB, bass_db)
+
+    def _graph_treble(self):
+        treble_db = (self.params["treble"] - 5.0) * 2.4
+        self._fragment.set(self._n_treble, self._ag.BIQUAD_GAIN_DB, treble_db)
+
+    def _graph_volume(self):
+        vol_gain = (self.params["volume"] / 10.0) * 1.5
+        self._fragment.set(self._n_vol, 0, vol_gain)
+
+    def _graph_tremolo(self):
+        v_rate = self.params["vibrato_rate"] / 10.0
+        low_hz, high_hz = VIBRATO_HZ_SPAN
+        rate_hz = low_hz * ((high_hz / low_hz) ** v_rate)
+        depth = self.params["vibrato_depth"] / 10.0
+        self._fragment.set(self._n_tremolo, self._ag.TREMOLO_RATE, rate_hz)
+        self._fragment.set(self._n_tremolo, self._ag.TREMOLO_DEPTH, depth)
+
+    def _graph_reset(self):
+        f = self._fragment
+        f.reset(self._n_dc)
+        f.reset(self._n_bass)
+        f.reset(self._n_treble)
+        f.reset(self._n_tremolo)
