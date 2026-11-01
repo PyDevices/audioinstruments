@@ -4,6 +4,8 @@
 LFO, glide, and the poly-mod matrix that sends the filter envelope and VCO B
 to VCO A's frequency and pulse width and to the filter cutoff."""
 
+from ..core.bridge import OSC_LEVEL, PITCH_OCTAVES, PWM_DEPTH
+from ..core.graph import UNIT
 from ..core.jack import SignalType
 from ..core.module import Module
 from ..core.signal import BASE_FREQ_C4, add, add_scaled, copy_into
@@ -15,6 +17,10 @@ from ..dsp.noise import NoiseGenerator
 from ..dsp.oscillator import OscillatorCore
 from ..dsp.utility import GlideCore
 from ._util import jack_signal, knob_hz
+
+LADDER_K = 4.15
+LADDER_COMP = 0.45 / 4.15
+LADDER_MIN_HZ = 20.0
 
 
 class MonoOne(Module):
@@ -251,3 +257,260 @@ class MonoOne(Module):
         copy_into(amp_cv, self.amp_env_out.buffer)
         amp_cv *= p["volume"]
         self.vca.render(self.filter_out.buffer, self.vca_out.buffer, amp_cv, exponential=True)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    #: The voice mix's level, and the master's scale when nothing stands between, which
+    #: ``VoiceMix`` folds into this voice's last gain so its wire is rounded once.
+    graph_fold_gain = 1.0
+
+    def graph_fold(self, gain):
+        """Take ``gain`` into the voice's last gain (see ``graph_fold_gain``)."""
+        self.graph_fold_gain = gain
+        if getattr(self, "_fragment", None) is not None:
+            self._graph_fold_gain()
+
+    def _graph_fold_gain(self):
+        # 0.5: NodeLadderCore halves the ladder's output on the way back to the wire
+        self._fragment.set(self._n_vca, self._ag.VCA_GAIN, 0.5 * self.graph_fold_gain)
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        if not hasattr(ag, "VCA_CURVE"):
+            return False
+        self._ag = ag
+        gate = f.input(self.kybd_gate_in)
+        ext = f.input(self.ext_audio_in)
+        ext_cv = f.input(self.filter_cv_in)
+
+        self._n_noise = f.add(ag.NOISE, (), f.buffer(), group=f.switch("noise", False))
+        f.set(self._n_noise, 0, 0.5 * UNIT)
+        b_noise = f.own[-1]
+
+        if self.lfo_out.cables:
+            self._n_lfo = f.add(ag.LFO, (), f.output(self.lfo_out))
+            f.set(self._n_lfo, ag.LFO_SHAPE, ag.LFO_TRIANGLE)
+            f.set(self._n_lfo, ag.LFO_AMPLITUDE, 0.5 * UNIT)
+        else:
+            self._n_lfo = None
+
+        b_fenv = f.output(self.filter_env_out)
+        b_aenv = f.output(self.amp_env_out)
+        self._n_fenv = f.add(ag.ENV, (gate,), b_fenv)
+        self._n_aenv = f.add(ag.ENV, (gate,), b_aenv)
+
+        b_cv = self._b_cv = f.buffer()
+        self._n_glide = f.add(ag.LAG, (f.input(self.kybd_cv_in), None, None), b_cv)
+        f.set(self._n_glide, ag.LAG_SHAPE, ag.LAG_ONE_POLE)
+
+        # VCO B: three waveforms on one phase, mixed to vco_b_out; saw also drives sync
+        b_cv_b = f.buffer()
+        b_bsaw = f.buffer()
+        b_btri = f.buffer()
+        b_bpulse = f.buffer()
+        b_bout = f.output(self.vco_b_out)
+        self._n_cv_b = f.add(ag.MIX, (b_cv,), b_cv_b)
+        self._n_bsaw = f.add(ag.OSC, (b_cv_b, None, None, None), b_bsaw)
+        self._n_btri = f.add(ag.OSC, (b_cv_b, None, None, None), b_btri)
+        self._n_bpulse = f.add(ag.OSC, (b_cv_b, None, None, None), b_bpulse)
+        self._n_bout = f.add(ag.MIX, (b_bsaw, b_btri, b_bpulse), b_bout)
+
+        # Poly-Mod to VCO A pitch and pulse width, and hard sync from B's sawtooth
+        b_sync = f.buffer()
+        b_cv_a = f.buffer()
+        b_pw_a = f.buffer()
+        b_asaw = f.buffer()
+        b_apulse = f.buffer()
+        b_aout = f.output(self.vco_a_out)
+        self._n_sync = f.add(ag.MIX, (b_bsaw,), b_sync)
+        self._n_cv_a = f.add(ag.MIX, (b_cv, b_fenv, b_bout), b_cv_a)
+        self._n_pw_a = f.add(ag.MIX, (b_fenv, b_bout), b_pw_a)
+        self._n_asaw = f.add(ag.OSC, (b_cv_a, None, None, b_sync), b_asaw)
+        self._n_apulse = f.add(ag.OSC, (b_cv_a, None, b_pw_a, b_sync), b_apulse)
+        self._n_aout = f.add(ag.MIX, (b_asaw, b_apulse), b_aout)
+
+        for node, wave in (
+            (self._n_bsaw, 1),
+            (self._n_btri, 4),
+            (self._n_bpulse, 2),
+            (self._n_asaw, 1),
+            (self._n_apulse, 2),
+        ):
+            f.set(node, ag.OSC_WAVEFORM, wave)
+            f.set(node, ag.OSC_LEVEL, OSC_LEVEL)
+            f.set(node, ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+            f.set(node, ag.OSC_PWM_DEPTH, PWM_DEPTH)
+
+        b_mix = f.buffer()
+        b_fcv = f.buffer()
+        b_filt = f.buffer()
+        b_acv = f.buffer()
+        self._n_mix = f.add(ag.MIX, (b_aout, b_bout, b_noise, ext), b_mix)
+        f.set(self._n_mix, 3, 1.0)
+        self._n_fcv = f.add(ag.MIX, (b_fenv, b_cv, b_bout, ext_cv), b_fcv)
+        f.set(self._n_fcv, 3, 1.0)
+        self._n_vcf = f.add(ag.LADDER, (b_mix, b_fcv), b_filt)
+        f.set(self._n_vcf, ag.LADDER_DRIVE, 2.0)
+        f.set(self._n_vcf, ag.LADDER_CUTOFF_OCTAVES, 20.0)
+        f.set(self._n_vcf, ag.LADDER_POLES, 4.0)
+        f.set(self._n_vcf, ag.LADDER_PASSBAND_COMP, LADDER_COMP)
+        if self.filter_out.cables:
+            self._n_fout = f.add(ag.MIX, (b_filt,), f.output(self.filter_out))
+            f.set(self._n_fout, 0, 0.5)
+        else:
+            self._n_fout = None
+        self._n_acv = f.add(ag.MIX, (b_aenv,), b_acv)
+        self._n_vca = f.add(ag.VCA, (b_filt, b_acv, None), f.output(self.vca_out))
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        f.set(self._n_vca, ag.VCA_CURVE, ag.VCA_EXPONENTIAL)
+        self._graph_fold_gain()
+
+        f.bind(("glide",), self._graph_glide)
+        f.bind(("vco_a_freq", "vco_b_freq"), self._graph_pitch)
+        f.bind(
+            (
+                "vco_a_saw",
+                "vco_a_pulse",
+                "vco_a_pw",
+                "vco_a_sync",
+                "vco_b_saw",
+                "vco_b_tri",
+                "vco_b_pulse",
+                "vco_b_pw",
+                "vco_b_kybd",
+            ),
+            self._graph_waves,
+        )
+        f.bind(("vco_a_level", "vco_b_level", "noise_level"), self._graph_mix)
+        f.bind(
+            (
+                "polymod_filtenv",
+                "polymod_osc_b",
+                "polymod_dest_freq_a",
+                "polymod_dest_pw_a",
+                "polymod_dest_filter",
+                "filter_env_amt",
+                "filter_kybd",
+            ),
+            self._graph_mod,
+        )
+        f.bind(("filter_cutoff", "filter_res"), self._graph_filter)
+        f.bind(
+            ("filter_attack", "filter_decay", "filter_sustain", "filter_release"),
+            self._graph_fenv,
+        )
+        f.bind(
+            ("amp_attack", "amp_decay", "amp_sustain", "amp_release"),
+            self._graph_aenv,
+        )
+        f.bind(("lfo_rate",), self._graph_lfo)
+        f.bind(("volume",), self._graph_volume)
+        f.on_reset(self._graph_reset)
+
+    def _graph_glide(self):
+        self._fragment.set(self._n_glide, self._ag.LAG_TIME, self.params["glide"])
+
+    def _graph_pitch(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        hz_a = BASE_FREQ_C4 * (2.0 ** p["vco_a_freq"])
+        hz_b = BASE_FREQ_C4 * (2.0 ** p["vco_b_freq"])
+        f.set(self._n_asaw, ag.OSC_FREQUENCY, hz_a)
+        f.set(self._n_apulse, ag.OSC_FREQUENCY, hz_a)
+        for node in (self._n_bsaw, self._n_btri, self._n_bpulse):
+            f.set(node, ag.OSC_FREQUENCY, hz_b)
+
+    def _graph_waves(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_cv_b, 0, p["vco_b_kybd"])
+        f.set(self._n_bpulse, ag.OSC_PULSE_WIDTH, p["vco_b_pw"])
+        f.set(self._n_bout, 0, 1.0 if p["vco_b_saw"] >= 0.5 else 0.0)
+        f.set(self._n_bout, 1, 1.0 if p["vco_b_tri"] >= 0.5 else 0.0)
+        f.set(self._n_bout, 2, 1.0 if p["vco_b_pulse"] >= 0.5 else 0.0)
+        f.set(self._n_sync, 0, 1.0 if p["vco_a_sync"] >= 0.5 else 0.0)
+        f.set(self._n_apulse, ag.OSC_PULSE_WIDTH, p["vco_a_pw"])
+        f.set(self._n_aout, 0, 1.0 if p["vco_a_saw"] >= 0.5 else 0.0)
+        f.set(self._n_aout, 1, 1.0 if p["vco_a_pulse"] >= 0.5 else 0.0)
+
+    def _graph_mix(self):
+        p = self.params
+        f = self._fragment
+        f.enable("noise", p["noise_level"] > 0.0)
+        f.set(self._n_mix, 0, p["vco_a_level"] * 0.707)
+        f.set(self._n_mix, 1, p["vco_b_level"] * 0.707)
+        f.set(self._n_mix, 2, p["noise_level"] * 0.5)
+
+    def _graph_mod(self):
+        p = self.params
+        f = self._fragment
+        fe = p["polymod_filtenv"]
+        ob = p["polymod_osc_b"]
+        fa = p["polymod_dest_freq_a"]
+        pwa = p["polymod_dest_pw_a"] * 0.4 if p["polymod_dest_pw_a"] > 0.0 else 0.0
+        flt = p["polymod_dest_filter"]
+        f.set(self._n_cv_a, 0, 1.0)
+        f.set(self._n_cv_a, 1, fe * fa)
+        f.set(self._n_cv_a, 2, ob * fa)
+        f.set(self._n_pw_a, 0, fe * pwa)
+        f.set(self._n_pw_a, 1, ob * pwa)
+        f.set(self._n_fcv, 0, p["filter_env_amt"] + fe * flt)
+        f.set(self._n_fcv, 1, p["filter_kybd"])
+        f.set(self._n_fcv, 2, ob * flt)
+
+    def _graph_filter(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        fc = max(
+            LADDER_MIN_HZ,
+            min(knob_hz(p["filter_cutoff"], 35.0, 14000.0), self.sample_rate * 0.45),
+        )
+        f.set(self._n_vcf, ag.LADDER_CUTOFF_HZ, fc)
+        f.set(self._n_vcf, ag.LADDER_RESONANCE, p["filter_res"] * LADDER_K)
+
+    def _graph_fenv(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_fenv, ag.ENV_ATTACK, p["filter_attack"])
+        f.set(self._n_fenv, ag.ENV_DECAY, p["filter_decay"])
+        f.set(self._n_fenv, ag.ENV_SUSTAIN, p["filter_sustain"])
+        f.set(self._n_fenv, ag.ENV_RELEASE, p["filter_release"])
+
+    def _graph_aenv(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_aenv, ag.ENV_ATTACK, p["amp_attack"])
+        f.set(self._n_aenv, ag.ENV_DECAY, p["amp_decay"])
+        f.set(self._n_aenv, ag.ENV_SUSTAIN, p["amp_sustain"])
+        f.set(self._n_aenv, ag.ENV_RELEASE, p["amp_release"])
+
+    def _graph_lfo(self):
+        if self._n_lfo is not None:
+            self._fragment.set(self._n_lfo, self._ag.LFO_RATE, self.params["lfo_rate"])
+
+    def _graph_volume(self):
+        self._fragment.set(self._n_acv, 0, self.params["volume"])
+
+    def _graph_reset(self):
+        f = self._fragment
+        for node in (
+            self._n_bsaw,
+            self._n_btri,
+            self._n_bpulse,
+            self._n_asaw,
+            self._n_apulse,
+            self._n_vcf,
+            self._n_fenv,
+            self._n_aenv,
+            self._n_lfo,
+            self._n_noise,
+            self._n_glide,
+        ):
+            if node is not None:
+                f.reset(node)

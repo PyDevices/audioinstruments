@@ -451,6 +451,8 @@ class PolyMidiCV(MidiCVModule):
         self._c_bend = f.control(self.bend_out, 0.0)
         self._c_mod = f.control(self.mod_out, 0.0)
         self._c_pedal = f.control(self.pedal_out, 0.0)
+        self._c_expr = f.control(self.expr_out, self._expr)
+        self._c_foot = f.control(self.foot_out, self._foot)
         self._c_trig = f.control(self.trig_out, 0.0)
         # the second line, for a voice with two oscillators on two keys (``"duo"``)
         self._c_pitch_hi = f.control(self.pitch_hi_out, 0.0)
@@ -472,10 +474,16 @@ class PolyMidiCV(MidiCVModule):
         self._c_any_gate.set(1.0 if self._gate_active else 0.0)
         self._c_any_vel.set(self._velocity)
         self._c_any_press.set(self._pressure())
+        self.press_out.buffer[:] = self._pressure()
         self._c_legato.set(1.0 if self._legato else 0.0)
         self._c_bend.set(self._pitch_bend * 0.5)
         self._c_mod.set(self._mod_wheel)
+        self.mod_out.buffer[:] = self._mod_wheel
         self._c_pedal.set(1.0 if self._sustain_pedal else 0.0)
+        self._c_expr.set(self._expr)
+        self.expr_out.buffer[:] = self._expr
+        self._c_foot.set(self._foot)
+        self.foot_out.buffer[:] = self._foot
         # the trig pulse, as a level for the blocks it covers: a voice that wants the pulse
         # itself starts one on the control's rise (see Mono101Voice)
         pulse = self._trig_pulse
@@ -486,12 +494,32 @@ class PolyMidiCV(MidiCVModule):
     def _graph_write(self, i, bend):
         """Voice ``i``'s controls from its own note."""
         note = self._v_pitch[i]
-        self._c_pitch[i].set(note + bend)
+        p = note + bend
+        self._c_pitch[i].set(p)
+        if p != self._w_pitch[i]:
+            self.pitch_outs[i].buffer[:] = p
+            self._w_pitch[i] = p
         self._c_note[i].set(note)
-        self._c_gate[i].set(1.0 if self._v_gate[i] else 0.0)
-        self._c_vel[i].set(self._v_vel[i])
+        if note != self._w_note[i]:
+            self.note_outs[i].buffer[:] = note
+            self._w_note[i] = note
+        g = 1.0 if self._v_gate[i] else 0.0
+        self._c_gate[i].set(g)
+        if g != self._w_gate[i]:
+            self.gate_outs[i].buffer[:] = g
+            self._w_gate[i] = g
+        vel = self._v_vel[i]
+        self._c_vel[i].set(vel)
+        if vel != self._w_vel[i]:
+            self.vel_outs[i].buffer[:] = vel
+            self._w_vel[i] = vel
         pr = self._v_press[i]
-        self._c_press[i].set(self._chan_press if self._chan_press > pr else pr)
+        if self._chan_press > pr:
+            pr = self._chan_press
+        self._c_press[i].set(pr)
+        if pr != self._w_press[i]:
+            self.press_outs[i].buffer[:] = pr
+            self._w_press[i] = pr
 
     def _graph_mono_block(self, bend):
         """``_mono_block`` with the line's value in controls, not copied into jacks."""
@@ -522,11 +550,30 @@ class PolyMidiCV(MidiCVModule):
                 continue
             gated[i] = gate
             off = self._side(i, k) * detune
-            self._c_pitch[i].set(self._current_pitch + bend + off)
-            self._c_note[i].set(self._current_pitch + off)
-            self._c_gate[i].set(1.0 if gate else 0.0)
+            p = self._current_pitch + bend + off
+            self._c_pitch[i].set(p)
+            if p != self._w_pitch[i]:
+                self.pitch_outs[i].buffer[:] = p
+                self._w_pitch[i] = p
+            n = self._current_pitch + off
+            self._c_note[i].set(n)
+            if n != self._w_note[i]:
+                self.note_outs[i].buffer[:] = n
+                self._w_note[i] = n
+            g = 1.0 if gate else 0.0
+            self._c_gate[i].set(g)
+            if g != self._w_gate[i]:
+                self.gate_outs[i].buffer[:] = g
+                self._w_gate[i] = g
             self._c_vel[i].set(self._velocity)
-            self._c_press[i].set(self._pressure())
+            if self._velocity != self._w_vel[i]:
+                self.vel_outs[i].buffer[:] = self._velocity
+                self._w_vel[i] = self._velocity
+            pr = self._pressure()
+            self._c_press[i].set(pr)
+            if pr != self._w_press[i]:
+                self.press_outs[i].buffer[:] = pr
+                self._w_press[i] = pr
 
     def reset(self):
         super().reset()

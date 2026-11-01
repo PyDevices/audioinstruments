@@ -51,13 +51,13 @@ def test_with_audiograph_auto_is_the_graph():
 
 @pytest.mark.skipif(not HAVE_AUDIOGRAPH, reason="needs audiograph")
 def test_a_patch_without_fragments_is_the_rack_unless_asked():
-    inst = adapter.create(48000, voice="mono_one", output="pull")
+    inst = adapter.create(48000, voice="patch2600", output="pull")
     assert inst.engine == "rack"
     inst.deinit()
     # asked for, the graph takes the modules that have no fragment beside it
-    inst = adapter.create(48000, voice="mono_one", output="pull", engine="graph")
+    inst = adapter.create(48000, voice="patch2600", output="pull", engine="graph")
     assert inst.engine == "graph"
-    assert {m.NAME for m in inst._compiled.rack_side} == {"MonoOne"}
+    assert {m.NAME for m in inst._compiled.rack_side} == {"Patch2600"}
     inst.deinit()
 
 
