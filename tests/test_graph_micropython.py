@@ -51,6 +51,7 @@ def test_micropython_renders_the_compiled_voice_to_the_same_samples(voice, patch
     if voice == "state_variable_mono":
         import numpy as np
 
+        # Python-side float pow in knob_hz/pitch_to_frequency has a 1-ULP difference on MicroPython, shifting BIQUAD_FREQUENCY by ~1e-5 Hz.
         diff = np.abs(
             np.frombuffer(mp, dtype=np.int16).astype(np.float64)
             - np.frombuffer(cp, dtype=np.int16).astype(np.float64)
