@@ -28,6 +28,7 @@ CASES = [
     ("reed_piano200a", 0),
     ("electric_grand70", 0),
     ("clavichord", 0),
+    ("electronic_drums5", 0),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 
