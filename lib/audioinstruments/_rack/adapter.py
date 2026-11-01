@@ -1006,6 +1006,9 @@ class Instrument:
     def fill(self):
         """Top the ring up with rendered audio; returns the buffers written.
 
+        It fills the room the ring has when you call it and returns, even when
+        the patch renders slower than real time and the ring has drained again
+        by then; the audio then underruns rather than the call never ending.
         Call it from a timer on a build whose output is a ring (MicroPython).
         On CPython the pull renders and this does nothing. With
         ``output="graph"`` it is one turn of the graph's Python side (see the
@@ -1022,14 +1025,17 @@ class Instrument:
         if ring is None:
             return 0
         raw, views = self._slots[0]
-        written = 0
-        need = len(raw)
-        while ring.space() >= need:
+        # Fill the room there is now, once. A patch that renders slower than
+        # real time never catches a ring that drains while it renders, so
+        # looping until the ring is full would never return.
+        blocks = ring.space() // len(raw)
+        left = blocks
+        while left > 0:
             with self._lock:
                 self._render(raw, views)
             ring.write(raw)
-            written += 1
-        return written
+            left -= 1
+        return blocks
 
 
 def graph_available():
