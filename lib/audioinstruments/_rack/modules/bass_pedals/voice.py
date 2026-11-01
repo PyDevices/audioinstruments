@@ -393,15 +393,16 @@ class BassPedalsVoice(Module):
         if self._note_control:
             b_note = f.buffer()
             b_fine = f.buffer()
+            self._b_glided = b_fine
             self._n_note = f.add(ag.CONST, (), b_note)
             self._n_lag = f.add(ag.LAG, (b_note, None, None), b_fine)
             f.set(self._n_lag, ag.LAG_SHAPE, ag.LAG_ONE_POLE)
             self._n_pcv = f.add(ag.MIX, (b_fine,), b_pcv)
-            f.set(self._n_pcv, 0, 1.0 / GLIDE_SCALE)
             f.set(self._n_pcv, ag.MIX_OFFSET, GLIDE_SHIFT * UNIT)
         elif self._has_note or self._has_pitch:
             b_in = f.input(src_note)
             b_slid = f.buffer()
+            self._b_glided = b_slid
             self._n_note = None
             self._n_lag = f.add(ag.LAG, (b_in, None, None), b_slid)
             f.set(self._n_lag, ag.LAG_SHAPE, ag.LAG_ONE_POLE)
@@ -416,6 +417,7 @@ class BassPedalsVoice(Module):
                 self._n_pcv = f.add(ag.MIX, (b_slid,), b_pcv)
                 f.set(self._n_pcv, 0, 1.0)
         else:
+            self._b_glided = None
             self._n_note = None
             self._n_lag = None
             self._n_pcv = f.add(ag.MIX, (), b_pcv)
