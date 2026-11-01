@@ -151,6 +151,32 @@ def test_vibrato_patches_swing_in_stereo(patch):
     assert abs(20 * np.log10(g_rms / r_rms)) < 0.5
 
 
+def test_tremolo_modulation_depth_matches_rack():
+    """Modulation depth of stereo auto-pan matches rack at depth > 0."""
+    phrase = held_note(hold=120)
+    g_pcm, _ = render("graph", 0, phrase, controls={"vibrato_depth": 6.0, "vibrato_rate": 5.0})
+    r_pcm, _ = render("rack", 0, phrase, controls={"vibrato_depth": 6.0, "vibrato_rate": 5.0})
+
+    def channel_depth(pcm, window=256, skip=8):
+        n = len(pcm) // window
+        l_rms = [
+            float(np.sqrt(np.mean(pcm[i * window : (i + 1) * window, 0].astype(np.float64) ** 2)))
+            for i in range(skip, n)
+        ]
+        r_rms = [
+            float(np.sqrt(np.mean(pcm[i * window : (i + 1) * window, 1].astype(np.float64) ** 2)))
+            for i in range(skip, n)
+        ]
+        return max(l_rms) / max(min(l_rms), 1e-6), max(r_rms) / max(min(r_rms), 1e-6)
+
+    g_l, g_r = channel_depth(g_pcm)
+    r_l, r_r = channel_depth(r_pcm)
+    assert g_l > 1.5, f"graph left channel has insufficient modulation depth: {g_l}"
+    assert g_r > 1.5, f"graph right channel has insufficient modulation depth: {g_r}"
+    assert abs(g_l / r_l - 1.0) < 0.10, f"left modulation depth mismatch: graph={g_l}, rack={r_l}"
+    assert abs(g_r / r_r - 1.0) < 0.10, f"right modulation depth mismatch: graph={g_r}, rack={r_r}"
+
+
 def test_the_bell_is_gone_in_a_third_of_a_second_against_rack():
     """Patch 3 (Glass Tines) bell mode rings at attack and decays by > 25 dB more than fundamental on both graph and rack."""
 

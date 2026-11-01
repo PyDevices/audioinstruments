@@ -147,6 +147,32 @@ def test_amplitude_tremolo_matches_mono_modulation():
         assert rms > 500.0
 
 
+def test_tremolo_modulation_depth_matches_rack():
+    """Modulation depth of amplitude tremolo matches rack at depth > 0."""
+    phrase = held_note(hold=120)
+    g_pcm, _ = render("graph", 1, phrase)
+    r_pcm, _ = render("rack", 1, phrase)
+
+    def channel_depth(pcm, window=256, skip=8):
+        n = len(pcm) // window
+        l_rms = [
+            float(np.sqrt(np.mean(pcm[i * window : (i + 1) * window, 0].astype(np.float64) ** 2)))
+            for i in range(skip, n)
+        ]
+        r_rms = [
+            float(np.sqrt(np.mean(pcm[i * window : (i + 1) * window, 1].astype(np.float64) ** 2)))
+            for i in range(skip, n)
+        ]
+        return max(l_rms) / max(min(l_rms), 1e-6), max(r_rms) / max(min(r_rms), 1e-6)
+
+    g_l, g_r = channel_depth(g_pcm)
+    r_l, r_r = channel_depth(r_pcm)
+    assert g_l > 1.5, f"graph left channel has insufficient modulation depth: {g_l}"
+    assert g_r > 1.5, f"graph right channel has insufficient modulation depth: {g_r}"
+    assert abs(g_l / r_l - 1.0) < 0.10, f"left modulation depth mismatch: graph={g_l}, rack={r_l}"
+    assert abs(g_r / r_r - 1.0) < 0.10, f"right modulation depth mismatch: graph={g_r}, rack={r_r}"
+
+
 # -- controls reach the graph -----------------------------------------------------------
 
 
