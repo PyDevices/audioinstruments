@@ -193,6 +193,21 @@ def test_fill_counts_the_blocks_the_graph_moved_on():
         inst.deinit()
 
 
+@pytest.mark.parametrize("voice", ("string_ensemble", "combo_organ", "compact_organ"))
+def test_a_pump_gives_every_voice_a_group_of_its_own(voice):
+    inst = adapter.create(RATE, voice=voice, output="graph", buffer_frames=BUFFER)
+    try:
+        assert inst.voices == adapter.PUMP_VOICES
+        assert inst._compiled.shared == 1
+    finally:
+        inst.deinit()
+    inst = adapter.create(RATE, voice=voice, output="graph", voices=49, buffer_frames=BUFFER)
+    try:
+        assert inst.voices == 49  # asked for by name
+    finally:
+        inst.deinit()
+
+
 def test_an_attached_graph_refuses_step():
     inst = adapter.create(RATE, voice="poly6", output="graph", buffer_frames=BUFFER)
     try:

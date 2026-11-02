@@ -4,6 +4,10 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- On `output="graph"` an instrument's pool stops at 24 voices unless you ask for
+  more. The 49-key organs and strings shared groups, so a key ran a neighbour's
+  nodes too and one note cost a third more; String Ensemble on an ESP32-P4 now
+  plays with its idle cost down 40%, where it starved the speaker before.
 - Poly106 compiles to a graph at up to 16 voices, from 10: its sub and noise share
   one switch, and a graph has 32 to share out.
 - Vocoder330's mic is off when fresh, so a board's audio pump can play the
