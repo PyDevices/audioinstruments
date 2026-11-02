@@ -308,3 +308,53 @@ def test_the_filter_envelope_levers_reach_the_graph():
         assert np.sqrt(np.mean((rack - graph) ** 2)) <= 0.12 * peak, name
         outs[name] = graph
     assert np.sqrt(np.mean((outs["base"] - outs["moved"]) ** 2)) > 50.0
+
+
+# -- note onsets, levels and Sustain II ---------------------------------------------------
+
+
+def test_the_first_blocks_of_a_note_stay_within_the_slew_bound():
+    """The first 12 blocks of every note differ (the biquad slews, the rack steps) by up to a
+    third of the level: measured 579, 282 and 282 on a peak of 1788."""
+    rack, graph = compare(0, dict(OPEN, **EXACT))
+    peak = float(np.abs(rack).max())
+    assert peak > 1000.0
+    for block in ONSETS:
+        window = slice(block * BUFFER, (block + ONSET) * BUFFER)
+        assert float(np.abs(rack[window] - graph[window]).max()) <= 650.0, block
+
+
+def _db(x):
+    return 20.0 * np.log10(max(float(np.sqrt(np.mean(x**2))), 1e-9))
+
+
+@pytest.mark.parametrize("patch", range(12))
+def test_a_presets_level_is_the_racks_within_two_db(patch):
+    rack, graph = compare(patch, EXACT)
+    assert abs(_db(graph) - _db(rack)) <= 2.0, (patch, _db(rack), _db(graph))
+
+
+SUSTAIN_II = dict(OPEN, **EXACT, sustain=7.0, sustain_mode="II", ch1_release=1.0, ch2_release=1.0)
+SUSTAIN_EVENTS = [
+    (10 * BUFFER, 1, 45, 100),
+    (50 * BUFFER, 0, 45, 0),
+    (80 * BUFFER, 1, 60, 100),
+]
+
+
+def _tail(x):
+    """rms over blocks 100-160, after the new key has had 20 blocks to end the sustain."""
+    return float(np.sqrt(np.mean(x[100 * BUFFER : 160 * BUFFER] ** 2)))
+
+
+def test_sustain_ii_ends_a_released_note_when_a_new_key_comes():
+    """In mode II a new key ends the sustain of a released note (its release is the short one);
+    in mode I it rings on. The graph agrees with the rack in both, and the two modes differ."""
+    tails = {}
+    for mode in ("II", "I"):
+        controls = dict(SUSTAIN_II, mix=0.0, sustain_mode=mode)
+        rack, graph = compare(0, controls, SUSTAIN_EVENTS, 200, voices=2)
+        tails[mode] = (_tail(rack), _tail(graph))
+        assert abs(tails[mode][1] / tails[mode][0] - 1.0) < 0.05, (mode, tails[mode])
+    assert tails["II"][0] < 0.9 * tails["I"][0], tails
+    assert tails["II"][1] < 0.9 * tails["I"][1], tails
