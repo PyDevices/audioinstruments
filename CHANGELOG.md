@@ -4,6 +4,11 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.1.dev1
+
+- `audioinstruments.panel_view` lays out the control panel for an instrument
+  from the shared controls. Without them it still loads, and `build()` raises
+  `ImportError`.
 - The Python that runs around a compiled graph each block is 60-72% smaller on
   the Poly106, CompactOrgan, StringEnsemble and Tonewheel3, and allocates nothing
   in `PolyMidiCV` and the voice mix. Renders are byte-identical.
@@ -22,7 +27,7 @@ All notable changes to `audioinstruments` are recorded here.
 - `Fragment.fed(jack)`: a module can render an output in Python each block and
   feed it into the graph, as the Vocoder330's mic does. An attached graph
   refuses such a module.
-- `docs/performance.md` has block times for five instruments on an ESP32-P4.
+- `docs/performance.md` has block times for six instruments on an ESP32-P4.
 
 ## 0.5.1.dev0
 
