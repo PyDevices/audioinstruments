@@ -3837,7 +3837,7 @@ simultaneously execute comfortably in real time (2.82x at default 128-frame bloc
 
 ## Playing the Rhythm78
 
-The Rhythm78 is a fourteen-voice analog preset drum machine inspired by the Roland
+The Rhythm78 is a fifteen-voice analog preset drum machine inspired by the Roland
 CR-78 CompuRhythm (1978). Its warm, rounded sounds defined late-1970s pop, disco,
 and early new wave: soft bridged-T resonators for the bass drum, snare, and toms,
 pure white-noise hiss for the hi-hats and cymbal, and a rich palette of analog Latin
@@ -3846,7 +3846,7 @@ percussion including maracas, claves, cowbell, tambourine, and guiro.
 ```python
 import audioinstruments._rack.adapter as adapter
 
-inst = adapter.create(48000, voice="rhythm78")   # 14 voices, 1 per sound
+inst = adapter.create(48000, voice="rhythm78")   # 15 voices, 1 per sound
 audio_out.play(inst.output)
 inst.program_change(0)                           # CompuRhythm
 inst.note_on(36, 127)                            # Accented Bass Drum
@@ -3855,24 +3855,25 @@ inst.note_on(38, 100)                            # Snare Drum
 
 ### Sounds and circuits
 
-The fourteen sounds are mapped to General MIDI percussion keys:
+The fifteen sounds are mapped to General MIDI percussion keys:
 
 | voice | sound | keys | panel controls |
 |---|---|---|---|
 | 0 | bass drum (BD) | 35, 36 | bd_level |
 | 1 | snare drum (SD) | 38, 40 | sd_level |
 | 2 | rim shot (RS) | 37 | rs_level |
-| 3 | hi-hat / cymbal (HH/CY) | 42, 44 (CH), 46 (OH), 49, 51, 57 (CY) | hh_level, cy_level |
-| 4 | low bongo (LB) | 61, 64 | bo_level |
-| 5 | high bongo (HB) | 60, 63 | bo_level |
-| 6 | low conga (LC) | 62, 65 | bo_level |
+| 3 | hi-hat (HH) | 42, 44 (closed), 46 (open) | hh_level |
+| 4 | cymbal (CY) | 49, 51, 57 | cy_level |
+| 5 | maracas (MA) | 70 | ma_level |
+| 6 | claves (CL) | 75 | cl_level |
 | 7 | cowbell (CB) | 56 | cb_level |
 | 8 | tambourine (TB) | 54 | tb_level |
-| 9 | maracas (MA) | 70 | ma_level |
-| 10 | claves (CL) | 75 | cl_level |
-| 11 | guiro short (GS) | 73 | gu_level |
-| 12 | guiro long (GL) | 74 | gu_level |
-| 13 | metallic beat (MB) | 53 | mb_level |
+| 9 | guiro short (GS) | 73 | gu_level |
+| 10 | guiro long (GL) | 74 | gu_level |
+| 11 | high bongo (HB) | 60 | hb_level |
+| 12 | low bongo (LB) | 61 | lb_level |
+| 13 | low conga (LC) | 62, 63, 64 | lc_level |
+| 14 | metal beat (MB) | 55 | mb_level |
 
 The **bass drum** is a soft, deep bridged-T resonator tuned near 54 Hz with a gentle
 90-cent downward bend and a soft 220 ms decay. Unlike punchy 808 or 909 kicks, it has
@@ -3905,19 +3906,18 @@ The **claves** resonate pure wood with a bridged-T tone at 2.4 kHz decaying in 4
 The **guiro** generates textured scrape bursts (40 ms for short, 110 ms for long)
 by clocking a low-frequency pulse train into decaying noise bursts.
 
-The **metallic beat** accent pulse rings at 1.4 kHz with an 85 ms decay.
+The **metal beat** is a 600 Hz square wave high-passed at 4 kHz, so only the upper
+harmonics of its edges come through, with a 1 ms rise and an 80 ms decay.
 
 ### Choke and additions
 
-On the original hardware, the hats and cymbal shared a single noise circuit. In Rhythm78,
-closed hi-hat (keys 42, 44), open hi-hat (key 46), and cymbal (keys 49, 51, 57) all
-map to voice 3. Striking a closed hat or cymbal immediately retriggers voice 3, cutting
-off any ringing open hat or cymbal without clicking. Because they share voice 3, no
-adapter-level choke group is required (`CHOKE = ()`). Re-striking any drum voice similarly
-resets its envelope and core cleanly.
+Closed hi-hat (keys 42, 44) and open hi-hat (key 46) share voice 3, so a closed hat
+retriggers it and cuts a ringing open hat without clicking. Because they share a voice, no
+adapter-level choke group is required (`CHOKE = ()`). The cymbal has its own voice and
+rings on through them. Re-striking any drum voice similarly resets its envelope and core
+cleanly.
 
 The panel adds individual voice level trimmers (`bd_level`, `sd_level`, etc.),
-master tuning (`tune`, +/- 4 semitones), global decay scaling (`decay`, x0.5 to x2.0),
 `balance` (shifting level between the drum voices and the hat/cymbal group),
 `tone` (a low- and high-shelf tilt filter around 1 kHz), and velocity `accent`.
 
@@ -3929,39 +3929,38 @@ Four presets provide distinct voicings:
 - **Disco**: brighter tone tilt, boosted hats, punchier kick and snare.
 - **Dark**: warm rolled-off tone, longer decays, softer percussion.
 
-The eight macros are `tune`, `decay`, `accent`, `balance`, `tone`, `bd_level`,
-`sd_level`, and `volume`.
+The six macros are `balance`, `accent`, `tone`, `bd_level`, `hh_level`, and `volume`.
 
 `examples/rhythm78_demo.py` demonstrates all four presets across four classic
 patterns in 58 seconds, streaming audio to `wav_exports/rhythm78_demo.wav`.
 
 ### What it costs
 
-`examples/poly_bench.py rhythm78` benchmarks all fourteen voices sounding
+`examples/poly_bench.py rhythm78` benchmarks all fifteen voices sounding
 simultaneously (struck every four buffers) across block sizes:
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
-| 64 | 24.66 | 0.87 | 7.54 | 2.83 |
-| 128 (default) | 11.23 | 1.90 | 4.53 | 4.71 |
-| 256 | 6.06 | 3.52 | 3.00 | 7.11 |
+| 64 | 0.76 | 28.0 | 1.38 | 15.5 |
+| 128 (default) | 0.83 | 25.8 | 1.20 | 17.7 |
+| 256 | 0.79 | 26.8 | 1.15 | 18.5 |
 
-When idle, parked voices take 1.11 ms per buffer on CPython (factor 19.3) and
-0.48 ms on MicroPython (factor 44.8). On MicroPython, all fourteen voices running
-simultaneously execute comfortably in real time (4.71x at default 128-frame blocks).
+These are the compiled graph on a desktop, per 1024-frame buffer. When idle, parked voices
+take 0.07 ms per buffer on CPython (factor 318) and 0.21 ms on MicroPython (factor 100).
 
 ## Playing the ElectronicDrums5
 
-The ElectronicDrums5 is a five-channel electronic drum kit with swept analog tones,
+The ElectronicDrums5 is an electronic drum kit with swept analog tones,
 inspired by the Simmons SDS-V (1981). Its iconic hexagonal pads, sweeping tom fills,
 and punchy transients powered early 1980s pop, new wave, and electronic rock.
 A drummer plays it dynamically from velocity-sensitive pads, with separate analog
-voice channels for the bass drum, snare drum, and three toms.
+voice channels for the bass drum, snare drum, and three toms, plus the optional
+hi-hat and cymbal modules: closed hat, open hat, and cymbal.
 
 ```python
 import audioinstruments._rack.adapter as adapter
 
-inst = adapter.create(48000, voice="electronic_drums5")   # 5 voices, 1 per channel
+inst = adapter.create(48000, voice="electronic_drums5")   # 8 voices, 1 per channel
 audio_out.play(inst.output)
 inst.program_change(0)                           # Classic
 inst.note_on(36, 127)                            # Accented Bass Drum
@@ -3974,9 +3973,10 @@ inst.note_on(48, 127)                            # High Tom
 Each channel combines an oscillator whose pitch dives rapidly after the strike
 (triangle shaped toward a sine), white noise through a low-pass filter (modeled on the
 SSM2044 VCF), and an initial strike click pulse, all governed by one exponential
-amplitude decay envelope.
+amplitude decay envelope. The closed hat, open hat, and cymbal have the same controls,
+but their noise goes through a high-pass filter, and their tone and click start at 0.
 
-The five channels map to General MIDI percussion keys:
+The eight channels map to General MIDI percussion keys:
 
 | voice | channel | General MIDI keys | panel controls |
 |---|---|---|---|
@@ -3985,6 +3985,9 @@ The five channels map to General MIDI percussion keys:
 | 2 | tom 1 / high tom (T1) | 48, 50 | t1_tone, t1_noise, t1_pitch, t1_bend, t1_decay, t1_filter, t1_click |
 | 3 | tom 2 / mid tom (T2) | 45, 47 | t2_tone, t2_noise, t2_pitch, t2_bend, t2_decay, t2_filter, t2_click |
 | 4 | tom 3 / low tom (T3) | 41, 43 | t3_tone, t3_noise, t3_pitch, t3_bend, t3_decay, t3_filter, t3_click |
+| 5 | closed hi-hat (CH) | 42 | ch_tone, ch_noise, ch_pitch, ch_bend, ch_decay, ch_filter, ch_click |
+| 6 | open hi-hat (OH) | 46 | oh_tone, oh_noise, oh_pitch, oh_bend, oh_decay, oh_filter, oh_click |
+| 7 | cymbal (CY) | 49 | cy_tone, cy_noise, cy_pitch, cy_bend, cy_decay, cy_filter, cy_click |
 
 The **bass drum** tone rests near 42-78 Hz (60 Hz at the middle setting) with a short 35 ms downward
 bend from an octave above, a strong strike click, subtle filtered noise, and an
@@ -3999,6 +4002,10 @@ tom strikes an octave to an octave and a half higher and bends downward over 200
 blended with a touch of filtered noise and moderate attack click over a 400 to 800 ms decay.
 A fill rolling down the three toms produces the signature diving pitch sweep of 1980s drums.
 
+The **hi-hats** are white noise through a high-pass filter (1.5 to 7.5 kHz, 4.5 kHz at the
+middle setting), falling 40 dB in 50 ms when closed and 550 ms when open. The **cymbal** is
+the same with a lower corner (1 to 5 kHz, 3 kHz at the middle setting) and an 800 ms fall.
+
 ### Velocity, choke, and output
 
 Strikes respond dynamically to MIDI velocity, scaled by `sensitivity` (0 to 10, default 5.0).
@@ -4006,12 +4013,13 @@ At sensitivity 10, a soft hit at velocity 40 sits about 18 dB below velocity 127
 half as far in pitch, capturing the expressive response of the original velocity-sensitive
 pads. At sensitivity 0, level and bend depth remain constant across velocities.
 
-There is no voice choking (`CHOKE = ()`). Striking a ringing channel again takes the new
+The closed and open hi-hats choke each other (`CHOKE = ((5, 6),)`), as one pedal-switched
+circuit does; the other channels ring freely. Striking a ringing channel again takes the new
 strike over the sound that is still ringing: the oscillator keeps its phase, the level
 carries on from where it was, the pitch bends down again from the top, and the strike
 click sounds again, as it does on every hit. Master volume
 (`volume`, default 7.0) and a soft ceiling tanh saturation stage protect the shared mono
-output stage against hard clipping when all five channels are struck simultaneously.
+output stage against hard clipping when all eight channels are struck simultaneously.
 `inst.latency_samples` is 0.
 
 ### Patches and macros
@@ -4034,17 +4042,18 @@ grooves in 55 seconds, streaming audio to `wav_exports/electronic_drums5_demo.wa
 
 ### What it costs
 
-`examples/poly_bench.py electronic_drums5` benchmarks all five channels sounding
+`examples/poly_bench.py electronic_drums5` benchmarks all eight channels sounding
 simultaneously (struck every four buffers) across block sizes:
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
-| 64 | 18.4 | 1.16 | 8.1 | 2.65 |
-| 128 (default) | 10.1 | 2.11 | 4.1 | 5.18 |
+| 64 | 0.73 | 29.2 | 1.12 | 19.1 |
+| 128 (default) | 0.65 | 32.8 | 1.03 | 20.7 |
+| 256 | 0.56 | 38.4 | 0.97 | 22.1 |
 
-Measured on an otherwise idle machine; a busy one reads lower. The kit runs faster than
-real time on both interpreters at the default 128-frame block (2.1x on CPython, 5.2x on
-MicroPython), with about a factor of 1.2 to spare on CPython at 64 frames.
+These are the compiled graph on a desktop, per 1024-frame buffer; a busy machine reads
+lower. When idle, parked voices take 0.04 ms per buffer on CPython (factor 519) and 0.14 ms
+on MicroPython (factor 148).
 
 ## Traits
 

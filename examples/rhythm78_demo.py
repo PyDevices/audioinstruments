@@ -4,11 +4,11 @@
 
     python examples/rhythm78_demo.py            # writes wav_exports/rhythm78_demo.wav
 
-One fourteen-voice drum kit plays the whole piece and changes patch between
+One fifteen-voice drum kit plays the whole piece and changes patch between
 sections, as an arranger would program and perform with the vintage rhythm machine:
 1. CompuRhythm: a soft rock beat with eighth-note closed hats and an accented open hat.
 2. Bossa: a bossa nova groove featuring rim shot, claves, bongos, conga, and maracas.
-3. Disco: a four-on-the-floor dance groove with sixteenth hats, tambourine, and cowbell.
+3. Disco: a four-on-the-floor dance groove with sixteenth hats, tambourine, cowbell, and metal beat.
 4. Dark: a spacious ballad beat featuring the long-decay cymbal and guiro scrapes.
 
 Each section is written as a 16-step grid per bar so the rhythmic patterns
@@ -49,6 +49,7 @@ GL = 74  # Guiro (long)
 HB = 60  # High Bongo
 LB = 61  # Low Bongo
 LC = 64  # Low Conga
+MB = 55  # Metal Beat
 
 VELOCITIES = {
     "X": 127,  # Accented hit
@@ -135,7 +136,7 @@ def bossa(t):
 
 
 def disco(t):
-    """Disco: four-on-the-floor with sixteenth hats, tambourine, and cowbell."""
+    """Disco: four-on-the-floor with sixteenth hats, tambourine, cowbell, and metal beat."""
     bar_main = {
         BD: "X...X...X...X...",
         SD: "....X.......X...",
@@ -151,6 +152,7 @@ def disco(t):
         OH: "..X...X...X...X.",
         TB: "..x.x...x.x.x...",
         CB: "x..x..x.x..x..x.",
+        MB: "..x...x...x.x.x.",
     }
     bar_fill = {
         BD: "X...X...X...X...",

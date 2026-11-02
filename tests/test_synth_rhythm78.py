@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Rhythm78: 14 voices, 4 patches, pad map, open/closed hat single voice cutoff,
-balance, tone tilt, accent, guiro scrapes, and no hard clipping on 14 simultaneous strikes."""
+"""Rhythm78: 15 voices, 4 patches, pad map, open/closed hat single voice cutoff,
+balance, tone tilt, accent, guiro scrapes, and no hard clipping on 15 simultaneous strikes."""
 
 import audiocore
 import audioinstruments._rack.adapter as adapter
@@ -48,7 +48,7 @@ def centroid(x, sr=48000):
 def test_registration_and_properties():
     assert "rhythm78" in adapter.ALL
     inst = make()
-    assert inst.voices == 14
+    assert inst.voices == 15
     assert inst.latency_samples == 0
     assert len(inst.patches) == len(rhythm78.PRESETS)
     assert len(inst.macro_labels) == len(rhythm78.MACROS)
@@ -67,6 +67,7 @@ ALL_DRUM_PADS = (
     49,  # Cymbal
     51,  # Cymbal alt
     54,  # Tambourine
+    55,  # Metal Beat
     56,  # Cowbell
     57,  # Cymbal alt
     60,  # High Bongo
@@ -107,6 +108,7 @@ def test_pad_table_and_no_choke_pinned():
         11: (60,),
         12: (61,),
         13: (62, 63, 64),
+        14: (55,),
     }
     got = {}
     for key, voice in rhythm78.PADS:
@@ -275,15 +277,15 @@ def test_guiro_short_vs_long():
     assert rms_long_tail > rms_short_tail * 3.0
 
 
-def test_fourteen_sounds_together_soft_saturation_no_hard_clip():
+def test_fifteen_sounds_together_soft_saturation_no_hard_clip():
     inst = make()
-    for note in (36, 38, 37, 42, 49, 70, 75, 56, 54, 73, 74, 60, 61, 64):
+    for note in (36, 38, 37, 42, 49, 70, 75, 56, 54, 73, 74, 60, 61, 64, 55):
         inst.note_on(note, 127)
     x = pull(inst, 30)
     inst.deinit()
 
     assert np.all(np.isfinite(x))
-    # The soft ceiling keeps fourteen accented sounds clear of full scale
+    # The soft ceiling keeps fifteen accented sounds clear of full scale
     top = peak(x)
     assert top < 26000, "output reached the limiter: %d" % top
     assert top > 10000
@@ -307,6 +309,7 @@ LEVEL_KNOBS = (
     ("hb_level", 60),
     ("lb_level", 61),
     ("lc_level", 64),
+    ("mb_level", 55),
 )
 
 
@@ -520,3 +523,42 @@ def test_every_tail_ends_at_zero_with_no_offset():
         inst.deinit()
         assert abs(float(np.mean(x[-4800:]))) < 0.5, note
         assert peak(x[-4800:]) < 2.0, note
+
+
+# -- the metal beat -----------------------------------------------------------------------
+
+
+def test_metal_beat_is_a_high_passed_square_on_its_own_voice():
+    inst = make()
+    x = play(inst, 55, buffers=30, velocity=100)[:, 0]
+    inst.deinit()
+    mag = np.abs(np.fft.rfft(x * np.hanning(len(x)), 1 << 16)) ** 2
+    freqs = np.fft.rfftfreq(1 << 16, 1.0 / 48000)
+    # The 600 Hz fundamental is gone; what is left sits above the 4 kHz corner.
+    assert np.sum(mag[freqs < 1000.0]) < 0.02 * np.sum(mag)
+    assert np.sum(mag[freqs > 3000.0]) > 0.8 * np.sum(mag)
+
+
+def test_metal_beat_dies_in_about_80_ms():
+    inst = make()
+    x = play(inst, 55, buffers=40, velocity=100)[:, 0]
+    inst.deinit()
+    win = 240
+    env = np.sqrt(np.mean(x[: len(x) // win * win].reshape(-1, win) ** 2, axis=1))
+    top = env.max()
+    # Falling 40 dB in 80 ms is about 20 dB by 40 ms, and silence past about 100 ms.
+    assert env[int(0.040 * 48000 / win) + 1] < 0.2 * top
+    assert env[int(0.100 * 48000 / win) :].max() < 0.01 * top
+
+
+def test_metal_beat_opens_in_about_a_millisecond():
+    inst = make()
+    x = play(inst, 55, buffers=4, velocity=100)[:, 0]
+    inst.deinit()
+    start = int(np.argmax(np.abs(x) > 0))
+    assert np.max(np.abs(x[start : start + 12])) < np.max(np.abs(x)), "no rise at the strike"
+
+
+def test_metal_beat_follows_balance_with_the_drums():
+    assert strike_rms(55, balance=9.0) < 0.5 * strike_rms(55, balance=5.0)
+    assert abs(strike_rms(55, balance=1.0) - strike_rms(55, balance=5.0)) < 1.0

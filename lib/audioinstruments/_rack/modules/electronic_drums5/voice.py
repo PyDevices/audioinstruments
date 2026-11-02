@@ -18,6 +18,7 @@ CHANNEL_SPECS = {
         "filter_range": (400.0, 3600.0),
         "click_scale": 0.85,
         "click_tone_hz": 2800.0,
+        "filter_mode": "LP",
         "gain": 3.2,
     },
     "sd": {
@@ -29,6 +30,7 @@ CHANNEL_SPECS = {
         "filter_range": (1500.0, 9500.0),
         "click_scale": 0.65,
         "click_tone_hz": 3400.0,
+        "filter_mode": "LP",
         "gain": 2.8,
     },
     "t1": {
@@ -40,6 +42,7 @@ CHANNEL_SPECS = {
         "filter_range": (1000.0, 6000.0),
         "click_scale": 0.55,
         "click_tone_hz": 3000.0,
+        "filter_mode": "LP",
         "gain": 2.8,
     },
     "t2": {
@@ -51,6 +54,7 @@ CHANNEL_SPECS = {
         "filter_range": (800.0, 5200.0),
         "click_scale": 0.55,
         "click_tone_hz": 2800.0,
+        "filter_mode": "LP",
         "gain": 2.8,
     },
     "t3": {
@@ -62,7 +66,45 @@ CHANNEL_SPECS = {
         "filter_range": (600.0, 4500.0),
         "click_scale": 0.55,
         "click_tone_hz": 2500.0,
+        "filter_mode": "LP",
         "gain": 2.8,
+    },
+    # The hi-hats and cymbal: noise through a high-pass, the tone and click down by default.
+    "ch": {
+        "pitch_range": (320.0, 800.0),
+        "bend_max_cents": 600.0,
+        "bend_time_sec": 0.02,
+        "decay_range": (0.02, 0.08),
+        "noise_scale": 1.0,
+        "filter_range": (1500.0, 7500.0),
+        "click_scale": 0.5,
+        "click_tone_hz": 7000.0,
+        "filter_mode": "HP",
+        "gain": 1.7,
+    },
+    "oh": {
+        "pitch_range": (320.0, 800.0),
+        "bend_max_cents": 600.0,
+        "bend_time_sec": 0.02,
+        "decay_range": (0.2, 0.9),
+        "noise_scale": 1.0,
+        "filter_range": (1500.0, 7500.0),
+        "click_scale": 0.5,
+        "click_tone_hz": 7000.0,
+        "filter_mode": "HP",
+        "gain": 1.8,
+    },
+    "cy": {
+        "pitch_range": (320.0, 800.0),
+        "bend_max_cents": 600.0,
+        "bend_time_sec": 0.02,
+        "decay_range": (0.3, 1.3),
+        "noise_scale": 1.0,
+        "filter_range": (1000.0, 5000.0),
+        "click_scale": 0.5,
+        "click_tone_hz": 6000.0,
+        "filter_mode": "HP",
+        "gain": 2.3,
     },
 }
 
@@ -70,7 +112,9 @@ CHANNEL_SPECS = {
 class ElectronicDrums5Voice(Module):
     """An analog electronic drum channel combining swept tone, filtered noise, and click.
 
-    Inspired by the channel modules of the Simmons SDS-V drum synthesizer.
+    Inspired by the channel modules of the Simmons SDS-V drum synthesizer. A channel's
+    ``filter_mode`` makes its noise low-passed, as on the drums, or high-passed, as on
+    the hi-hats and cymbal.
     """
 
     NAME = "ElectronicDrums5Voice"
@@ -89,6 +133,7 @@ class ElectronicDrums5Voice(Module):
         self.spec = CHANNEL_SPECS.get(which, CHANNEL_SPECS["bd"])
         self.core.set_click_tone(self.spec["click_tone_hz"])
         self.core.sweep_time_sec = self.spec["bend_time_sec"]
+        self.core.set_noise_filter(self.core.noise_cutoff_hz, self.spec["filter_mode"])
 
     def _build(self):
         self.gate_in = self.add_input("gate_in", "Gate In", SignalType.GATE)
@@ -97,7 +142,7 @@ class ElectronicDrums5Voice(Module):
         self.audio_out = self.add_output("audio_out", "Audio Out", SignalType.AUDIO)
 
         sr, bs = self.sample_rate, self.block_size
-        self.core = SweptOscillatorDrumCore(sr, bs, noise_filter_mode="LP")
+        self.core = SweptOscillatorDrumCore(sr, bs, noise_filter_mode=self.spec["filter_mode"])
         self.core.set_click_tone(self.spec["click_tone_hz"])
         self.core.sweep_time_sec = self.spec["bend_time_sec"]
 
@@ -350,7 +395,8 @@ class ElectronicDrums5Voice(Module):
         noise_1e = max(0.005, decay_sec / 4.60517)
         f.set(self._n_noise_env, ag.DECAY_DECAY, noise_1e * 4.60517)
         f.set(self._n_noise_env, ag.DECAY_RESTRIKE, noise_1e * 4.60517)
-        f.set(self._n_filt, ag.BIQUAD_MODE, audiobiquad.LOW_PASS)
+        high = spec["filter_mode"] == "HP"
+        f.set(self._n_filt, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS if high else audiobiquad.LOW_PASS)
         f.set(self._n_filt, ag.BIQUAD_FREQUENCY, cutoff)
         f.set(self._n_filt, ag.BIQUAD_Q, 1.0)
 

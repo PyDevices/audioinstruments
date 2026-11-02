@@ -4,6 +4,12 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- ElectronicDrums5 has a closed hi-hat, an open hi-hat and a cymbal on keys 42, 46 and 49,
+  which brings it to eight voices. The two hats cut each other. The five drum channels
+  sound as they did.
+- Rhythm78 has a metal beat on key 55, with a `mb_level` knob, which brings it to fifteen
+  voices. Its sound table in the docs now matches the keys and knobs it has.
+
 ## 0.5.1.dev2
 
 - A PolyA6 voice on a plain patch costs less than half as much on the graph: the parts

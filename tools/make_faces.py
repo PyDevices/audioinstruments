@@ -60,6 +60,7 @@ SOUNDS = {
     "tb": "Tambourine",
     "gu_s": "Guiro Short",
     "gu_l": "Guiro Long",
+    "mb": "Metal Beat",
 }
 
 

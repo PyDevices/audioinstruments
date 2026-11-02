@@ -49,7 +49,7 @@ def centroid(x, sr=48000):
 def test_registration_and_properties():
     assert "electronic_drums5" in adapter.ALL
     inst = make()
-    assert inst.voices == 5
+    assert inst.voices == 8
     assert inst.latency_samples == 0
     assert len(inst.patches) == len(electronic_drums5.PRESETS)
     assert len(inst.macro_labels) == len(electronic_drums5.MACROS)
@@ -63,12 +63,15 @@ def test_pad_map_matches_the_published_table():
         2: (48, 50),
         3: (45, 47),
         4: (41, 43),
+        5: (42,),
+        6: (46,),
+        7: (49,),
     }
     got = {}
     for key, voice in electronic_drums5.PADS:
         got.setdefault(voice, []).append(key)
     assert {v: tuple(sorted(k)) for v, k in got.items()} == table
-    assert electronic_drums5.CHOKE == ()
+    assert electronic_drums5.CHOKE == ((5, 6),)
 
 
 ALL_DRUM_PADS = (
@@ -84,6 +87,9 @@ ALL_DRUM_PADS = (
     47,  # Mid Tom alt
     48,  # High Tom
     50,  # High Tom alt
+    42,  # Closed Hat
+    46,  # Open Hat
+    49,  # Cymbal
 )
 
 
@@ -117,6 +123,9 @@ def test_presets_load_and_play(preset):
 SR = 48000
 KEYS = {"bd": 36, "sd": 38, "t1": 48, "t2": 45, "t3": 41}
 CHANNELS = tuple(KEYS)
+#: The channels that are noise through a high-pass, tone and click down.
+NOISE_KEYS = {"ch": 42, "oh": 46, "cy": 49}
+KEYS_ALL = dict(KEYS, **NOISE_KEYS)
 
 
 def ctl(inst, **controls):
@@ -128,7 +137,7 @@ def strike(controls, channel, velocity=100, seconds=1.0, preset=0):
     """One strike of ``channel`` with ``controls`` set on top of the preset; left channel."""
     inst = make(preset)
     ctl(inst, **controls)
-    inst.note_on(KEYS[channel], velocity)
+    inst.note_on(KEYS_ALL[channel], velocity)
     frames = 0
     chunks = []
     while frames < seconds * SR:
@@ -269,7 +278,7 @@ def test_each_patch_loads_every_control(preset):
     seen = {}
     for m in inst.rack.modules:
         which = getattr(m, "which", None)
-        if which in KEYS:
+        if which in KEYS_ALL:
             for p in ("tone", "noise", "pitch", "bend", "decay", "filter", "click"):
                 seen[which + "_" + p] = getattr(m, p)
             assert abs(m.sensitivity - want["sensitivity"]) < 0.05
@@ -375,11 +384,13 @@ def test_restrike_click_stays_a_click_not_a_jump():
     assert np.max(np.abs(np.diff(full))) < 0.7 * peak(full)
 
 
-def test_five_accented_strikes_do_not_clip_and_leave_no_dc():
+def test_eight_accented_strikes_do_not_clip_and_leave_no_dc():
     for volume in (7.0, 10.0):
         inst = make()
         ctl(inst, volume=volume)
         for key in KEYS.values():
+            inst.note_on(key, 127)
+        for key in NOISE_KEYS.values():
             inst.note_on(key, 127)
         x = np.concatenate([pull(inst, 1) for _ in range(600)])
         inst.deinit()
@@ -409,3 +420,83 @@ def test_a_drum_does_not_depend_on_how_long_the_key_is_held():
     inst.deinit()
     short = np.concatenate([a] + rest)[: len(held)]
     assert np.max(np.abs(held[: len(short)] - short)) < 0.01 * peak(held)
+
+
+# -- the hi-hats and the cymbal ---------------------------------------------------------
+
+
+def band_power(x, low, high):
+    """The share of a signal's power between ``low`` and ``high`` Hz."""
+    power = np.abs(np.fft.rfft(x)) ** 2
+    freqs = np.fft.rfftfreq(len(x), 1.0 / SR)
+    return float(np.sum(power[(freqs >= low) & (freqs < high)]) / np.sum(power))
+
+
+@pytest.mark.parametrize("channel", NOISE_KEYS)
+def test_a_noise_channel_is_high_passed(channel):
+    x = strike({}, channel, seconds=1.0)
+    assert band_power(x, 0.0, 500.0) < 0.01, "low end got through"
+    assert band_power(x, 3000.0, SR / 2) > 0.6, "too little top end"
+
+
+@pytest.mark.parametrize("channel", NOISE_KEYS)
+def test_a_noise_channels_filter_knob_moves_its_cutoff(channel):
+    dark = strike({channel + "_filter": 0.0}, channel, seconds=0.5)
+    bright = strike({channel + "_filter": 10.0}, channel, seconds=0.5)
+    assert band_power(dark, 0.0, 4000.0) > 2.0 * band_power(bright, 0.0, 4000.0)
+
+
+def test_the_hats_and_cymbal_ring_for_their_own_lengths():
+    closed = fall_ms(strike({}, "ch", seconds=1.0), 20.0)
+    opened = fall_ms(strike({}, "oh", seconds=1.5), 20.0)
+    cymbal = fall_ms(strike({}, "cy", seconds=2.0), 20.0)
+    assert closed < 40.0 < 150.0 < opened < cymbal, (closed, opened, cymbal)
+
+
+@pytest.mark.parametrize("channel", NOISE_KEYS)
+def test_a_noise_channels_knobs_sound_each_part(channel):
+    silent = {channel + "_tone": 0.0, channel + "_noise": 0.0, channel + "_click": 0.0}
+    assert peak(strike(silent, channel, seconds=0.2)) == 0.0
+    for part in ("tone", "noise", "click"):
+        only = dict(silent)
+        only[channel + "_" + part] = 10.0
+        assert peak(strike(only, channel, seconds=0.2)) > 100.0, part
+
+
+NAMES = {42: "ch", 46: "oh"}
+
+
+@pytest.mark.parametrize("cut,cutter", ((46, 42), (42, 46)))
+def test_each_hat_cuts_the_other(cut, cutter):
+    inst = make()
+    # The cutting hat's own noise off, so what is left to hear is what it cut.
+    ctl(inst, **{NAMES[cutter] + "_noise": 0.0})
+    inst.note_on(cut, 100)
+    pull(inst, 2)
+    inst.note_on(cutter, 100)
+    pull(inst, 2)
+    tail = pull(inst, 10)
+    inst.deinit()
+    assert rms(tail) < 1.0, "the struck hat rang on: rms %g" % rms(tail)
+
+
+def test_the_cymbal_and_a_drum_do_not_cut_an_open_hat():
+    inst = make()
+    inst.note_on(46, 100)
+    pull(inst, 5)
+    alone = make()
+    alone.note_on(46, 100)
+    pull(alone, 5)
+    inst.note_on(49, 100)
+    inst.note_on(36, 100)
+    with_others = rms(pull(inst, 10))
+    assert with_others > rms(pull(alone, 10))
+    inst.deinit()
+    alone.deinit()
+
+
+@pytest.mark.parametrize("channel", NOISE_KEYS)
+def test_a_noise_channel_leaves_no_dc(channel):
+    x = strike({}, channel, seconds=1.0)
+    assert abs(np.mean(x[-4800:])) < 1.0
+    assert abs(np.mean(x)) < 0.02 * rms(x)

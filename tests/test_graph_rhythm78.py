@@ -5,7 +5,7 @@
 Every voice module and the shared output (``Rhythm78Output``) have graph
 fragments, so ``create()`` compiles it where audiodsp has ``audiograph``.
 These tests hold the compiled form to the rack form on the same hits across
-all fourteen sounds and the four factory patches.
+all fifteen sounds and the four factory patches.
 
 What matches, to what, and how it is checked:
 
@@ -14,6 +14,9 @@ What matches, to what, and how it is checked:
   about 35 counts worst). The bongos and conga bend their pitch up from below
   (a negative drop), which DECAY cannot carry as a level, so the bend runs as a
   positive level into a negative pitch range.
+* The metal beat (a pulse OSC under a DECAY with a rise, through a high-pass)
+  matches the rack sample for sample, to about 70 counts worst on a hard hit:
+  it is a loud sound made of little but the square's edges.
 * The snare's tone matches to a dozen counts with its noise silenced.
 * The hats, the cymbal, the tambourine and both guiros are pure noise, so with
   it silenced nothing is left to compare. The graph's generator is not the
@@ -52,6 +55,7 @@ PADS = {
     "hb": 60,
     "lb": 61,
     "lc": 64,
+    "mb": 55,
 }
 #: (worst, rms) counts against the rack on a deterministic voice.
 TONE = (50.0, 12.0)
@@ -69,6 +73,7 @@ BOUND = {
     "hb": TONE,
     "lb": TONE,
     "lc": TONE,
+    "mb": RIM,
 }
 #: The graph's noise over the rack's, as a ratio of rms.
 NOISE_RATIO = 0.35
@@ -258,7 +263,7 @@ def test_every_patch_matches_the_rack_on_a_strike(patch):
 
 
 @pytest.mark.parametrize("vel", (60, 100, 127))
-@pytest.mark.parametrize("voice", ("bd", "cb", "lb"))
+@pytest.mark.parametrize("voice", ("bd", "cb", "lb", "mb"))
 def test_a_soft_and_a_hard_strike_match_the_rack(voice, vel):
     """Velocity scales the envelope and the accent the same way on both sides."""
     worst, rms, peak = stats(0, hit(PADS[voice], vel=vel), quiet=True)
@@ -280,6 +285,10 @@ def test_a_soft_and_a_hard_strike_match_the_rack(voice, vel):
         ("cb", {"tone": 9.0}),
         ("cl", {"accent": 9.0}),
         ("rs", {"rs_level": 10.0}),
+        ("mb", {"mb_level": 10.0}),
+        ("mb", {"mb_level": 3.0}),
+        ("mb", {"balance": 8.0}),
+        ("mb", {"accent": 9.0}),
     ),
 )
 def test_a_turned_knob_matches_the_rack(voice, controls):
@@ -327,6 +336,7 @@ def _faults():
         drum,
         guiro,
         hats,
+        metal,
         output,
         snare,
         tambourine,
@@ -356,6 +366,7 @@ def _faults():
             "bound",
         ),
         ("cowbell output mix", cowbell.Rhythm78Cowbell, "_graph_params", mix, 0, "cb", "bound"),
+        ("metal beat output mix", metal.Rhythm78MetalBeat, "_graph_params", mix, 0, "mb", "bound"),
         (
             "output volume drive",
             output.Rhythm78Output,
@@ -380,7 +391,7 @@ def _faults():
     ]
 
 
-FAULT_IDS = ["drum", "snare", "cowbell", "output", "hat", "cymbal", "tambourine", "guiro"]
+FAULT_IDS = ["drum", "snare", "cowbell", "metal", "output", "hat", "cymbal", "tambourine", "guiro"]
 
 
 @pytest.mark.parametrize("which", range(len(FAULT_IDS)), ids=FAULT_IDS)

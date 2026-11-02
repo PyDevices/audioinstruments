@@ -974,3 +974,55 @@ class Cowbell78Graph:
     def reset(self, f):
         for node in (self.n_osc1, self.n_osc2, self.n_env, self.n_vca, self.n_filt):
             f.reset(node)
+
+
+class MetalBeat78Graph:
+    """The Rhythm78 metal beat: a pulse OSC under a DECAY with a rise, then a high-pass.
+
+    The rack shapes the square at ``FREQ`` before the high-pass at 4 kHz, q 1.5, so
+    only the upper harmonics of its edges come through, as a short metal tick.
+    Output ``* GAIN``.
+    """
+
+    FREQ = 600.0
+    DECAY_SEC = 0.080
+    RISE_SEC = 0.001
+    CUTOFF = 4000.0
+    Q = 1.5
+    GAIN = 3.8
+
+    def __init__(self, f, gate, out):
+        import audiobiquad
+        import audiograph as ag
+
+        self.f = f
+
+        b_vel, b_env = f.buffer(), f.buffer()
+        b_osc, b_shaped, b_filt = f.buffer(), f.buffer(), f.buffer()
+
+        self.n_vel = f.add(ag.CONST, (), b_vel)
+        self.n_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        f.set(self.n_env, ag.DECAY_RESTRIKE, self.DECAY_SEC)
+        f.set(self.n_env, ag.DECAY_DECAY, self.DECAY_SEC)
+        f.set(self.n_env, ag.DECAY_RISE, self.RISE_SEC)
+
+        self.n_osc = f.add(ag.OSC, (None, None, None, None), b_osc)
+        f.set(self.n_osc, ag.OSC_WAVEFORM, 2)
+        f.set(self.n_osc, ag.OSC_LEVEL, 0.25)
+        f.set(self.n_osc, ag.OSC_FREQUENCY, self.FREQ)
+        f.set(self.n_osc, ag.OSC_PULSE_WIDTH, 0.5)
+        self.n_vca = f.add(ag.VCA, (b_osc, b_env, None), b_shaped)
+        f.set(self.n_vca, ag.VCA_SELECT, 0.0)
+        self.n_filt = _biquad(
+            f, ag, audiobiquad, b_shaped, b_filt, audiobiquad.HIGH_PASS, self.CUTOFF, self.Q
+        )
+        self.n_mix = f.add(ag.MIX, (b_filt,), out)
+        f.set(self.n_mix, 0, self.GAIN)
+
+    def apply(self, *, gain, velocity):
+        self.f.set(self.n_vel, 0, max(0.0, min(1.0, velocity)) * UNIT)
+        self.f.set(self.n_mix, 0, self.GAIN * gain)
+
+    def reset(self, f):
+        for node in (self.n_osc, self.n_env, self.n_vca, self.n_filt):
+            f.reset(node)
