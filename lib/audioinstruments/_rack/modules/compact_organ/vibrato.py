@@ -9,12 +9,19 @@ wire carries the vibrato ``WIRE_SCALE`` times larger: each voice adds it to
 its key at that finer step and rounds the sum once, as the rack rounds its
 pitch wire, where two roundings would detune a key a little at random.
 
-The node adds its step to its phase every sample in float32, where the rack
-works out each sample's phase from the block's start: over a few seconds the
-node's sine runs a little apart from the rack's, and the vibrato on a held
-key with it. So the node is put back to phase 0 at each block boundary where
-the rack's sine has come round to 0 exactly (every 16000 samples, at 48 kHz
-and 128-sample blocks).
+The scale is 255, not 256, because a power of two lands the voice's sum on
+exact halves (``n / 256`` of a count), and rounding those all one way leaves
+the vibrato's pitch a fraction of a count sharp or flat for as long as a key
+is held. A held key's phase then walks away from the rack's, more each
+period. ``n / 255`` is never an exact half.
+
+What is left leans the same way, only less: the node adds its step to its
+phase every sample in float32, where the rack works out each sample's phase
+from the block's start, and over a period its wave sits a few hundredths of a
+count below the rack's. The node is put back to phase 0 at each block
+boundary where the rack's sine has come round to 0 exactly (every 16000
+samples, at 48 kHz and 128-sample blocks), so its phase does not wander
+further than one period's worth, but the small lean in pitch stays.
 """
 
 from ...core.jack import SignalType
@@ -32,7 +39,7 @@ VIBRATO_LIGHT_CV = 15.0 / 1200.0 * 0.1
 VIBRATO_DEEP_CV = 40.0 / 1200.0 * 0.1
 
 #: How much larger the graph's wire carries the vibrato for voices that take it so.
-WIRE_SCALE = 256.0
+WIRE_SCALE = 255.0
 
 
 class CompactOrganVibrato(Module):
