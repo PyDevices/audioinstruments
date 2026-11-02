@@ -11,7 +11,7 @@ from ..core.module import Module
 from ..core.signal import BASE_FREQ_C4, add_scaled, copy_into, pitch_to_frequency
 from ..dsp.amplifier import AmplifierCore
 from ..dsp.biquad import MIN_HZ, MultimodeFilter, resonance_to_q
-from ..dsp.envelope import EnvelopeCore
+from ..dsp.envelope import STATE_IDLE, STATE_SUSTAIN, EnvelopeCore
 from ..dsp.lfo import LFOCore
 from ..dsp.oscillator import OscillatorCore
 from ._util import jack_signal, knob_hz
@@ -139,6 +139,8 @@ class StateVariableMono(Module):
             core.reset()
 
     def process(self, block_size):
+        # a rack step moves what the graph's hook remembers: it looks again next block
+        self._scanned = self._still_state = self._set_cv = None
         p = self.params
         n = block_size
         self.lfo.render(p["lfo_rate"], tri=self.lfo_tri_out.buffer)
@@ -343,6 +345,12 @@ class StateVariableMono(Module):
             f.watch(self.kybd_gate_in, self._graph_gate)
         if self._fcv_control:
             f.watch(self.vcf_cutoff_in, self._graph_fcv_in)
+        self._scanned = None  # the gate the envelopes' edge detectors last saw
+        self._still_state = None  # the state env 1 last rendered a whole block in, and with
+        self._still_level = None  # what sustain, and what it left in the block's first sample
+        self._still_cv = 0.0
+        self._set_cv = None  # the cutoff's sum and knob the filters were last set from
+        self._set_cutoff = None
         f.before_run(self._graph_block)
         f.on_reset(self._graph_reset)
 
@@ -363,24 +371,48 @@ class StateVariableMono(Module):
         n = self.block_size
         dt = p["lfo_rate"] / float(self.sample_rate)
         if self._gate_control:
-            self._tmp[:] = self._k_gate
-            gate = self._tmp
+            gate = None  # a gate that has not moved has no edge to find
+            if self._k_gate != self._scanned and steps:
+                self._scanned = self._k_gate
+                self._tmp[:] = self._k_gate
+                gate = self._tmp
         else:
             gate = jack_signal(self.kybd_gate_in)
-        self.env1.set_times(p["env1_attack"], p["env1_decay"], p["env1_sustain"], p["env1_decay"])
-        if self._fcv_src is self.env2_out:
+        env1 = self.env1
+        env1.set_times(p["env1_attack"], p["env1_decay"], p["env1_sustain"], p["env1_decay"])
+        with_env2 = self._fcv_src is self.env2_out
+        if with_env2:
             self.env2.set_times(
                 p["env2_attack"], p["env2_decay"], p["env2_sustain"], p["env2_decay"]
             )
+        # An envelope sitting at its sustain, or at rest, renders the block it rendered last
+        # block, so there is nothing to ask it.
+        state = env1.state
+        env1_still = (
+            gate is None
+            and not with_env2
+            and state == self._still_state
+            and env1.sustain_level == self._still_level
+        )
         lfo0 = 0.0
         for _ in range(steps):
             ph0 = (self.lfo.phase + dt) % 1.0
             self.lfo.phase = (self.lfo.phase + n * dt) % 1.0
             lfo0 = (1.0 - abs(4.0 * ph0 - 2.0)) * 0.5
-            self.env1.render(gate, self._cv)
-            if self._fcv_src is self.env2_out:
+            if not env1_still:
+                env1.render(gate, self._cv)
+            if with_env2:
                 self.env2.render(gate, self._mix)
-        env1_0 = float(self._cv[0])
+        if env1_still:
+            env1_0 = self._still_cv
+        else:
+            env1_0 = float(self._cv[0])
+            if env1.state == state and state in (STATE_IDLE, STATE_SUSTAIN):
+                self._still_state = state
+                self._still_level = env1.sustain_level
+                self._still_cv = env1_0
+            else:
+                self._still_state = None
         cv = env1_0 * p["vcf_env1_depth"] + lfo0 * p["vcf_lfo_depth"]
         if self._fcv_cabled:
             if self._fcv_control:
@@ -393,7 +425,12 @@ class StateVariableMono(Module):
                 cv += float(self._mix[0])
             else:
                 cv += float(self.vcf_cutoff_in.get_buffer()[0])
-        hz = pitch_to_frequency(cv, base_freq=knob_hz(p["vcf_cutoff"], 30.0, 15000.0))
+        cutoff = p["vcf_cutoff"]
+        if cv == self._set_cv and cutoff == self._set_cutoff:
+            return
+        self._set_cv = cv
+        self._set_cutoff = cutoff
+        hz = pitch_to_frequency(cv, base_freq=knob_hz(cutoff, 30.0, 15000.0))
         hz = max(MIN_HZ, min(self.sample_rate * 0.45, hz))
         ag = self._ag
         f.set(self._n_lp, ag.BIQUAD_FREQUENCY, hz)
@@ -488,6 +525,7 @@ class StateVariableMono(Module):
         f.set(self._n_hold_gate, 0, UNIT if held else 0.0)
 
     def _graph_reset(self):
+        self._scanned = self._still_state = self._set_cv = None
         f = self._fragment
         for node in (
             self._n_saw1,

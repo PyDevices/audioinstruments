@@ -5,13 +5,14 @@
     micropython tools/block_phrase.py poly106
     python tools/block_phrase.py poly106 pump
 
-The ``before_run`` hooks of the MIDI module and the mix compare what they would write with
-what they last wrote, and skip the writing. A comparison that misses something leaves a
-stale value in a control, which is a wrong note and no error. So this plays one phrase
+The ``before_run`` hooks of the MIDI module, the mix and some voices compare what they would
+write with what they last wrote, and skip the writing. A comparison that misses something
+leaves a stale value in a control, which is a wrong note and no error. So this plays one phrase
 twice, moving everything those hooks carry: a bend and its range, the wheels and pedals,
 pressure, a glide, a retriggered key, steals, a patch change, a recompile, the pool switched
-to mono and back, the level, a reset. In the second playing the hooks' memory is wiped before
-every block, so they write everything the long way. The two must come out the same bytes.
+to mono and back, the level, a reset, a step of the rack, and the voice's own knobs. In the
+second playing the hooks' memory is wiped before every block, so they write everything the long
+way. The two must come out the same bytes.
 ``check`` also reads the controls after the hooks and works out from the module's state what
 each should hold, which catches what both playings would get wrong alike. A run prints
 ``ok <voice> <mode> <sha256>``, or raises.
@@ -35,6 +36,109 @@ BLOCK = 128
 BUFFERS = 240
 CHORD = (48, 55, 60, 64, 67, 72)
 
+#: The knobs a voice's own hook remembers, moved under the chord: (buffer, name, value).
+KNOBS = {
+    "polya6": (
+        (3, "post_f1_lp", 100),  # so Filter 1 is heard
+        (3, "f1_freq", 500.0),
+        (4, "osc_lfo1", 20),
+        (4, "lfo1_trigger", "voice"),
+        (4, "lfo1_delay", 0.1),
+        (5, "f1_lfo2", 60),
+        (6, "f1_sh", 40),
+        (6, "sh_rate", 40.0),
+        (7, "lfo2_delay", 0.1),
+        (12, "lfo1_rate", 3.0),
+        (15, "f1_res", 70),
+        (17, "sh_rate", 15.0),
+        (19, "f1_sh", 0),
+        (21, "f1_lfo2", 0),
+        (22, "f1_env2", 40),
+        (23, "filter_bypass", True),
+        (25, "filter_bypass", False),
+        (27, "f1_env2", 0),
+        (29, "f1_keytrack", 30),
+        (33, "f1_freq", 1000.0),
+        (36, "f1_keytrack", 0),
+        (36, "osc_lfo1", 0),
+        (37, "slop", 50),
+        (41, "osc1_semi", 7),
+        (42, "osc2_cents", 13.0),
+        (42, "mix_sub1", 30),
+        (43, "osc1_bend", False),
+        (45, "slop", 0),
+        (47, "slop", 10),
+        (49, "osc1_tri", True),
+        (50, "osc1_sine", True),
+        (51, "osc2_square", True),
+        (53, "osc1_square", True),
+        (53, "osc1_pwm", 30),
+        (60, "osc1_pwm", 0),
+    ),
+    "west_coast_synth": (
+        (3, "func1_rise", 0.02),
+        (3, "func1_fall", 0.08),
+        (3, "func2_fall", 0.15),
+        (12, "fm_index", 0.8),
+        (33, "func1_fall", 0.5),
+        (40, "func2_rise", 0.3),
+    ),
+    "state_variable_mono": (
+        (3, "env1_decay", 0.05),
+        (6, "env1_sustain", 0.8),
+        (12, "vcf_cutoff", 0.7),
+        (15, "vcf_env1_depth", 0.2),
+        (22, "vcf_lfo_depth", 0.4),
+        (27, "lfo_rate", 9.0),
+        (32, "vcf_lfo_depth", 0.0),
+        (41, "env1_sustain", 0.0),
+        (47, "vcf_cutoff", 0.3),
+    ),
+    "poly80": (
+        (3, "ch1_init_bril", 0.8),
+        (3, "ch1_init_level", 0.5),
+        (3, "touch_bend", 0.5),
+        (3, "ring_mod", 0.6),
+        (3, "ring_depth", 0.5),
+        (3, "ring_decay", 0.2),
+        (5, "trem", "chorus"),
+        (6, "sub_vcf", 0.5),
+        (8, "slop", 0.5),
+        (12, "sub_vcf", 0.0),
+        (15, "detune", 0.3),
+        (17, "sub_vca", 0.4),
+        (22, "sub_vca", 0.0),
+        (25, "wheel_wah", 0.5),
+        (27, "touch_speed", 0.7),
+        (32, "resonance", 0.5),
+        (33, "ch1_feet", "4"),
+        (36, "sub_wave", "square"),
+        (37, "ring_speed", 0.8),
+        (41, "sustain_mode", "II"),
+        (42, "trem", "off"),
+        (43, "ch2_lpf", 0.2),
+        (45, "slop", 0.0),
+        (47, "slop", 0.2),
+        (49, "ring_mod", 0.0),
+    ),
+    "poly8": (
+        (3, "portamento", 0.4),
+        (3, "env1_key_follow", 1.0),
+        (15, "env1_key_follow", 0.0),
+        (17, "env2_key_follow", 1.0),
+        (22, "portamento", 0.0),
+        (25, "slop", 0.0),
+        (27, "slop", 5.0),
+        (30, "vco1_range", 1),
+        (32, "vco2_fine", 0.3),
+        (36, "hpf_cutoff", 0.5),
+        (41, "hpf_cutoff", 0.0),
+        (43, "portamento", 0.3),
+        (47, "env2_key_follow", 0.0),
+        (49, "portamento", 0.0),
+    ),
+}
+
 
 def _param(inst, name, value):
     if name in inst._midi.params:
@@ -53,11 +157,32 @@ def _recompile(inst, carry):
         inst._compiled = compiled.recompile(groups=groups, carry=carry)
 
 
+def _rack_step(inst):
+    """A step of the rack between graph blocks, which moves what both paths share."""
+    if not inst._compiled.pumped:
+        inst.rack.step()
+
+
+def _rack_saw_it_lift(inst, note):
+    """A key lifted and pressed again, with only the rack stepping in between: the graph's
+    hooks see the same gate they last saw, and the envelopes' edge detectors do not."""
+    inst.note_off(note)
+    _rack_step(inst)
+    inst.note_on(note, 90)
+
+
 def _level(inst, value):
     inst._pool.mix.set_param("level", value)
 
 
-def phrase(inst):
+def _knob(inst, name, value):
+    """A knob on every voice that has it, as a patch's voice parameter is set."""
+    for f in inst._compiled.fragments:
+        if name in f.module.params:
+            f.module.set_param(name, value)
+
+
+def phrase(inst, voice=None):
     """{buffer: [(function, args)]}."""
     events = {}
 
@@ -66,6 +191,8 @@ def phrase(inst):
 
     for note in CHORD:
         at(2, inst.note_on, note, 100)
+    for buffer, name, value in KNOBS.get(voice, ()):
+        at(buffer, _knob, inst, name, value)
     at(10, inst.pitch_bend, 12000)
     at(14, inst.pitch_bend, 8192)
     at(16, inst.control_change, 1, 90)
@@ -77,6 +204,7 @@ def phrase(inst):
     at(29, inst.poly_pressure, 60, 0)
     at(30, inst.control_change, 11, 60)
     at(31, inst.control_change, 4, 40)
+    at(33, _rack_step, inst)  # with a chord held
     at(34, inst.note_on, 60, 60)  # a held key again, softer
     at(35, inst.note_on, 67, 127, 0.3)
     at(38, inst.control_change, 64, 127)
@@ -101,7 +229,9 @@ def phrase(inst):
     at(86, _recompile, inst, True)  # state carried, under a bend
     at(88, inst.pitch_bend, 8192)
     at(90, _recompile, inst, False)  # and starting fresh
-    at(92, inst.note_on, 62, 80)
+    at(91, inst.note_on, 62, 80)
+    at(91, _rack_step, inst)  # the rack sees the gate first
+    at(100, _rack_step, inst)  # and at rest
     at(94, inst.all_notes_off)
     at(120, inst.program_change, 2)
     at(124, inst.note_on, 60, 110)
@@ -115,6 +245,7 @@ def phrase(inst):
     at(136, inst.channel_pressure, 60)
     at(138, inst.pitch_bend, 8192)
     at(140, inst.channel_pressure, 0)
+    at(141, _rack_saw_it_lift, inst, 64)
     at(142, _mono, inst, False)
     at(146, inst.note_on, 69, 100)
     at(150, inst.pitch_bend, 6000)
@@ -142,8 +273,31 @@ def _wipe(compiled):
                 module._g_bend = None
             if hasattr(module, "_seen_level"):  # the mix
                 module._seen_level = None
-            if type(module).__name__ == "StringEnsembleVoice":
+            name = type(module).__name__
+            if name == "StringEnsembleVoice":
                 module._g_gain_set = None
+            elif name == "PolyA6Voice":
+                module._k_moved = True
+                module._dirty = True
+                module._seen = None
+                module._lfo_rate[:] = (None, None)
+                module._lfo_level[:] = (None, None)
+                module._f1_hz = None
+            elif name == "Poly8Voice":
+                module._pending.update(module._FLUSH)
+                module._step_blocks = None
+            elif name == "WestCoastSynth":
+                module._scanned = module._still = None
+            elif name == "StateVariableMono":
+                module._scanned = module._still_state = module._set_cv = None
+            elif name == "Poly80Voice":
+                module._moved = True
+                module._pulse_scanned = module._step_blocks = None
+            elif name == "Poly80Output":
+                module._moved = True
+                module._scanned = None
+            elif name == "Poly80Mod":
+                module._moved = module._keys_moved = True
 
     return wipe
 
@@ -220,7 +374,7 @@ def render(voice, mode="pull", wipe=False, check=False):
     h = hashlib.sha256()
     loud = False
     try:
-        events = phrase(inst)
+        events = phrase(inst, voice)
         for b in range(BUFFERS):
             for fn, args in events.get(b, ()):
                 fn(*args)

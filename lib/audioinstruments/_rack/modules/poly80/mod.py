@@ -90,6 +90,7 @@ class Poly80Mod(Module):
             self.params[name] = max(spec["min"], min(spec["max"], float(value)))
         else:
             self.params[name] = float(value)
+        self._moved = True
 
     def set_block_size(self, block_size):
         super().set_block_size(block_size)
@@ -107,6 +108,8 @@ class Poly80Mod(Module):
             d.high = False
 
     def process(self, block_size):
+        # a rack step moves what the graph's hook remembers: it looks again next block
+        self._keys_moved = True
         any_high = False
         any_rose = False
         max_press = 0.0
@@ -198,6 +201,8 @@ class Poly80Mod(Module):
         self._gates = [False] * self.voices
         self._was = [False] * self.voices
         self._presses = [0.0] * self.voices
+        self._moved = True  # a knob moved
+        self._keys_moved = True  # a key or its pressure moved, or the last block saw a key rise
         for i in range(self.voices):
             f.watch(self.inputs["gate%d" % (i + 1)], self._watch_gate(i))
             f.watch(self.inputs["press%d" % (i + 1)], self._watch_press(i))
@@ -208,12 +213,14 @@ class Poly80Mod(Module):
     def _watch_gate(self, i):
         def gate(value):
             self._gates[i] = value > 0.5
+            self._keys_moved = True
 
         return gate
 
     def _watch_press(self, i):
         def press(value):
             self._presses[i] = value
+            self._keys_moved = True
 
         return press
 
@@ -237,9 +244,14 @@ class Poly80Mod(Module):
         f.set(self._n_pwm[1], ag.LFO_RATE, slider_time(p.get("ch2_pwm_speed", 0.4), PWM_HZ))
 
     def _graph_block(self):
-        # set_param here does not tell the fragment, so the knobs are read every block
-        self._graph_knobs()
+        moved = self._moved
+        keys = self._keys_moved
+        if not moved and not keys:
+            return
         f = self._fragment
+        if moved:
+            self._moved = False
+            self._graph_knobs()
         rose = False
         high = False
         press = 0.0
@@ -252,6 +264,7 @@ class Poly80Mod(Module):
                 high = True
             if self._presses[i] > press:
                 press = self._presses[i]
+        self._keys_moved = rose  # the new-key pulse lasts one block
         self._newkey.set(1.0 if rose else 0.0)
         self._anykey.set(1.0 if high else 0.0)
         speed = slider_time(self.params.get("sub_speed", 0.5), SUB_HZ)
@@ -259,6 +272,7 @@ class Poly80Mod(Module):
         f.set(self._n_sub_lfo, self._ag.LFO_RATE, min(speed, 0.45 * self.sample_rate))
 
     def _graph_reset(self):
+        self._keys_moved = True
         f = self._fragment
         for node in [self._n_sub_lfo, self._n_sub_noise] + self._n_pwm:
             f.reset(node)

@@ -88,6 +88,15 @@ def _seed(text):
     return h
 
 
+_LFOS = (0, 1)
+
+#: Each LFO's parameters: its rate, what restarts it and its fade in.
+_LFO_PARAMS = (
+    ("lfo1_rate", "lfo1_trigger", "lfo1_delay"),
+    ("lfo2_rate", "lfo2_trigger", "lfo2_delay"),
+)
+
+
 def _slop_factors(text):
     """Deterministic per-voice offsets (-1..1), drift rates (Hz) and initial phases (0..1)."""
     s = 5381
@@ -996,6 +1005,7 @@ class PolyA6Voice(Module):
         self._has_bend = self.bend_in.cable is not None
         self._k_pitch = self._k_note = self._k_gate = self._k_bend = self._k_mod = 0.0
         self._k_vel = 0.0 if self.vel_in.cable is not None else 1.0
+        self._k_moved = True  # a control behind these moved: see whether the voice has to care
         f.watch(self.pitch_in, self._graph_k_pitch)
         f.watch(self.note_in, self._graph_k_note)
         f.watch(self.gate_in, self._graph_k_gate)
@@ -1170,6 +1180,17 @@ class PolyA6Voice(Module):
         self._slop = (0.0, 0.0, 0.0, 0.0)
         self._seen = None
         self._dirty = True
+        # what the block needs of the parameters, worked out when they move
+        dt = n / float(self.sample_rate)
+        self._drift_1_step = self._drift_1_hz * dt
+        self._drift_2_step = self._drift_2_hz * dt
+        self._slop_1_at = self._slop_1 * SLOP_PITCH
+        self._slop_2_at = self._slop_2 * SLOP_PITCH
+        self._lfo_on = (False, False)
+        self._lfo_rate = [None, None]  # as last written to the nodes
+        self._lfo_level = [None, None]
+        self._f1_moves = False
+        self._f1_hz = None
         # how many audiooscillator nodes the rack's VCOs have grown to (two waves
         # each): a VCO that grows restarts every node at phase zero, once
         self._grown = [0, 0]
@@ -1185,21 +1206,26 @@ class PolyA6Voice(Module):
 
     def _graph_k_pitch(self, value):
         self._k_pitch = value
+        self._k_moved = True
 
     def _graph_k_note(self, value):
         self._k_note = value
+        self._k_moved = True
 
     def _graph_k_gate(self, value):
         self._k_gate = value
 
     def _graph_k_vel(self, value):
         self._k_vel = value
+        self._k_moved = True
 
     def _graph_k_bend(self, value):
         self._k_bend = value
+        self._k_moved = True
 
     def _graph_k_mod(self, value):
         self._k_mod = value
+        self._k_moved = True
 
     def _graph_dirty(self):
         self._dirty = True
@@ -1229,44 +1255,67 @@ class PolyA6Voice(Module):
     # -- each block -------------------------------------------------------------------------
 
     def _graph_block(self):
+        """A block with nothing moved costs the drift and whatever else runs on its own: an
+        LFO that is on, and a Filter 1 that follows something. The rest is worked out here
+        only when a parameter, the velocity, the wheel or the bend has changed."""
         if not self.enabled:
             return  # the rack runs nothing of a parked voice, its clocks included
-        p = self.params
-        self._graph_slop(True)
-        seen = (self._k_vel, self._k_mod, self._bend_diff())
-        if seen != self._seen:
-            self._seen = seen
-            self._dirty = True
-        if self._dirty:
+        self._drift_1_phase = (self._drift_1_phase + self._drift_1_step) % 1.0
+        self._drift_2_phase = (self._drift_2_phase + self._drift_2_step) % 1.0
+        if self._k_moved:
+            self._k_moved = False
+            seen = (self._k_vel, self._k_mod, self._bend_diff())
+            if seen != self._seen:
+                self._seen = seen
+                self._dirty = True
+        dirty = self._dirty
+        if dirty:
             self._dirty = False
+            self._graph_slop()
+            self._lfo_on = self._lfo_active()
             self._graph_static()
-        elif p["slop"] > 0.0:
-            self._graph_pitch()  # the drift moves every block
+        else:
+            s = self._slop_scale
+            if s > 0.0:  # the drift moves every block
+                self._graph_drift(s)
         self._graph_lfos()
-        self._graph_grow()
-        f = self._fragment
-        ag = self._ag
-        f.set(self._n_clk, ag.LFO_RATE, p["sh_rate"] if self._sh_active() else 0.0)
-        # the filter envelope and the glide, as the rack has them at the block's end
-        if p["f1_env2"] != 0.0:
-            env2 = self._m_env2
-            env2.set_times(
-                p["env2_attack"] / ATTACK_TO_PEAK,
-                p["env2_decay"],
-                p["env2_sustain"] / 100.0,
-                p["env2_release"],
+        if dirty:
+            self._graph_grow()
+            p = self.params
+            self._fragment.set(
+                self._n_clk, self._ag.LFO_RATE, p["sh_rate"] if self._sh_active() else 0.0
             )
-            gate = self._m_key
-            gate[:] = self._k_gate
-            env2.render(gate, self._m_env2_buf)
-        if p["f1_keytrack"] != 0.0:
-            glide = self._m_glide
-            glide.mode = GlideCore.ON if p["porta_time"] > 0.0 else GlideCore.OFF
-            glide.time = p["porta_time"] if p["porta_time"] > 0.0 else 0.0
-            key = self._m_key
-            key[:] = self._k_note if self._has_note else self._k_pitch
-            glide.process(self._m_slid, key, None)
-        self._graph_filter1()
+            self._f1_moves = (
+                p["f1_env2"] != 0.0
+                or p["f1_keytrack"] != 0.0
+                or p["f1_lfo2"] != 0.0
+                or p["f1_sh"] != 0.0
+            )
+        if self._f1_moves:
+            p = self.params
+            # the filter envelope and the glide, as the rack has them at the block's end
+            if p["f1_env2"] != 0.0:
+                env2 = self._m_env2
+                env2.set_times(
+                    p["env2_attack"] / ATTACK_TO_PEAK,
+                    p["env2_decay"],
+                    p["env2_sustain"] / 100.0,
+                    p["env2_release"],
+                )
+                gate = self._m_key
+                gate[:] = self._k_gate
+                env2.render(gate, self._m_env2_buf)
+            if p["f1_keytrack"] != 0.0:
+                glide = self._m_glide
+                glide.mode = GlideCore.ON if p["porta_time"] > 0.0 else GlideCore.OFF
+                glide.time = p["porta_time"] if p["porta_time"] > 0.0 else 0.0
+                key = self._m_key
+                key[:] = self._k_note if self._has_note else self._k_pitch
+                glide.process(self._m_slid, key, None)
+        if dirty:
+            self._graph_filter1(True)
+        elif self._f1_moves:
+            self._graph_filter1(False)
 
     def _graph_grow(self):
         """A VCO asked for more waves than its nodes draw restarts at phase zero, as
@@ -1305,66 +1354,90 @@ class PolyA6Voice(Module):
                 for node in nodes:
                     self._fragment.reset(node)
 
-    def _graph_slop(self, advance=False):
-        """The slop's offsets: the rack moves its drift on before every block it runs."""
-        p = self.params
-        dt = self.block_size / float(self.sample_rate)
-        if advance:
-            self._drift_1_phase = (self._drift_1_phase + self._drift_1_hz * dt) % 1.0
-            self._drift_2_phase = (self._drift_2_phase + self._drift_2_hz * dt) % 1.0
-        slop = p["slop"]
+    def _graph_slop(self):
+        """The slop's offsets, from where the drift is."""
+        slop = self.params["slop"]
         if slop > 0.0:
             s = slop / 10.0
+            self._slop_scale = s
             self._slop = (
-                s
-                * (self._slop_1 * SLOP_PITCH + math.sin(self._drift_1_phase * TWO_PI) * SLOP_DRIFT),
-                s
-                * (self._slop_2 * SLOP_PITCH + math.sin(self._drift_2_phase * TWO_PI) * SLOP_DRIFT),
+                s * (self._slop_1_at + math.sin(self._drift_1_phase * TWO_PI) * SLOP_DRIFT),
+                s * (self._slop_2_at + math.sin(self._drift_2_phase * TWO_PI) * SLOP_DRIFT),
                 s * self._slop_f1 * SLOP_CUTOFF,
                 s * self._slop_f2 * SLOP_CUTOFF,
             )
         else:
+            self._slop_scale = 0.0
             self._slop = (0.0, 0.0, 0.0, 0.0)
+
+    def _graph_drift(self, s):
+        """The one thing the slop moves on a block of its own: both VCOs' pitch offsets."""
+        f = self._fragment
+        offset_index = self._ag.MIX_OFFSET
+        unit = self._unit
+        offset = self._cv_1 + s * (
+            self._slop_1_at + math.sin(self._drift_1_phase * TWO_PI) * SLOP_DRIFT
+        )
+        offset += self._bend_1
+        f.set(self._n_cv1, offset_index, offset * unit)
+        f.set(self._n_cvs1, offset_index, (offset - 0.1) * unit)
+        offset = self._cv_2 + s * (
+            self._slop_2_at + math.sin(self._drift_2_phase * TWO_PI) * SLOP_DRIFT
+        )
+        offset += self._bend_2
+        f.set(self._n_cv2, offset_index, offset * unit)
+        f.set(self._n_cvs2, offset_index, (offset - 0.1) * unit)
 
     def _graph_lfos(self):
         """Both LFOs as the rack runs them: only while something listens, restarted on
         the gate's rising edge (a reset of the node before the block, which puts the
         graph's phase one sample ahead of the rack's), faded in by their delay."""
-        p = self.params
+        on = self._lfo_on
+        for k in _LFOS:
+            if on[k]:
+                self._graph_lfo(k)
+            elif self._lfo_rate[k] != 0.0 or self._lfo_level[k] != 0.0:
+                self._graph_lfo_write(k, 0.0, 0.0)
+                self._lfo_amp[k] = 0.0
+
+    def _graph_lfo_write(self, k, rate, level):
         f = self._fragment
         ag = self._ag
+        node = self._n_lfo2 if k else self._n_lfo1
+        if rate != self._lfo_rate[k]:
+            self._lfo_rate[k] = rate
+            f.set(node, ag.LFO_RATE, rate)
+        if level != self._lfo_level[k]:
+            self._lfo_level[k] = level
+            f.set(node, ag.LFO_AMPLITUDE, level)
+
+    def _graph_lfo(self, k):
+        p = self.params
+        rate_name, trigger_name, delay_name = _LFO_PARAMS[k]
+        state = self._lfo_state[k]
         sr = float(self.sample_rate)
         n = self.block_size
-        actives = self._lfo_active()
-        for k, (node, prefix) in enumerate(((self._n_lfo1, "lfo1"), (self._n_lfo2, "lfo2"))):
-            state = self._lfo_state[k]
-            if not actives[k]:
-                f.set(node, ag.LFO_RATE, 0.0)
-                f.set(node, ag.LFO_AMPLITUDE, 0.0)
-                self._lfo_amp[k] = 0.0
-                continue
-            rate = p[prefix + "_rate"]
-            dt = rate / sr
-            edge = False
-            if p[prefix + "_trigger"] == "voice":
-                high = self._k_gate > 0.1
-                edge = high and not state[2]
-                state[2] = high
-            if edge:
-                f.reset(node)
-                state[1] = 0.0
-                ph = (n - 1) * dt
-            else:
-                ph = state[0] + n * dt
-            state[0] = ph - math.floor(ph)
-            state[1] += n / sr
-            amp = 0.5
-            delay = p[prefix + "_delay"]
-            if delay > 0.001:
-                amp *= min(1.0, state[1] / delay)
-            self._lfo_amp[k] = amp
-            f.set(node, ag.LFO_RATE, rate)
-            f.set(node, ag.LFO_AMPLITUDE, amp * self._unit)
+        rate = p[rate_name]
+        dt = rate / sr
+        edge = False
+        if p[trigger_name] == "voice":
+            high = self._k_gate > 0.1
+            edge = high and not state[2]
+            state[2] = high
+        if edge:
+            self._fragment.reset(self._n_lfo2 if k else self._n_lfo1)
+            state[1] = 0.0
+            ph = (n - 1) * dt
+        else:
+            ph = state[0] + n * dt
+        state[0] = ph - math.floor(ph)
+        state[1] += n / sr
+        amp = 0.5
+        delay = p[delay_name]
+        if delay > 0.001:
+            amp *= min(1.0, state[1] / delay)
+        self._lfo_amp[k] = amp
+        self._graph_lfo_write(k, rate, amp * self._unit)
 
     def _lfo2_last(self):
         """LFO 2's last sample this block, as the rack's."""
@@ -1471,9 +1544,15 @@ class PolyA6Voice(Module):
         for k, nodes in ((1, (self._n_cv1, self._n_cvs1)), (2, (self._n_cv2, self._n_cvs2))):
             o = "osc%d_" % k
             offset = p[o + "semi"] * (0.1 / 12.0) + p[o + "cents"] * (0.1 / 1200.0)
+            k_bend = bend if p[o + "bend"] else 0.0
+            if k == 1:
+                self._cv_1 = offset
+                self._bend_1 = k_bend
+            else:
+                self._cv_2 = offset
+                self._bend_2 = k_bend
             offset += self._slop[k - 1]
-            if p[o + "bend"]:
-                offset += bend
+            offset += k_bend
             env1 = (p[o + "env1"] / 100.0) * (ENV1_PITCH_OCT * 0.1)
             for node, sub in zip(nodes, (0.0, 0.1)):
                 f.set(node, 0, 1.0)
@@ -1585,8 +1664,9 @@ class PolyA6Voice(Module):
         for i, g in enumerate(gains):
             f.set(self._n_pre, i, g * MIX_SCALE)
 
-    def _graph_filter1(self):
-        """Filter 1's cutoff, from the block's last values, as the rack moves it."""
+    def _graph_filter1(self, static):
+        """Filter 1's cutoff, from the block's last values, as the rack moves it, and with
+        ``static`` what the parameters alone set."""
         p = self.params
         if p["filter_bypass"]:
             return
@@ -1607,10 +1687,14 @@ class PolyA6Voice(Module):
             octaves += self._sh_last * (p["f1_sh"] / 100.0) * FILTER_SH_OCT
         hz = max(22.0, min(22000.0, p["f1_freq"] * (2.0**octaves)))
         hz = max(10.0, min(self.sample_rate * 0.45, hz))
-        q = resonance_to_q(p["f1_res"] / 100.0)
-        for node in self._n_f1:
-            f.set(node, ag.BIQUAD_FREQUENCY, hz)
-            f.set(node, ag.BIQUAD_Q, q)
+        if hz != self._f1_hz:
+            self._f1_hz = hz
+            for node in self._n_f1:
+                f.set(node, ag.BIQUAD_FREQUENCY, hz)
+        if static:
+            q = resonance_to_q(p["f1_res"] / 100.0)
+            for node in self._n_f1:
+                f.set(node, ag.BIQUAD_Q, q)
 
     def _graph_filter2(self):
         """Filter 2's input, its cutoff CV and the ladder."""

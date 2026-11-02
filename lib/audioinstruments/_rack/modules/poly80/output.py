@@ -19,7 +19,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import add_scaled, copy_into
 from ...dsp.chorus import LATENCY_FRAMES, BBDChorusCore
-from ...dsp.envelope import EnvelopeCore
+from ...dsp.envelope import STATE_IDLE, STATE_SUSTAIN, EnvelopeCore
 from ...dsp.lfo import LFOCore
 
 #: Ring modulator carrier frequency range across 0..10 knob: 1 Hz to 1 kHz exponential.
@@ -140,6 +140,7 @@ class Poly80Output(Module):
             self.params[name] = max(spec["min"], min(spec["max"], float(value)))
         else:
             self.params[name] = float(value)
+        self._moved = True
 
     def set_block_size(self, block_size):
         super().set_block_size(block_size)
@@ -158,6 +159,9 @@ class Poly80Output(Module):
         self.bridge_r.reset()
 
     def process(self, block_size):
+        # a rack step moves what the graph's hook remembers: it looks again next block
+        self._moved = True
+        self._scanned = None
         left = self.left_in.get_buffer()
         right = self.right_in.get_buffer()
         anykey = self.anykey_in.get_buffer()
@@ -278,6 +282,9 @@ class Poly80Output(Module):
         self._ag = ag
         self._fragment = f
         self._anykey = 0.0
+        self._moved = True  # a knob moved
+        self._scanned = None  # the key the ring envelope's edge detector last saw
+        self._carrier_at = None  # what the carrier was last worked out from, and its rate
         f.watch(self.anykey_in, self._graph_anykey)
 
         b_carrier = f.buffer()
@@ -371,23 +378,40 @@ class Poly80Output(Module):
             f.set(node, ag.DELAY_DAMPING_HZ, 9000.0)
 
     def _graph_block(self):
-        # set_param here does not tell the fragment, so the knobs are read every block
-        self._graph_knobs()
         f = self._fragment
-        p = self.params
-        att_sec = slider_time(p.get("ring_attack", 0.0), RING_ATTACK_RANGE)
-        dec_sec = slider_time(p.get("ring_decay", 0.4), RING_DECAY_RANGE)
-        self.ring_env.set_times(att_sec, dec_sec, 0.0, dec_sec)
-        gate = self._tmp
-        gate[:] = self._anykey
-        for _ in range(f.blocks):
-            self.ring_env.render(gate, self._env_buf)
-        env_val = self.ring_env.val
-        carrier_hz = slider_time(p.get("ring_speed", 0.5), RING_HZ)
-        carrier_hz *= 2.0 ** (p.get("ring_depth", 0.0) * env_val * RING_ENV_OCT)
-        f.set(self._n_carrier, self._ag.LFO_RATE, min(carrier_hz, 0.45 * self.sample_rate))
+        env = self.ring_env
+        moved = self._moved
+        if moved:
+            self._moved = False
+            self._graph_knobs()
+            p = self.params
+            att_sec = slider_time(p.get("ring_attack", 0.0), RING_ATTACK_RANGE)
+            dec_sec = slider_time(p.get("ring_decay", 0.4), RING_DECAY_RANGE)
+            env.set_times(att_sec, dec_sec, 0.0, dec_sec)
+        steps = f.blocks
+        if self._anykey != self._scanned:
+            if steps:
+                self._scanned = self._anykey
+                gate = self._tmp
+                gate[:] = self._anykey
+                env.render(gate, self._env_buf)
+                for _ in range(steps - 1):
+                    env.render(None, self._env_buf)
+        elif env.val != 0.0 or (env.state != STATE_IDLE and env.state != STATE_SUSTAIN):
+            # the envelope sustains at nothing: at rest or sustaining, a block changes nothing
+            for _ in range(steps):
+                env.render(None, self._env_buf)
+        env_val = env.val
+        if moved or env_val != self._carrier_at:
+            self._carrier_at = env_val
+            p = self.params
+            carrier_hz = slider_time(p.get("ring_speed", 0.5), RING_HZ)
+            carrier_hz *= 2.0 ** (p.get("ring_depth", 0.0) * env_val * RING_ENV_OCT)
+            f.set(self._n_carrier, self._ag.LFO_RATE, min(carrier_hz, 0.45 * self.sample_rate))
 
     def _graph_reset(self):
+        self._moved = True
+        self._scanned = None
         f = self._fragment
         self.ring_env.reset()
         for node in (self._n_carrier, self._n_trem_lfo):

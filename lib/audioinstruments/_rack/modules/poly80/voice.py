@@ -31,7 +31,7 @@ from ...core.signal import (
     scaled_into,
 )
 from ...dsp.blocks import Ramp
-from ...dsp.envelope import EnvelopeCore
+from ...dsp.envelope import STATE_IDLE, STATE_SUSTAIN, EnvelopeCore
 from ...dsp.glide import GlideCore
 from ...dsp.noise import NoiseGenerator
 from ...dsp.oscillator import OscillatorCore
@@ -93,6 +93,8 @@ AFTER_LEVEL_GAIN = 1.0
 
 #: Touch pulse decay time in seconds.
 TOUCH_PULSE_SEC = 0.3
+_DRIFT_PITCH = 2.0 / 12000.0
+_CHANNELS = (0, 1)
 
 #: Touch bend pitch scoop below note: up to 3 semitones.
 TOUCH_BEND_SEMITONES = 3.0
@@ -368,6 +370,7 @@ class Poly80Voice(Module):
             self.params[name] = max(spec["min"], min(spec["max"], float(value)))
         else:
             self.params[name] = float(value)
+        self._moved = True
 
     def set_block_size(self, block_size):
         super().set_block_size(block_size)
@@ -572,6 +575,9 @@ class Poly80Voice(Module):
         return p.get(pfx + "level", 0.7) * touch_level * vca_common_gain * VCA_GAIN
 
     def process(self, block_size):
+        # a rack step moves what the graph's hook remembers: it looks again next block
+        self._moved = True
+        self._pulse_scanned = None
         if not self._scattered:
             self._scatter(block_size)
 
@@ -925,6 +931,13 @@ class Poly80Voice(Module):
         self._sub_last = 0.0
         self._gain_set = False
         self._pulse_gate = self._tmp
+        self._moved = True  # a parameter or a control input moved: work the block out again
+        self._pulse_scanned = None  # the gate the touch pulse's edge detector last saw
+        self._at_pulse = None  # the touch pulse and the sub it was last worked out from
+        self._at_sub = None
+        self._sub_read = False
+        self._step_blocks = None
+        self._top_hz = 0.45 * self.sample_rate
         f.before_run(self._graph_block)
         f.prime(self._graph_scatter)
         f.on_reset(self._graph_reset)
@@ -952,6 +965,7 @@ class Poly80Voice(Module):
     def _watch(self, key):
         def put(value):
             self._k[key] = value
+            self._moved = True
 
         return put
 
@@ -961,14 +975,77 @@ class Poly80Voice(Module):
         return self._rd[-1] / UNIT
 
     def _graph_block(self):
+        """A held note costs the drift and the filter envelope's reach into both cutoffs. The
+        rest is worked out in ``_graph_work``, when a parameter or a control has moved, or
+        while the touch pulse or the sub is going somewhere."""
         if not self.enabled:
             return
         f = self._fragment
+        steps = f.blocks
+        k = self._k
+        gate_high = k["gate"] > 0.5
+        env = self.pulse_env
+        if gate_high != self._pulse_scanned:
+            if steps:
+                self._pulse_scanned = gate_high
+                pulse_gate = self._pulse_gate
+                pulse_gate[:] = 1.0 if gate_high else 0.0
+                env.render(pulse_gate, self._pulse_buf)
+                for _ in range(steps - 1):
+                    env.render(None, self._pulse_buf)
+        elif env.val != 0.0 or (env.state != STATE_IDLE and env.state != STATE_SUSTAIN):
+            # the pulse sustains at nothing: at rest or sustaining, a block changes nothing
+            for _ in range(steps):
+                env.render(None, self._pulse_buf)
+        pulse_val = env.val
+        moved = self._moved
+        if moved:
+            self._sub_read = self._has_sub and self._needs_sub()
+        sub_val = self._graph_last(self._b_sub) if self._sub_read else 0.0
+        if moved or pulse_val != self._at_pulse or sub_val != self._at_sub:
+            self._moved = False
+            self._at_pulse = pulse_val
+            self._at_sub = sub_val
+            self._graph_work(pulse_val, sub_val)
+        if steps != self._step_blocks:
+            self._step_blocks = steps
+            n = self.block_size
+            sr = self.sample_rate
+            self._drift_1_step = self._drift_rate1 * n * steps / sr
+            self._drift_2_step = self._drift_rate2 * n * steps / sr
+        self._drift_phase1 = (self._drift_phase1 + self._drift_1_step) % 1.0
+        self._drift_phase2 = (self._drift_phase2 + self._drift_2_step) % 1.0
+        drift1 = math.sin(self._drift_phase1 * TWO_PI)
+        drift2 = math.sin(self._drift_phase2 * TWO_PI)
+        slop = self._slop_knob
+        self._graph_channel(
+            self._ch[0],
+            slop * (self._ch1_pitch_slop + drift1 * _DRIFT_PITCH),
+            slop * (self._ch1_vcf_slop + drift1 * 0.05),
+        )
+        self._graph_channel(
+            self._ch[1],
+            slop * (self._ch2_pitch_slop + drift2 * _DRIFT_PITCH) + self._detune_at,
+            slop * (self._ch2_vcf_slop + drift2 * 0.05),
+        )
+
+    def _graph_channel(self, c, drift_pitch, drift_vcf):
+        """What moves on every block a note is held: the channel's pitch and its cutoffs."""
+        f = self._fragment
+        ag = self._ag
+        f.set(c["pcv"], ag.MIX_OFFSET, (c["pitch"] + drift_pitch) * UNIT)
+        fenv_oct = self._graph_last(c["b_fenv"]) * 5.0 * FENV_OCT_PER_UNIT
+        cutoff_oct = fenv_oct + c["init_oct"] + c["after_oct"] + self._vcf_common + drift_vcf
+        scale = 2.0**cutoff_oct
+        top = self._top_hz
+        f.set(c["hp"], ag.BIQUAD_FREQUENCY, min(top, max(MIN_HZ, c["hpf"] * scale)))
+        f.set(c["lp"], ag.BIQUAD_FREQUENCY, min(top, max(MIN_HZ, c["lpf"] * scale)))
+
+    def _graph_work(self, pulse_val, sub_val):
+        """Everything a held note leaves alone, from the parameters and the controls."""
+        f = self._fragment
         ag = self._ag
         p = self.params
-        n = self.block_size
-        sr = self.sample_rate
-        steps = f.blocks
         k = self._k
 
         gate_high = k["gate"] > 0.5
@@ -978,7 +1055,6 @@ class Poly80Voice(Module):
         mod_val = k["mod"]
         bend_val = k["bend"]
         note_num = k["note"] * 120.0 + 60.0
-        sub_val = self._graph_last(self._b_sub) if self._has_sub and self._needs_sub() else 0.0
 
         # the glide
         porta = p.get("portamento", 0.0)
@@ -1009,12 +1085,6 @@ class Poly80Voice(Module):
         elif sustain_mode == "II" and newkey_high:
             self._sustain_ended = True
 
-        # touch pulse: the rack's envelope core, stepped with the gate
-        pulse_gate = self._pulse_gate
-        pulse_gate[:] = 1.0 if gate_high else 0.0
-        for _ in range(steps):
-            self.pulse_env.render(pulse_gate, self._pulse_buf)
-        pulse_val = self.pulse_env.val
         touch_bend_semi = p.get("touch_bend", 0.0) * velocity * pulse_val * TOUCH_BEND_SEMITONES
 
         sub_vco_knob = p.get("sub_vco", 0.0)
@@ -1029,17 +1099,8 @@ class Poly80Voice(Module):
             - (touch_bend_semi / 120.0)
         )
 
-        slop_knob = p.get("slop", 0.2)
-        self._drift_phase1 = (self._drift_phase1 + self._drift_rate1 * n * steps / sr) % 1.0
-        self._drift_phase2 = (self._drift_phase2 + self._drift_rate2 * n * steps / sr) % 1.0
-        drift1 = math.sin(self._drift_phase1 * TWO_PI)
-        drift2 = math.sin(self._drift_phase2 * TWO_PI)
-        drift_pitch1 = slop_knob * (self._ch1_pitch_slop + drift1 * (2.0 / 12000.0))
-        drift_pitch2 = slop_knob * (self._ch2_pitch_slop + drift2 * (2.0 / 12000.0)) + (
-            p.get("detune", 0.08) / 120.0
-        )
-        drift_vcf1 = slop_knob * (self._ch1_vcf_slop + drift1 * 0.05)
-        drift_vcf2 = slop_knob * (self._ch2_vcf_slop + drift2 * 0.05)
+        self._slop_knob = p.get("slop", 0.2)
+        self._detune_at = p.get("detune", 0.08) / 120.0
 
         brilliance_oct = p.get("brilliance", 0.0) * 5.0 * BRILLIANCE_OCT
         key_track_oct = KEY_TRACK * ((note_num - 60.0) / 12.0)
@@ -1058,7 +1119,7 @@ class Poly80Voice(Module):
         eff_sub_vcf = min(1.0, p.get("sub_vcf", 0.0) + p.get("touch_vcf", 0.0) * pressure)
         sub_vcf_oct = eff_sub_vcf * (sub_val * 2.0) * SUB_VCF_OCT
         wah_oct = p.get("wheel_wah", 0.0) * mod_val * WAH_OCT
-        vcf_common_oct = brilliance_oct + key_track_oct + kbd_bril_oct + sub_vcf_oct + wah_oct
+        self._vcf_common = brilliance_oct + key_track_oct + kbd_bril_oct + sub_vcf_oct + wah_oct
 
         kbd_gain = 10.0 ** (kbd_level_db / 20.0)
         sub_vca = p.get("sub_vca", 0.0)
@@ -1071,9 +1132,8 @@ class Poly80Voice(Module):
         sine_on = False
         noise_on = False
         gains = [0.0, 0.0]
-        for index, (c, drift_pitch, drift_vcf) in enumerate(
-            ((self._ch[0], drift_pitch1, drift_vcf1), (self._ch[1], drift_pitch2, drift_vcf2))
-        ):
+        for index in _CHANNELS:
+            c = self._ch[index]
             pfx = c["prefix"]
             saw_on = bool(p.get(pfx + "saw", False))
             square_on = bool(p.get(pfx + "square", False))
@@ -1084,7 +1144,7 @@ class Poly80Voice(Module):
 
             feet_semi = FEET_SEMITONES.get(str(p.get(pfx + "feet", "8")), 0.0)
             f.set(c["pcv"], 1, sub_pitch_k)
-            f.set(c["pcv"], ag.MIX_OFFSET, (feet_semi / 120.0 + pitch_common + drift_pitch) * UNIT)
+            c["pitch"] = feet_semi / 120.0 + pitch_common
 
             pw_manual = 0.5 + PW_SPAN * p.get(pfx + "pw", 0.0)
             pwm_depth = PWM_DEPTH * p.get(pfx + "pwm", 0.0)
@@ -1128,22 +1188,15 @@ class Poly80Voice(Module):
             f.set(c["fenv"], ag.ADSR2_INITIAL, il)
             f.set(c["fenv"], ag.ADSR2_ATTACK_LEVEL, al)
 
-            e_out = self._graph_last(c["b_fenv"])
-            fenv_oct = e_out * 5.0 * FENV_OCT_PER_UNIT
-            init_bril_oct = p.get(pfx + "init_bril", 0.2) * velocity * pulse_val * INIT_BRIL_OCT
-            after_bril_oct = p.get(pfx + "after_bril", 0.3) * pressure * AFTER_BRIL_OCT
-            cutoff_oct = fenv_oct + init_bril_oct + after_bril_oct + vcf_common_oct + drift_vcf
-            hpf_base = slider_time(p.get(pfx + "hpf", 0.1), HPF_RANGE)
-            lpf_base = slider_time(p.get(pfx + "lpf", 0.6), LPF_RANGE)
-            hp_hz = min(0.45 * sr, max(MIN_HZ, hpf_base * (2.0**cutoff_oct)))
-            lp_hz = min(0.45 * sr, max(MIN_HZ, lpf_base * (2.0**cutoff_oct)))
+            c["init_oct"] = p.get(pfx + "init_bril", 0.2) * velocity * pulse_val * INIT_BRIL_OCT
+            c["after_oct"] = p.get(pfx + "after_bril", 0.3) * pressure * AFTER_BRIL_OCT
+            c["hpf"] = slider_time(p.get(pfx + "hpf", 0.1), HPF_RANGE)
+            c["lpf"] = slider_time(p.get(pfx + "lpf", 0.6), LPF_RANGE)
             res_lever = p.get("resonance", 0.0) * RESONANCE_SPAN
             wah_res = p.get("wheel_wah", 0.0) * mod_val * WAH_RES
             hp_travel = max(0.0, min(1.0, p.get(pfx + "res_h", 0.0) + res_lever + wah_res))
             lp_travel = max(0.0, min(1.0, p.get(pfx + "res_l", 0.2) + res_lever + wah_res))
-            f.set(c["hp"], ag.BIQUAD_FREQUENCY, hp_hz)
             f.set(c["hp"], ag.BIQUAD_Q, slider_time(hp_travel, Q_RANGE))
-            f.set(c["lp"], ag.BIQUAD_FREQUENCY, lp_hz)
             f.set(c["lp"], ag.BIQUAD_Q, slider_time(lp_travel, Q_RANGE))
 
             f.set(c["vin"], 0, p.get(pfx + "vcf_level", 0.8))
@@ -1188,6 +1241,8 @@ class Poly80Voice(Module):
         )
 
     def _graph_reset(self):
+        self._moved = True
+        self._pulse_scanned = None
         f = self._fragment
         for c in self._ch:
             for key in ("fenv", "aenv", "hp", "lp", "noise"):
