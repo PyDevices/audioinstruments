@@ -82,15 +82,18 @@ the share of the budget in brackets.
 
 | Instrument | 1 note | 6 notes | 10 notes |
 | --- | ---: | ---: | ---: |
-| `combo_organ` | 1116 (42%) | 1858 (70%) | 2545 (95%) |
+| `combo_organ` | 674 (25%) | 1531 (57%) | 2268 (85%) |
 | `electric_grand70` | 737 (28%) | 2036 (76%) | 3143 (118%) |
 | `tonewheel3` | 1481 (56%) | 2970 (111%) | 4269 (160%) |
-| `compact_organ` | 2411 (90%) | 3907 (146%) | 5508 (207%) |
-| `string_ensemble` | 2999 (112%) | 4497 (169%) | 5949 (223%) |
-| `polya6` | 3721 (140%) | 12675 (475%) | 19714 (739%) |
+| `compact_organ` | 1392 (52%) | 3101 (116%) | 4588 (172%) |
+| `string_ensemble` | 2040 (76%) | 3384 (127%) | 4835 (181%) |
+| `vocoder330` | 1727 (65%) | 3483 (131%) | 4996 (187%) |
+| `polya6` | 2265 (85%) | 6407 (240%) | 10869 (408%) |
 
 Over 100% a block takes longer than the audio it makes. The voice governor
-caps the voices there; it was off for these runs. At ten notes only
+caps the voices there; it was off for these runs. `combo_organ`, `compact_organ` and
+`string_ensemble` have their pump's pool of 24 voices, and `string_ensemble`'s first
+key sounds two of them. `vocoder330` has its mic off. At ten notes only
 `combo_organ` is inside the budget, and at six `combo_organ` and
 `electric_grand70` are. The `poly80` takes about 2300 µs with one note and 8600
 with six.
