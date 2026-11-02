@@ -163,6 +163,14 @@ def _rack_step(inst):
         inst.rack.step()
 
 
+def _rack_saw_it_lift(inst, note):
+    """A key lifted and pressed again, with only the rack stepping in between: the graph's
+    hooks see the same gate they last saw, and the envelopes' edge detectors do not."""
+    inst.note_off(note)
+    _rack_step(inst)
+    inst.note_on(note, 90)
+
+
 def _level(inst, value):
     inst._pool.mix.set_param("level", value)
 
@@ -237,6 +245,7 @@ def phrase(inst, voice=None):
     at(136, inst.channel_pressure, 60)
     at(138, inst.pitch_bend, 8192)
     at(140, inst.channel_pressure, 0)
+    at(141, _rack_saw_it_lift, inst, 64)
     at(142, _mono, inst, False)
     at(146, inst.note_on, 69, 100)
     at(150, inst.pitch_bend, 6000)

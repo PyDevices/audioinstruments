@@ -173,6 +173,64 @@ def test_a_poly8_drift_steps_as_many_blocks_as_ran():
     inst.deinit()
 
 
+def test_a_poly80_drift_steps_as_many_blocks_as_ran():
+    inst = _played("poly80")
+    voice = _module(inst, "Poly80Voice")
+    voice._graph_block()
+    start = voice._drift_phase1
+    voice._graph_block()
+    one = voice._drift_phase1 - start
+    voice._fragment._c.elapsed = 3
+    start = voice._drift_phase1
+    voice._graph_block()
+    assert voice._drift_phase1 - start == pytest.approx(3 * one)
+    inst.deinit()
+
+
+def test_a_poly80_key_or_pressure_moved_alone_reaches_the_sub():
+    inst = _played("poly80")
+    mod = _module(inst, "Poly80Mod")
+    mod.set_param("touch_speed", 0.5)
+    mod._graph_block()
+    node = mod._n_sub_lfo
+    rate = mod._fragment.get(node, mod._ag.LFO_RATE)
+    mod._watch_press(0)(0.8)
+    mod._graph_block()
+    assert mod._fragment.get(node, mod._ag.LFO_RATE) != rate
+    mod._watch_gate(1)(1.0)
+    mod._graph_block()
+    assert mod._newkey.value == 1.0
+    mod._graph_block()
+    assert mod._newkey.value == 0.0
+    mod._watch_gate(1)(0.0)
+    mod._watch_gate(0)(0.0)
+    mod._graph_block()
+    assert mod._anykey.value == 0.0
+    inst.deinit()
+
+
+@pytest.mark.parametrize("between", ("process", "_graph_reset"))
+def test_a_west_coast_gate_held_across_a_rack_step_or_a_reset_fires_again(between):
+    inst = _played("west_coast_synth")
+    voice = next(
+        f.module
+        for f in inst._compiled.fragments
+        if type(f.module).__name__ == "WestCoastSynth" and f.module._gate == 0.0
+    )
+    voice._gate = 1.0
+    voice._graph_block()
+    assert voice.func1.state != 0
+    voice.func1.reset()
+    voice.func2.reset()
+    voice._graph_block()
+    voice._graph_block()
+    assert voice._still == 1.0
+    getattr(voice, between)(*((voice.block_size,) if between == "process" else ()))
+    voice._graph_block()
+    assert voice.func1.state != 0
+    inst.deinit()
+
+
 def test_a_parked_flag_moved_alone_reaches_the_mix():
     inst = _played("poly106")
     mix = inst._pool.mix
