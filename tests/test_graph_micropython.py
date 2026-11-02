@@ -53,6 +53,7 @@ CASES = [
     ("tonewheel3", 6),
     ("compact_organ", 0),
     ("string_ensemble", 0),
+    ("combo_organ", 0),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 

@@ -22,9 +22,22 @@ manual's.
 
 The tone runs 256 frames late (a synthio note through a ``ChunkedBridge``),
 and the key's contacts, a 3 ms ramp each way, are as late as it is.
+
+Compiled to a graph, the voice is three ``WAVETABLE`` nodes with no such delay:
+the key's table behind the contacts, and the mixture's fifth and third, each a
+table of its own, added in before the contacts as the rack's synth adds them.
+Two ``MIX`` nodes send the tone to the manual or the bass bus. Everything the
+rack works out a block at a time it works out the same way, in floats: the
+frequency from the key and the vibrato, the table when a drawbar or the key
+moves. The rack tunes its notes once a 256-frame chunk, at the chunk's last
+block, so the voice asks the vibrato for the value that block will have; a key
+that bends inside a chunk is tuned a block late in the first half of it.
+In the blocks the rack would not render the voice (the key up and the contacts
+shut) the nodes stand still, each turning a whole table cycle a block.
 """
 
 import math
+from array import array
 
 import synthio
 
@@ -116,6 +129,15 @@ PARTIAL_UNIT = 16384.0
 #: The bank the voices being built share: the patch sets it while it builds
 #: them, and a voice built on its own makes its own.
 building = None
+
+
+_F32 = array("f", [0.0])
+
+
+def _f32(x):
+    """``x`` as the rack's float32 jack buffers hold it."""
+    _F32[0] = x
+    return _F32[0]
 
 
 def _band_hz(note):
@@ -431,3 +453,200 @@ class ComboOrganVoice(Module):
         clear_buffer(other)
         copy_into(self.audio_out.buffer, out)
         self._live = True
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        # Pitch, gate and key come from the pool as controls; the vibrato from this organ's
+        # LFO. A voice patched otherwise stays on the rack.
+        if not (f.is_control(self.pitch_in) and f.is_control(self.gate_in)):
+            return False
+        if self.vibrato_in.cable is not None and not f.is_control(self.vibrato_in):
+            return False
+        self._ag = ag
+        self._vibrato = f.source_module(self.vibrato_in)
+        if getattr(self._vibrato, "graph_cv", None) is None:
+            self._vibrato = None
+        # the table is rolled into the node's level, so the node plays the rack's scale
+        self.core.level = TABLE_LEVEL * self._gain
+        gate = f.input(self.gate_in)
+        b_r1, b_r2, b_ranks = f.buffer(), f.buffer(), f.buffer()
+        self._n_ranks = [
+            f.add(ag.WAVETABLE, (None, None, None), b, arg=float(TONE_LEN)) for b in (b_r1, b_r2)
+        ]
+        self._n_mix = f.add(ag.MIX, (b_r1, b_r2), b_ranks)
+        b_tone = f.output(self.audio_out)
+        self._n_tone = f.add(ag.WAVETABLE, (None, gate, b_ranks), b_tone, arg=float(TONE_LEN))
+        self._n_manual = f.add(ag.MIX, (b_tone,), f.output(self.manual_out))
+        self._n_bass = f.add(ag.MIX, (b_tone,), f.output(self.bass_out))
+        self._n_wave = [self._n_tone] + self._n_ranks
+        self.ranks = [_GraphRank(self, i) for i in range(len(MIXTURE_ET))]
+        self._steps = max(1, DrawbarToneCore.LATENCY_FRAMES // self.block_size)
+        frozen = self.sample_rate / float(self.block_size)
+        self._g_frozen_hz = frozen if 10.0 <= frozen <= 16000.0 else 10.0
+        self._g_gate = False
+        self._g_cv = 0.0
+        self._g_note = None
+        self._g_vib = 0.0
+        self._g_pos = 0  # the block of the chunk the rack's bridge would be at
+        self._g_quiet = self._tail + 1
+        self._g_fell = False
+        self._g_still = False  # the nodes stand at the frozen frequency
+        self._g_freq = [0.0] * 3
+        f.watch(self.gate_in, self._graph_gate)
+        f.watch(self.pitch_in, self._graph_pitch)
+        if f.is_control(self.note_in):
+            f.watch(self.note_in, self._graph_note)
+        if self._vibrato is None and self.vibrato_in.cable is not None:
+            f.watch(self.vibrato_in, self._graph_vibrato)
+        f.set(self._n_manual, 0, 1.0)
+        f.set(self._n_bass, 0, 0.0)
+        f.set(self._n_mix, 0, 0.0)
+        f.set(self._n_mix, 1, 0.0)
+        f.table(self._n_tone, self.core._table_i16)
+        # A voice that shares its group with another stands still while the other primes
+        # or plays; its nodes are at this frequency from the start.
+        self._graph_stand_still()
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        f.prime(self._graph_prime)
+
+    def _graph_gate(self, value):
+        self._g_gate = value > 0.5
+
+    def _graph_pitch(self, value):
+        self._g_cv = _f32(value)
+
+    def _graph_note(self, value):
+        self._g_note = _f32(value)
+
+    def _graph_vibrato(self, value):
+        self._g_vib = _f32(value)
+
+    def _graph_tune(self, tone, first, second):
+        f = self._fragment
+        ag = self._ag
+        for i, (node, hz) in enumerate(zip(self._n_wave, (tone, first, second))):
+            if hz != self._g_freq[i]:
+                self._g_freq[i] = hz
+                f.set(node, ag.WAVETABLE_FREQUENCY, hz)
+
+    def _graph_stand_still(self):
+        hz = self._g_frozen_hz
+        self._graph_tune(hz, hz, hz)
+        self._g_still = True
+
+    def _graph_prime(self, run):
+        """Start the three notes where the rack's synth has them before the first key.
+
+        The bridge pulls a chunk of the key's note at 220 Hz as it is chained, before the
+        mixture's notes are pressed; the first call to ``process`` then pulls one chunk
+        more at this voice's own frequencies (``_scatter``), so the voices are not in phase.
+        """
+        f = self._fragment
+        steps = self._steps
+        self._graph_tune(220.0, 1.0, 1.0)
+        for _ in range(steps):
+            run(f.bits, self._n_wave)
+        for rank in self.ranks:
+            rank.waveform = self.bank.rank(440.0)
+        hz = 50.0 + _seed(self.id) % 997
+        self._graph_tune(_clamp(hz * 0.5), hz * 1.5, hz * 2.5)
+        for _ in range(steps):
+            run(f.bits, self._n_wave)
+        self._graph_stand_still()
+
+    def _graph_reset(self):
+        # as reset(): the key forgotten and the voice silent; the notes keep their phase
+        self._key = None
+        self._g_quiet = self._tail + 1
+        self._g_pos = 0
+        if not self._g_still:
+            self._graph_stand_still()
+
+    def _graph_block(self):
+        """What ``process`` works out a block, then the nodes' frequencies and tables."""
+        f = self._fragment
+        blocks = f.blocks
+        if blocks < 1:
+            return
+        if self._g_gate:
+            self._g_quiet = 0
+        else:
+            self._g_quiet += blocks
+            if self._g_quiet > self._tail:
+                if not self._g_still:
+                    self._graph_stand_still()
+                return
+        # The rack pulls a chunk at the end of its last block, with the frequencies it has
+        # then: ahead is how many blocks on that is, from this one.
+        steps = self._steps
+        last = (self._g_pos + blocks - 1) % steps
+        self._g_pos = (last + 1) % steps
+        ahead = steps - 1 - last
+
+        cv = self._g_cv
+        note_cv = cv if self._g_note is None else self._g_note
+        if self._vibrato is not None:
+            cv += _f32(self._vibrato.graph_cv(ahead))
+        else:
+            cv += self._g_vib
+        hz = pitch_to_frequency(cv)
+
+        p = self.params
+        note = int(round(60.0 + note_cv * 120.0))
+        bass = p["bass"] >= 0.5 and note <= BASS_TOP
+        key = (note, bass, p["db16"], p["db8"], p["db4"], p["db_iv"])
+        self._g_fell = False
+        if key != self._key:
+            self._key = key
+            self._register(note, bass, p)
+            f.table(self._n_tone, self.core._table_i16)
+            f.set(self._n_manual, 0, 0.0 if self._bass_key else 1.0)
+            f.set(self._n_bass, 0, 1.0 if self._bass_key else 0.0)
+
+        if self._g_still:
+            self._g_still = False
+            self._g_freq = [0.0] * 3
+            # a key that wakes the voice opens the mixture and picks its bus at once, where
+            # a mix's gain ramps across the block it moves in
+            for node in (self._n_mix, self._n_manual, self._n_bass):
+                f.reset(node)
+        self._graph_tune(_clamp(hz * 0.5), hz * self._rank_ratio[0], hz * self._rank_ratio[1])
+
+
+def _clamp(hz):
+    """A frequency as the rack's tone core holds it: 10 Hz to 16 kHz."""
+    return 10.0 if hz < 10.0 else (16000.0 if hz > 16000.0 else hz)
+
+
+class _GraphRank:
+    """A mixture note of the graph, with the parts of ``synthio.Note`` the voice sets."""
+
+    def __init__(self, voice, index):
+        self._voice = voice
+        self._index = index
+        self._amplitude = 0.0
+
+    @property
+    def amplitude(self):
+        return self._amplitude
+
+    @amplitude.setter
+    def amplitude(self, value):
+        if value < self._amplitude:
+            self._voice._g_fell = True
+        self._amplitude = value
+        voice = self._voice
+        voice._fragment.set(voice._n_mix, self._index, value * voice._gain)
+
+    @property
+    def waveform(self):
+        return None
+
+    @waveform.setter
+    def waveform(self, table):
+        voice = self._voice
+        voice._fragment.table(voice._n_ranks[self._index], table)
