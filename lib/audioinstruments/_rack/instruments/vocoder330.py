@@ -68,6 +68,14 @@ _VOICE = (
 #: Controls on the keys module.
 _KEYS = ("tune", "vib_delay", "pitch_mode", "pitch_set", "pitch_time")
 
+#: The tablets that play the choir.
+_CHOIR_TABLETS = (
+    "voice_upper_female4",
+    "voice_upper_male8",
+    "voice_lower_male4",
+    "voice_lower_male8",
+)
+
 #: Controls on the mic.
 _MIC = ("mic_level", "mic_source")
 
@@ -421,6 +429,9 @@ class Vocoder330(VoicePatch):
         vocoder = bool(v["vocoder_upper"] or v["vocoder_lower"])
         self.bank.set_param("active", 1.0 if vocoder and v["mic_source"] != "off" else 0.0)
         self.mic.set_param("active", 1.0 if vocoder or v["direct_mic"] > 0.0 else 0.0)
+        choir = any(v[name] for name in _CHOIR_TABLETS)
+        self.output.set_param("choir_on", 1.0 if choir else 0.0)
+        self.output.set_param("vocoder_on", 1.0 if vocoder else 0.0)
 
     def _pitch(self, pool):
         """Pitch shift: the bend is the slider in ``"manual"``, and nothing otherwise."""
@@ -461,7 +472,12 @@ class Vocoder330(VoicePatch):
             self.bank.set_param(name, val)
         else:
             self.output.set_param(name, val)
-        if name in ("vocoder_upper", "vocoder_lower", "direct_mic", "mic_source"):
+        if name in _CHOIR_TABLETS or name in (
+            "vocoder_upper",
+            "vocoder_lower",
+            "direct_mic",
+            "mic_source",
+        ):
             self._listeners()
         elif name in ("pitch_mode", "pitch_set"):
             self._pitch(pool)

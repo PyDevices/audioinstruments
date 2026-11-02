@@ -157,6 +157,9 @@ class Vocoder330Output(Module):
         self.add_param("vocoder_ensemble", "Vocoder Ensemble", default=0.0)
         self.add_param("vib_depth", "Vibrato Depth", default=3.0, max_val=10.0)
         self.add_param("vib_rate", "Vibrato Rate", default=5.0, max_val=10.0)
+        #: 0.0 when no tablet plays that section: a graph skips its nodes (set by the patch).
+        self.add_param("choir_on", "Choir On", default=1.0)
+        self.add_param("vocoder_on", "Vocoder On", default=1.0)
 
         for name in (
             "_s1",
@@ -397,9 +400,10 @@ class Vocoder330Output(Module):
         self._n_strings, w = node(ag.MIX, (w,))
         centre_ms = VIB_CENTRE_MS
         _, s2 = delay(w, centre_ms + block_ms)
-        # choir: the sums, the seven filters, one gain
-        self._n_ab, ab = node(ag.MIX, (a, b))
-        self._n_abc, abc = node(ag.MIX, (ab, c))
+        # choir: the sums, the seven filters, one gain (no choir tablet down: skipped)
+        self._g_choir = f.switch("choir")
+        self._n_ab, ab = node(ag.MIX, (a, b), group=self._g_choir)
+        self._n_abc, abc = node(ag.MIX, (ab, c), group=self._g_choir)
         for nd in (self._n_ab, self._n_abc):
             for i in range(2):
                 f.set(nd, i, 1.0)
@@ -407,12 +411,12 @@ class Vocoder330Output(Module):
         bands = []
         for hz, feed in zip(CHOIR_FILTERS_HZ, CHOIR_FEEDS):
             src = {"a": a, "b": b, "c": c, "ab": ab, "abc": abc}[feed]
-            nd, wire = node(ag.BIQUAD, (src,))
+            nd, wire = node(ag.BIQUAD, (src,), group=self._g_choir)
             f.set(nd, ag.BIQUAD_MODE, audiobiquad.BAND_PASS)
             f.set(nd, ag.BIQUAD_FREQUENCY, hz)
             f.set(nd, ag.BIQUAD_Q, CHOIR_Q)
             bands.append(wire)
-        self._n_choir, choir = node(ag.MIX, tuple(bands))
+        self._n_choir, choir = node(ag.MIX, tuple(bands), group=self._g_choir)
         # vibrato: a sine-swept wet line, the choir's one block later than the vocoder's
         self._g_vib_tables = [_sine_table(VIB_TABLE_LEN), _sine_table(VIB_TABLE_LEN)]
         self._n_vib = []
@@ -431,7 +435,8 @@ class Vocoder330Output(Module):
         self._n_ens_in, ens_in = node(ag.MIX, (s2, choir_v, voc_v))
         self._n_byp, byp = node(ag.MIX, (choir_v, voc_v))
         # the direct mic, as late as the rest
-        _, mic_d = delay(mic, VIB_CENTRE_MS + block_ms)
+        self._g_direct = f.switch("direct")
+        _, mic_d = delay(mic, VIB_CENTRE_MS + block_ms, group=self._g_direct)
         # the lines (a group of their own, so the voices' primes leave them alone)
         self._g_lines = f.switch("lines")
         self._g_tables = []
@@ -485,6 +490,8 @@ class Vocoder330Output(Module):
                 "vocoder_ensemble",
                 "vib_depth",
                 "vib_rate",
+                "choir_on",
+                "vocoder_on",
             ),
             self._graph_params,
         )
@@ -524,6 +531,10 @@ class Vocoder330Output(Module):
         direct = LEVEL_SCALE * p["direct_mic"]
         for nd, last in self._n_sides:
             f.set(nd, last, direct)
+        choir_on = p["choir_on"] >= 0.5
+        f.enable("choir", choir_on)
+        f.enable("vibrato", choir_on or p["vocoder_on"] >= 0.5)
+        f.enable("direct", direct > 0.0)
 
     def _graph_prime(self, run):
         """Put the sweeps where the rack's are. The graph is sooner than the rack, so a line's

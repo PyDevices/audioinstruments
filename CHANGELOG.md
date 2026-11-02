@@ -12,6 +12,8 @@ All notable changes to `audioinstruments` are recorded here.
   until they have a voice: set `mic_source` to `"test"` or call `attach_mic()`,
   on an instrument made with `output="ring"`. On `output="graph"` both raise
   `ValueError`.
+- Vocoder330 skips the choir, the vibrato and the direct mic while nothing plays
+  them, about 45% of its cost with no key down on the fresh patch.
 
 ## 0.5.1.dev1
 
