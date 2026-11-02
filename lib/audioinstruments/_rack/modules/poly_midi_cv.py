@@ -439,6 +439,9 @@ class PolyMidiCV(MidiCVModule):
 
     def fragment(self, f):
         n = self.max_voices
+        # new controls and, from a rack that ran, jacks of unknown value: write them all
+        self._forget_written()
+        self._g_bend = None
         self._c_pitch = [f.control(self.pitch_outs[i], 0.0) for i in range(n)]
         self._c_note = [f.control(self.note_outs[i], 0.0) for i in range(n)]
         self._c_gate = [f.control(self.gate_outs[i], 0.0) for i in range(n)]
@@ -465,14 +468,15 @@ class PolyMidiCV(MidiCVModule):
         f.on_reset(self.reset)
 
     def _graph_block(self):
-        bend = self._pitch_bend * (self.params["bend_range"] / 12.0) * 0.1
+        pb = self._pitch_bend
+        bend = 0.0 if pb == 0.0 else pb * (self.params["bend_range"] / 12.0) * 0.1
         if self._mono:
             self._graph_mono_block(bend)
+            self._g_bend = None  # its pitches went in at other bends: back in poly, write all
         else:
             self._graph_glide()
             self._poly_block()
-            for i in range(self.max_voices):
-                self._graph_write(i, bend)
+            self._graph_voices(bend)
         self._c_line_note.set(self._current_pitch)
         self._c_line_pitch.set(self._current_pitch + bend)
         # the second line never glides: the high key's pitch, or the line's
@@ -498,33 +502,53 @@ class PolyMidiCV(MidiCVModule):
         self._c_trig.set(min(pulse.left, n) / float(n) if pulse.left > 0 else 0.0)
         pulse.left = max(0, pulse.left - n * self._fragment.blocks)
 
+    def _graph_voices(self, bend):
+        """Every voice's controls from its note. A list comparison runs in C, so when no voice
+        has moved since it was written, and neither has the bend, a block costs a few
+        comparisons however many voices the pool has. The channel pressure is left to the
+        voice-by-voice path, since a voice's pressure control is the larger of it and its own."""
+        v_pitch = self._v_pitch
+        if (
+            bend == self._g_bend
+            and self._chan_press == 0.0
+            and v_pitch == self._w_note
+            and self._v_gate == self._w_gate
+            and self._v_vel == self._w_vel
+            and self._v_press == self._w_press
+        ):
+            return
+        self._g_bend = bend
+        for i in range(self.max_voices):
+            self._graph_write(i, bend)
+
     def _graph_write(self, i, bend):
-        """Voice ``i``'s controls from its own note."""
+        """Voice ``i``'s controls and jacks from its own note, when they moved. A ``_w_`` list
+        holds what the control and the jack both have, or None for not known."""
         note = self._v_pitch[i]
         p = note + bend
-        self._c_pitch[i].set(p)
         if p != self._w_pitch[i]:
+            self._c_pitch[i].set(p)
             self.pitch_outs[i].buffer[:] = p
             self._w_pitch[i] = p
-        self._c_note[i].set(note)
         if note != self._w_note[i]:
+            self._c_note[i].set(note)
             self.note_outs[i].buffer[:] = note
             self._w_note[i] = note
         g = 1.0 if self._v_gate[i] else 0.0
-        self._c_gate[i].set(g)
         if g != self._w_gate[i]:
+            self._c_gate[i].set(g)
             self.gate_outs[i].buffer[:] = g
             self._w_gate[i] = g
         vel = self._v_vel[i]
-        self._c_vel[i].set(vel)
         if vel != self._w_vel[i]:
+            self._c_vel[i].set(vel)
             self.vel_outs[i].buffer[:] = vel
             self._w_vel[i] = vel
         pr = self._v_press[i]
         if self._chan_press > pr:
             pr = self._chan_press
-        self._c_press[i].set(pr)
         if pr != self._w_press[i]:
+            self._c_press[i].set(pr)
             self.press_outs[i].buffer[:] = pr
             self._w_press[i] = pr
 
@@ -562,27 +586,27 @@ class PolyMidiCV(MidiCVModule):
             gated[i] = gate
             off = self._side(i, k) * detune
             p = self._current_pitch + bend + off
-            self._c_pitch[i].set(p)
             if p != self._w_pitch[i]:
+                self._c_pitch[i].set(p)
                 self.pitch_outs[i].buffer[:] = p
                 self._w_pitch[i] = p
             n = self._current_pitch + off
-            self._c_note[i].set(n)
             if n != self._w_note[i]:
+                self._c_note[i].set(n)
                 self.note_outs[i].buffer[:] = n
                 self._w_note[i] = n
             g = 1.0 if gate else 0.0
-            self._c_gate[i].set(g)
             if g != self._w_gate[i]:
+                self._c_gate[i].set(g)
                 self.gate_outs[i].buffer[:] = g
                 self._w_gate[i] = g
-            self._c_vel[i].set(self._velocity)
             if self._velocity != self._w_vel[i]:
+                self._c_vel[i].set(self._velocity)
                 self.vel_outs[i].buffer[:] = self._velocity
                 self._w_vel[i] = self._velocity
             pr = self._pressure()
-            self._c_press[i].set(pr)
             if pr != self._w_press[i]:
+                self._c_press[i].set(pr)
                 self.press_outs[i].buffer[:] = pr
                 self._w_press[i] = pr
 
