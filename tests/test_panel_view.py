@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""panel_view.build() hands an adapter to controlpanel, wrapping an instrument first.
+"""panel_view.py loads without the shared controls, and wraps an instrument in build().
 
-The shared controls are faked, so this runs without LVGL. The file is loaded
-by path, because the package's __init__ needs audiodsp.
+The controls and Panel are stood in for, so this runs without LVGL. The file
+is loaded by path, because the package's __init__ needs audiodsp. The full
+layout is checked by apps' panel contract, against this same file.
 """
 
 import importlib.util
@@ -15,8 +16,11 @@ import unittest
 LIB = pathlib.Path(__file__).resolve().parent.parent / "lib" / "audioinstruments"
 
 
-def _load(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
+def _load():
+    package = types.ModuleType("audioinstruments")
+    package.__path__ = [str(LIB)]
+    sys.modules["audioinstruments"] = package
+    spec = importlib.util.spec_from_file_location("audioinstruments.panel_view", LIB / "panel_view.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -39,44 +43,46 @@ class FakeInstrument:
 
 class PanelViewTest(unittest.TestCase):
     def setUp(self):
-        self.built = []
-        fake = types.ModuleType("controlpanel")
-        fake.build = lambda adapter, **kw: self.built.append((adapter, kw)) or "panel"
-        self._saved = sys.modules.get("controlpanel")
-        sys.modules["controlpanel"] = fake
-        package = types.ModuleType("audioinstruments")
-        package.__path__ = [str(LIB)]
-        self._saved_pkg = sys.modules.get("audioinstruments")
-        sys.modules["audioinstruments"] = package
-        self.view = _load("audioinstruments.panel_view", LIB / "panel_view.py")
+        self._saved = sys.modules.get("audioinstruments")
 
     def tearDown(self):
-        for name, saved in (("controlpanel", self._saved), ("audioinstruments", self._saved_pkg)):
-            if saved is None:
-                sys.modules.pop(name, None)
-            else:
-                sys.modules[name] = saved
+        if self._saved is None:
+            sys.modules.pop("audioinstruments", None)
+        else:
+            sys.modules["audioinstruments"] = self._saved
 
-    def test_an_instrument_is_wrapped_in_a_panel_adapter(self):
-        self.view.build(FakeInstrument(), screen="scr", theme="silver")
-        adapter, kw = self.built[0]
+    def test_it_loads_without_the_shared_controls_and_build_says_so(self):
+        saved = sys.modules.get("controls")
+        sys.modules["controls"] = None
+        try:
+            view = _load()
+            with self.assertRaises(ImportError):
+                view.build(FakeInstrument())
+        finally:
+            if saved is None:
+                sys.modules.pop("controls", None)
+            else:
+                sys.modules["controls"] = saved
+
+    def test_build_wraps_an_instrument_and_passes_the_options_to_the_panel(self):
+        view = _load()
+        view.lv = object()  # stand in for LVGL: the guard passes
+        built = []
+        view.Panel = lambda adapter, **kw: built.append((adapter, kw)) or "panel"
+        view.build(FakeInstrument(), screen="scr", theme="silver")
+        adapter, kw = built[0]
         self.assertEqual(adapter.macro_labels, ["Cutoff", "Reso"])
         self.assertEqual(adapter.macro_values[:2], [10, 20])
         self.assertEqual(kw, {"screen": "scr", "group": None, "theme": "silver"})
 
     def test_an_adapter_is_passed_through_unchanged(self):
+        view = _load()
+        view.lv = object()
+        built = []
+        view.Panel = lambda adapter, **kw: built.append(adapter) or "panel"
         adapter = types.SimpleNamespace(macro_values=[0] * 16)
-        self.view.build(adapter)
-        self.assertIs(self.built[0][0], adapter)
-
-    def test_the_module_loads_and_build_says_so_without_the_shared_controls(self):
-        sys.modules["controlpanel"] = None
-        package = types.ModuleType("audioinstruments")
-        package.__path__ = [str(LIB)]
-        sys.modules["audioinstruments"] = package
-        view = _load("audioinstruments.panel_view", LIB / "panel_view.py")
-        with self.assertRaises(ImportError):
-            view.build(FakeInstrument())
+        view.build(adapter)
+        self.assertIs(built[0], adapter)
 
 
 if __name__ == "__main__":
