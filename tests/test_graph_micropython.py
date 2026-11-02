@@ -28,6 +28,7 @@ CASES = [
     ("reed_piano200a", 0),
     ("electric_grand70", 0),
     ("clavichord", 0),
+    ("clavichord", 5),
     ("electronic_drums5", 0),
     ("rhythm808", 0),
     ("rhythm909", 0),

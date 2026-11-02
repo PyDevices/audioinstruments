@@ -17,9 +17,12 @@ The section after the ten voices are mixed:
    ``amplitude`` mode.
 """
 
+import math
+
 import audiobiquad
 
 from ...core.bridge import NodeBridge, biquad_kwargs
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import copy_into, np
@@ -35,6 +38,9 @@ SOFT_HZ = 2000.0
 WAH_BASE_HZ = 350.0
 WAH_SWEEP_HZ = 3200.0
 WAH_Q = 3.2
+# the follower's step toward the peak each block: rising, then falling
+WAH_ATTACK = 0.4
+WAH_RELEASE = 0.06
 
 #: The volume's gain at 10.
 VOLUME_GAIN = 4.4
@@ -174,9 +180,9 @@ class ClavichordOutput(Module):
             # Track peak level without allocation
             peak = max(abs(float(np.max(mono))), abs(float(np.min(mono))))
             if peak > self._env:
-                self._env += (peak - self._env) * 0.4
+                self._env += (peak - self._env) * WAH_ATTACK
             else:
-                self._env += (peak - self._env) * 0.06
+                self._env += (peak - self._env) * WAH_RELEASE
 
             target_f = min(4200.0, WAH_BASE_HZ + (wah / 10.0) * self._env * WAH_SWEEP_HZ * 4.0)
             self._wah_f += (target_f - self._wah_f) * 0.3
@@ -255,6 +261,17 @@ class ClavichordOutput(Module):
         f.set(self._n_wah, ag.BIQUAD_Q, WAH_Q)
         f.set(self._n_wah, ag.BIQUAD_GAIN_DB, 0.0)
 
+        # Auto-wah: FOLLOW tracks the mono mix's peak, with the rack's 0.4 and 0.06 a block
+        # as seconds, so the sweep keeps its speed at any block size. Python reads the level
+        # once a block (``after_run``) and sets the wah's centre for the next block.
+        self._b_level = f.buffer()
+        f.keep(self._b_level)
+        dt = float(self.block_size) / float(self.sample_rate)
+        self._n_follow = f.add(ag.FOLLOW, (b_mono,), self._b_level)
+        f.set(self._n_follow, ag.FOLLOW_MODE, ag.FOLLOW_PEAK)
+        f.set(self._n_follow, ag.FOLLOW_ATTACK, -dt / math.log(1.0 - WAH_ATTACK))
+        f.set(self._n_follow, ag.FOLLOW_RELEASE, -dt / math.log(1.0 - WAH_RELEASE))
+
         # 3. Master volume and soft clipping output stage
         self._n_tanh = f.add(ag.TANH, (b_wah,), b_tanh)
         f.set(self._n_tanh, ag.TANH_LEVEL, CEILING)
@@ -266,6 +283,7 @@ class ClavichordOutput(Module):
         f.bind(("brilliant", "treble", "medium", "soft", "wah"), self._graph_filters)
         f.bind(("volume",), self._graph_volume)
         f.bind(("tremolo_rate", "tremolo_depth"), self._graph_tremolo)
+        f.after_run(self._graph_wah)
         f.on_reset(self._graph_reset)
 
         self._graph_filters()
@@ -281,6 +299,15 @@ class ClavichordOutput(Module):
         f.set(self._n_medium, ag.BIQUAD_MIX, 1.0 if float(p["medium"]) > 0.5 else 0.0)
         f.set(self._n_soft, ag.BIQUAD_MIX, 1.0 if float(p["soft"]) > 0.5 else 0.0)
         f.set(self._n_wah, ag.BIQUAD_MIX, 1.0 if float(p["wah"]) > 0.0 else 0.0)
+
+    def _graph_wah(self, sounding):
+        wah = float(self.params["wah"])
+        if wah <= 0.0:
+            return
+        env = self._fragment.peak(self._b_level) / UNIT
+        target_f = min(4200.0, WAH_BASE_HZ + (wah / 10.0) * env * WAH_SWEEP_HZ * 4.0)
+        self._wah_f += (target_f - self._wah_f) * 0.3
+        self._fragment.set(self._n_wah, self._ag.BIQUAD_FREQUENCY, self._wah_f)
 
     def _graph_volume(self):
         drive = (float(self.params["volume"]) / 10.0) * VOLUME_GAIN / CEILING
@@ -300,4 +327,7 @@ class ClavichordOutput(Module):
         f.reset(self._n_medium)
         f.reset(self._n_soft)
         f.reset(self._n_wah)
+        f.reset(self._n_follow)
         f.reset(self._n_tremolo)
+        self._wah_f = WAH_BASE_HZ
+        self._fragment.set(self._n_wah, self._ag.BIQUAD_FREQUENCY, WAH_BASE_HZ)

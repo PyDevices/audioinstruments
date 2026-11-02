@@ -174,9 +174,6 @@ class Clavichord(VoicePatch):
 
     NAME = "clavichord"
     DISPLAY_NAME = "Clavichord"
-    # Patch 5's auto-wah follows the note's envelope, and audiograph has no
-    # envelope follower, so "auto" renders the clavichord on the rack.
-    COMPILES = False
     VOICES = 10
     LATENCY_SAMPLES = ChunkedBridge.FRAMES
     MACRO_LABELS = MACROS

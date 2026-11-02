@@ -31,12 +31,18 @@ Tolerances:
     - Patches 0, 4 (Funk, Muted, peak ~4850 counts) match to top9 <= 400 counts, rms <= 25 counts.
     - Patch 2 (Warm Lower, peak 3679 counts) matches to top9 <= 100 counts, rms <= 6 counts.
     - Patch 7 (Tremolo preset, peak 2551 counts) matches to top9 <= 60 counts, rms <= 5 counts.
-* Patch 5 (Auto-Wah): in the rack, auto-wah runs a dynamic Python envelope follower sweeping
-  the bandpass filter between 350 Hz and 4200 Hz; in audiograph, the bandpass filter runs at
-  base frequency because audiograph has no envelope follower node.
+* Patch 5 (Auto-Wah): the rack follows the mono mix's peak (0.4 up, 0.06 down a block) and
+  sweeps the bandpass between 350 Hz and 4200 Hz. The graph does the same with a FOLLOW node
+  (the same steps as seconds) and sets the filter's centre from its level once a block, after
+  the block ran, so the centre reaches the audio one block (2.7 ms) later than the rack's. That
+  one block is the whole gap: against the real rack the held note is within 700 counts (top-9)
+  and 185 counts rms (the signal peaks at 2716), and against a rack that applies its centre one
+  block late it is within 150 and 25 (measured 95 and 14.8, where patch 0 alone is 384 and 20.7).
 * On note release, damped keys decay to silence.
 * The output section's mono amplitude tremolo modulates both channels identically.
 """
+
+import inspect
 
 import audioinstruments._rack.adapter as adapter
 import numpy as np
@@ -130,10 +136,11 @@ def test_compiles_to_graph_engine():
         assert inst_g.latency_samples == 0
     finally:
         inst_g.deinit()
-    # Default engine="auto" leaves clavichord on rack for dynamic auto-wah
+    # Default engine="auto" compiles it too: the auto-wah is a FOLLOW node, not a rack module
     inst_a = adapter.create(48000, voice="clavichord")
     try:
-        assert inst_a.engine == "rack"
+        assert inst_a.engine == "graph"
+        assert inst_a._compiled.rack_side == []
     finally:
         inst_a.deinit()
 
@@ -172,26 +179,104 @@ def test_steady_state_held_note_matches_closely(patch):
     assert rms <= 3.5, f"patch {patch} steady rms={rms}"
 
 
+AUTO_WAH = 5
+
+
 def test_patch_5_auto_wah_sound():
     """Patch 5 (Auto-Wah) renders sounding output in graph mode."""
-    pcm, latency = render("graph", 5, held_note())
+    pcm, latency = render("graph", AUTO_WAH, held_note())
     assert latency == 0
     peak = float(np.max(np.abs(pcm)))
     assert peak > 500.0, f"Auto-Wah peak too low: {peak}"
 
 
-def test_clavichord_auto_engine_reports_rack_for_dynamic_wah():
-    """Clavichord renders on rack by default so dynamic envelope-following wah is preserved."""
+def test_clavichord_auto_engine_compiles_the_auto_wah():
+    """Nothing of the clavichord stays on the rack, the auto-wah included."""
     inst = adapter.create(48000, voice="clavichord")
-    assert inst.engine == "rack"
-    assert inst.latency_samples == 256
-    inst.deinit()
+    try:
+        assert inst.engine == "graph"
+        assert inst.latency_samples == 0
+        assert inst._compiled.rack_side == []
+    finally:
+        inst.deinit()
 
-    # Explicit engine='graph' compiles the graph form
-    inst_g = adapter.create(48000, voice="clavichord", engine="graph")
-    assert inst_g.engine == "graph"
-    assert inst_g.latency_samples == 0
-    inst_g.deinit()
+
+def test_auto_wah_sound_matches_the_rack():
+    """With the sweep on, the graph stays within the one-block lag of the rack's centre."""
+    top9, rms, peak = worst(AUTO_WAH, held_note(), controls={"tremolo_depth": 0.0})
+    assert peak > 1500.0
+    assert top9 <= 700.0, f"auto-wah top9={top9}"
+    assert rms <= 185.0, f"auto-wah rms={rms}"
+
+
+@pytest.fixture
+def rack_wah_one_block_late(monkeypatch):
+    """The rack, with each block's wah centre applied one block later: the graph's timing."""
+    import textwrap
+
+    from audioinstruments._rack.modules.clavichord import output
+
+    source = textwrap.dedent(inspect.getsource(output.ClavichordOutput.process))
+    swap = "self.wah_node.frequency = self._wah_f"
+    assert swap in source
+    source = source.replace(
+        swap,
+        "self.wah_node.frequency = self.__dict__.get('_late', 350.0); self._late = self._wah_f",
+    )
+    namespace = dict(vars(output))
+    exec(source, namespace)
+    monkeypatch.setattr(output.ClavichordOutput, "process", namespace["process"])
+
+
+def test_auto_wah_sweep_matches_the_rack_block_for_block(rack_wah_one_block_late):
+    """Against a rack that sets the wah centre as late as the graph does, the held note
+    matches to 150 counts (top-9) and 25 counts rms: the follower's times and the sweep are right."""
+    top9, rms, peak = worst(AUTO_WAH, held_note(), controls={"tremolo_depth": 0.0})
+    assert peak > 1500.0
+    assert top9 <= 150.0, f"auto-wah top9={top9}"
+    assert rms <= 25.0, f"auto-wah rms={rms}"
+
+
+def test_auto_wah_centre_follows_the_playing_level():
+    """A hard note opens the wah wider than a soft one, and it settles back after the note dies."""
+    opened = {}
+    for velocity in (20, 127):
+        inst = adapter.create(
+            48000, voice="clavichord", engine="graph", output="pull", buffer_frames=BUFFER
+        )
+        try:
+            inst.program_change(AUTO_WAH)
+            out = [m for m in inst.rack.modules if m.NAME == "ClavichordOutput"][0]
+            inst.note_on(60, velocity)
+            top = 0.0
+            for _ in range(60):
+                inst._pull()
+                top = max(top, out._wah_f)
+            opened[velocity] = top
+            inst.note_off(60)
+            for _ in range(1500):
+                inst._pull()
+            assert out._wah_f < 360.0, out._wah_f
+        finally:
+            inst.deinit()
+    assert opened[20] > 360.0
+    assert opened[127] > opened[20] + 300.0, opened
+
+
+def test_auto_wah_off_leaves_the_centre_at_its_base():
+    for patch in (0, 4):
+        inst = adapter.create(
+            48000, voice="clavichord", engine="graph", output="pull", buffer_frames=BUFFER
+        )
+        try:
+            inst.program_change(patch)
+            inst.note_on(60, 127)
+            for _ in range(40):
+                inst._pull()
+            out = [m for m in inst.rack.modules if m.NAME == "ClavichordOutput"][0]
+            assert out._wah_f == 350.0
+        finally:
+            inst.deinit()
 
 
 def test_release_pluck_sounds_on_both_rack_and_graph():
