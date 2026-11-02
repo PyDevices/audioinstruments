@@ -87,6 +87,16 @@ The caller may hand modules out in groups (``VoicePool``'s voices): a group
 is masked out of the run while none of its modules is ``enabled``, and its
 nodes then cost nothing. Everything else is in the always-on group.
 
+A graph has 32 groups. When the groups handed in, with the modules'
+``switch`` groups, need more, neighbouring groups share one: two to a group
+(49 keys in 25), then three, until they fit. ``shared`` says how many, and
+``group_count`` how many groups the graph uses. A shared group runs while any
+of its modules is enabled, so a parked voice whose partner still plays runs
+on: its fragment must keep its output silent while it is parked (a keyer
+closed, a gate low), and anything it must find as the rack would at the next
+note (an oscillator's phase) it restores when the note comes. ``on_reset``
+still runs when the voice parks.
+
 Two ways to run it. ``step(out, block)`` renders a block on the caller's
 thread, as above. ``attach()`` instead hands the graph to something that
 pulls it (the audio pump, an output's ``play()``): the graph renders where
@@ -508,7 +518,7 @@ class CompiledRack:
             import audiograph as ag
 
             sizer = self.graph = _Sizer()
-            self._compile(order, groups)
+            groups = self._fit(order, groups)
             wires = sizer.buffers
             self.phys = None
             buffers = wires
@@ -537,6 +547,7 @@ class CompiledRack:
             self.graph = graph
             self.phys = None
             self.buffer_count = self.wires = None
+            self.shared = 1
         real = self.graph
         if self.phys is not None:
             for _ in range(self.buffer_count):
@@ -546,6 +557,26 @@ class CompiledRack:
         self.graph = real
         if self.phys is not None:
             self._to_buffers(self.phys)
+
+    def _fit(self, order, groups):
+        """Size the graph with ``groups``; when they need more groups than a graph has, size
+        it again with neighbouring groups sharing one (two to a group, then three...). Returns
+        the groups the sizing pass used, for the build to use too."""
+        share = 1
+        given = list(groups)
+        while True:
+            try:
+                self._compile(order, groups)
+                self.shared = share
+                return groups
+            except TooManyGroups:
+                share += 1
+                if share > len(given):
+                    raise
+                groups = [
+                    [module for members in given[i : i + share] for module in members]
+                    for i in range(0, len(given), share)
+                ]
 
     def _pinned(self):
         """The wires Python touches, as the sizing pass left them."""
@@ -633,6 +664,11 @@ class CompiledRack:
         self._master()
         self._rack_readers()
         self._check_outputs()
+
+    @property
+    def group_count(self):
+        """How many of the graph's groups the rack uses."""
+        return self._groups
 
     def new_group(self):
         if self._groups >= MAX_GROUPS:

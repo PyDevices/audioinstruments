@@ -227,17 +227,14 @@ class BusPatch(adapter.VoicePatch):
         return left, right
 
 
-def test_a_patch_with_buses_renders_on_the_rack_and_the_graph_engine_refuses():
+def test_a_patch_with_buses_renders_on_the_rack_and_the_graph():
     patch = BusPatch()
-    inst = adapter.create(48000, voice=patch, engine="auto", output="pull")
+    inst = adapter.create(48000, voice=patch, engine="rack", output="pull")
     assert inst.engine == "rack"
     assert sorted(patch.shared_args[0]) == ["a", "b"]
-    assert inst.voice_pool.mix.fragment is None  # no graph form: nothing could compile it
     inst.deinit()
-    with pytest.raises(ValueError, match="rack engine"):
-        adapter.create(48000, voice=BusPatch(), engine="graph", output="pull")
-    inst = adapter.create(48000, voice=BusPatch(), engine="rack", output="pull")
-    assert inst.engine == "rack"
+    inst = adapter.create(48000, voice=BusPatch(), engine="graph", output="pull")
+    assert inst.engine == "graph"  # each bus compiles to a chain of MIX nodes
     inst.deinit()
 
 

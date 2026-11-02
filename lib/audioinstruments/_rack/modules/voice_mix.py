@@ -19,13 +19,19 @@ with exactly the gain the voice's main input gets that block (the same ramp,
 the same ``level``), centred: a stolen voice fades on every bus as it does on
 the main sum, and a parked voice adds nothing to any. Whether a voice is quiet
 is decided on its main input alone, so that must carry everything the voice
-sounds. A mix with buses has no graph fragment.
+sounds.
 
 Compiled to a graph (``audioinstruments._rack.core.graph``), the mix is a ``PAN`` node (two
 ``MIX`` nodes, one a side, where the graph has no ``PAN``) whose gains ramp
 across a block when they move, which is the fade. The park
 rule is the rack's: after each block the mix takes the peak of every awake
-voice's input wire, and a voice quiet for 30 ms parks as above.
+voice's input wire, and a voice quiet for 30 ms parks as above. A side that
+nothing reads gets no nodes. Each bus is a chain of ``MIX`` nodes: the first
+sums eight voices, each one after it the chain so far and seven more. A
+parked voice's gain on a bus is 0, which the node skips, so a bus costs
+little for the voices that are not playing; the node is reset when a note
+wakes the voice, as the rack opens it in one step, unless another voice on
+it is fading.
 """
 
 from ..core.jack import SignalType
@@ -103,8 +109,6 @@ class VoiceMix(Module):
                 for i in range(n)
             ]
             self.bus_outs[name] = self.add_output(name, name, SignalType.AUDIO)
-        if self.buses:
-            self.fragment = None  # the graph has no buses: the rack renders this mix
         self.add_param("level", "Level", default=0.5, min_val=0.0, max_val=2.0)
         for name in ("_mid", "_tmp", "_tmp2", "_ramp", "_unit"):
             self.add_scratch(name)
@@ -233,7 +237,9 @@ class VoiceMix(Module):
                 return (f.add(self._pan, chunk, (b_left, b_right)),)
             return (f.add(ag.MIX, chunk, b_left), f.add(ag.MIX, chunk, b_right))
 
-        if n <= 8:
+        if not self.left_out.cables and not self.right_out.cables:
+            self._slots = None  # nothing hears the main sum: only the buses are built
+        elif n <= 8:
             nodes = mix(ins, f.output(self.left_out), f.output(self.right_out))
             for i in range(n):
                 self._slots[i] = (nodes, i)
@@ -256,10 +262,15 @@ class VoiceMix(Module):
         # a voice nobody is playing sits at the gain a new note opens it at, so
         # the note does not fade in across a block the rack's does not
         level = self.params["level"]
-        for i in range(n):
-            nodes, slot = self._slots[i]
-            for node in nodes:
-                f.set(node, slot, level)
+        if self._slots is not None:
+            for i in range(n):
+                nodes, slot = self._slots[i]
+                for node in nodes:
+                    f.set(node, slot, level)
+        self._bus_slots = [[] for _ in range(n)]  # voice -> [(node, input index)]
+        self._bus_pushed = [None] * n
+        for name in self.buses:
+            self._bus_chain(f, ag.MIX, name)
         # Round once. When every voice can (``graph_fold``) and nothing but linear effects
         # stands between this mix and the output, each voice takes the mix's level and the
         # master's scale into its own last gain: its wire is rounded once, at the resolution
@@ -278,6 +289,8 @@ class VoiceMix(Module):
                 v.graph_fold(1.0)
         if (
             cabled
+            and self._slots is not None
+            and not self.buses  # a bus is summed at the mix's gains: a voice cannot fold them
             and all(
                 getattr(v, "graph_fold", None) is not None and v._fragment is not None
                 for v in cabled
@@ -300,6 +313,35 @@ class VoiceMix(Module):
         f.before_run(self._graph_block)
         f.after_run(self._graph_after)
 
+    def _bus_chain(self, f, kind, name):
+        """Bus ``name`` as a chain of ``MIX`` nodes, the cabled voices in order."""
+        voices = []
+        for i, jack in enumerate(self.bus_ins[name]):
+            wire = f.input(jack) if jack.cable is not None else None
+            if wire is not None:
+                voices.append((i, wire))
+        out = f.output(self.bus_outs[name])
+        if not voices:
+            f.add(kind, (), out)  # nothing on the bus: a node writes it silent
+            return
+        chain = None
+        while voices:
+            take = 8 if chain is None else 7
+            chunk, voices = voices[:take], voices[take:]
+            inputs = tuple(wire for _, wire in chunk)
+            first = 0
+            if chain is not None:
+                inputs = (chain,) + inputs
+                first = 1
+            buf = out if not voices else f.buffer()
+            node = f.add(kind, inputs, buf)
+            if chain is not None:
+                f.set(node, 0, 1.0)
+            for slot, (i, _) in enumerate(chunk):
+                f.set(node, first + slot, 0.0)  # parked
+                self._bus_slots[i].append((node, first + slot))
+            chain = buf
+
     def _graph_block(self):
         """Every voice's gain to the nodes, when it moved. A parked voice's input is
         silent, so it waits at the gain a note opens it at (full, centred): the
@@ -316,6 +358,9 @@ class VoiceMix(Module):
             unit = self._graph_fold(level)
         snapped = []
         ramping = False
+        slots = self._slots
+        bus_slots = self._bus_slots
+        bus_snap = bus_ramp = None
         for i in range(self.max_voices):
             rack_gain = self.gain[i]
             if self.parked[i]:
@@ -323,12 +368,28 @@ class VoiceMix(Module):
             else:
                 g1, pan = self.target[i], self.pan[i]
                 self.gain[i] = g1
+            if bus_slots[i]:
+                # a bus has no balance, and a parked voice sits at 0 there, which the node skips
+                k = 0.0 if self.parked[i] else g1 * level
+                was = self._bus_pushed[i]
+                if k != was:
+                    self._bus_pushed[i] = k
+                    for node, slot in bus_slots[i]:
+                        f.set(node, slot, k)
+                    if was == 0.0 and rack_gain == g1 and not self.parked[i]:
+                        bus_snap = bus_snap or set()  # woken: the rack opens it in one step
+                        bus_snap.update(node for node, _ in bus_slots[i])
+                    elif was is not None:
+                        bus_ramp = bus_ramp or set()
+                        bus_ramp.update(node for node, _ in bus_slots[i])
+            if slots is None:
+                continue
             key = (g1, pan, level)
             was = self._pushed[i]
             if key != was:
                 self._pushed[i] = key
                 k = g1 * unit
-                nodes, slot = self._slots[i]
+                nodes, slot = slots[i]
                 if len(nodes) == 1:
                     f.set(nodes[0], slot, k)
                     f.set(nodes[0], self._pan_index + slot, pan)
@@ -342,6 +403,10 @@ class VoiceMix(Module):
         if snapped and not ramping:
             for nodes in snapped:
                 for node in nodes:
+                    f.reset(node)
+        if bus_snap:
+            for node in bus_snap:
+                if bus_ramp is None or node not in bus_ramp:
                     f.reset(node)
 
     def _graph_fold(self, level):
