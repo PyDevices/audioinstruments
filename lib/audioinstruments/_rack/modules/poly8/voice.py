@@ -290,8 +290,6 @@ class Poly8Voice(Module):
         )
 
     def process(self, block_size):
-        # a rack step moves what the graph's hook remembers: it looks again next block
-        self._follows = True
         p = self.params
         n = block_size
         if not self._scattered:

@@ -401,8 +401,6 @@ class PolyA6Voice(Module):
         self._scattered = True
 
     def process(self, block_size):
-        # a rack step moves what the graph's hook remembers: it looks again next block
-        self._k_moved = self._dirty = True
         p = self.params
         n = block_size
         if not self._scattered:
