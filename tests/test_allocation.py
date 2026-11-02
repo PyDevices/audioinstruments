@@ -552,6 +552,7 @@ def test_the_vocoder330_creates_no_arrays_with_every_section_playing_and_a_steal
 
     inst = adapter.create(48000, voice="vocoder330", output="pull", block_size=BLOCK, voices=4)
     inst.program_change(11)  # Swooping Choir: the swoop, the choir, the ensemble
+    inst.patch.set_control(inst.voice_pool, "mic_source", "test")
     for name in (
         "strings_upper",
         "strings_lower",

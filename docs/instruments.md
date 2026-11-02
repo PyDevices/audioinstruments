@@ -1812,7 +1812,9 @@ audio_out.play(inst.output)
 inst.program_change(9)                             # Singing Vocoder
 for note in (43, 55, 60, 64):                      # a left hand and a right hand
     inst.note_on(note, 100)
-# attach_mic(inst, sample) plays a mono sample as the voice instead of the built-in talker
+# The mic is off when fresh, so the vocoder patches are silent until they have a voice:
+# inst.patch.set_control(inst.voice_pool, "mic_source", "test") for the built-in talker,
+# attach_mic(inst, sample) for a mono sample. Neither runs with output="graph".
 ```
 
 ### The keys, and the split
@@ -1896,7 +1898,12 @@ are not built.
 the rack's instruments have no audio input, so the mic is built in, and
 `mic_source` picks where it comes from:
 
-- `"test"` (fresh): a built-in talker, so the vocoder sounds in tests and
+- `"off"` (fresh): silence, and so a silent vocoder, with the strings and the
+  choir playing. It is the one source a board's audio pump can play: all the
+  others render in Python, so an instrument on `output="graph"` raises
+  `ValueError` for them; give it one with `output="ring"`. Robot Voice, Singing
+  Vocoder and Whisper Vocoder are silent until they have a voice.
+- `"test"`: a built-in talker, so the vocoder sounds in tests and
   renders with no file and no hardware. A glottal sawtooth at `TALKER_F0`
   (110.0) Hz through three formant filters at `TALKER_FORMANT_Q` (5.0), saying
   six syllables on a loop of `TALKER_PHRASE_S` (2.4) seconds. The vowels are
@@ -1911,10 +1918,9 @@ the rack's instruments have no audio input, so the mic is built in, and
   silence. `attach_mic(inst, None)` detaches it, and with none attached
   `"input"` reads the mic module's `mic_in` jack, so a rack patched by hand can
   feed it. On the graph the mic is a `Fragment.fed` module: it renders in
-  Python each block and feeds the graph, so a Vocoder330 plays under `step()`
-  and `create(output="graph")` refuses it. The live input is proven with files only; a board's microphone is not
+  Python each block and feeds the graph, so a Vocoder330 with a source plays
+  under `step()`. The live input is proven with files only; a board's microphone is not
   tried.
-- `"off"`: silence, and so a silent vocoder.
 
 `mic_level` is the mic's gain, `MIC_GAIN_AT_10` (4.0) times `(mic_level / 10) ** 2`:
 1.0 at the fresh 5. The bank, the consonants and the direct mic all read the mic

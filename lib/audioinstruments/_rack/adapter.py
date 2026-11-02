@@ -44,6 +44,10 @@ try:
 except ImportError:  # a build without threads
     _allocate_lock = None
 
+#: The most voices a pump plays unless asked for more. Past what has groups of its own, voices
+#: share them, and a key that sounds runs a neighbour's nodes as well.
+PUMP_VOICES = 24
+
 #: Single-module voices ``create(voice=...)`` accepts: the module, the jack
 #: its pitch goes into, the jack its gate goes into, and the jack its audio
 #: leaves from.
@@ -430,6 +434,8 @@ class Instrument:
         self._strict_pads = bool(strict_pads)
         if voices is None:
             voices = getattr(self.patch, "VOICES", 8)
+            if output == "graph":
+                voices = min(voices, PUMP_VOICES)
         voices = _positive_int(voices, "voices")
         mono = bool(getattr(self.patch, "MONO", False))
         if mono and (voices > 1 or (max_voices or 1) > 1 or unison > 1):

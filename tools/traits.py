@@ -286,6 +286,7 @@ SPECS = {
     },
     "vocoder330": {
         "patches": (1, 3, 4, 8),
+        "controls": {8: {"mic_source": "test"}},
         "notes": (48, 60, 84),
         "velocity": 100,
         "velocities": (32, 80, 127),

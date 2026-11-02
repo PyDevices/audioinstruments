@@ -105,11 +105,29 @@ def _patches(voice):
 # Every patch of every graph instrument. A free-running oscillator or a drifting one wakes
 # at the phase it parked at, so a pump that parked a voice a turn later than the pull did (a
 # note between two turns finding the voice still awake) came out another sound.
-VOICES = ("duosynth", "poly106", "poly5", "poly6", "poly8", "polyxa", "mono101", "mono_synth")
+VOICES = (
+    "duosynth",
+    "poly106",
+    "poly5",
+    "poly6",
+    "poly8",
+    "polyxa",
+    "mono101",
+    "mono_synth",
+    "vocoder330",
+)
+# The vocoder patches, with no voice for a pump to play them from.
+SILENT = (("vocoder330", 8), ("vocoder330", 9), ("vocoder330", 10))
 
 
 @pytest.mark.parametrize(
-    "voice, patch", [(voice, patch) for voice in VOICES for patch in _patches(voice)]
+    "voice, patch",
+    [
+        (voice, patch)
+        for voice in VOICES
+        for patch in _patches(voice)
+        if (voice, patch) not in SILENT
+    ],
 )
 def test_pulled_by_the_pump_it_renders_what_step_renders(voice, patch):
     want = render_pull(voice, patch)
@@ -171,6 +189,21 @@ def test_fill_counts_the_blocks_the_graph_moved_on():
         # Three pulled, and the one ahead credited already: three more.
         assert inst.fill() == 3
         assert inst.fill() == 0
+    finally:
+        inst.deinit()
+
+
+@pytest.mark.parametrize("voice", ("string_ensemble", "combo_organ", "compact_organ"))
+def test_a_pump_gives_every_voice_a_group_of_its_own(voice):
+    inst = adapter.create(RATE, voice=voice, output="graph", buffer_frames=BUFFER)
+    try:
+        assert inst.voices == adapter.PUMP_VOICES
+        assert inst._compiled.shared == 1
+    finally:
+        inst.deinit()
+    inst = adapter.create(RATE, voice=voice, output="graph", voices=49, buffer_frames=BUFFER)
+    try:
+        assert inst.voices == 49  # asked for by name
     finally:
         inst.deinit()
 

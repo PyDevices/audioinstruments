@@ -101,7 +101,7 @@ class Vocoder330Mic(Module):
         self.in_jack = self.add_input("mic_in", "Mic In", audio)
         self.out_jack = self.add_output("mic", "Mic", audio)
         self.add_param("mic_level", "Mic Level", default=5.0, max_val=10.0)
-        self.add_param("mic_source", "Mic Source", default=1.0, max_val=2.0)
+        self.add_param("mic_source", "Mic Source", default=0.0, max_val=2.0)
         #: 0.0 when nothing reads the mic: the talker then only keeps time (set by the patch).
         self.add_param("active", "Active", default=1.0)
 
@@ -132,6 +132,7 @@ class Vocoder330Mic(Module):
 
         self._sample = None
         self._bridge = None
+        self._graph = None  # its fragment, once compiled
         self._said = None  # a vowel the talker holds, or None for the phrase
         self.reset()
 
@@ -305,6 +306,16 @@ class Vocoder330Mic(Module):
     def fragment(self, f):
         """The talker, the attached sample and the ``mic_in`` jack have no node: the module
         renders its block in Python as it does on the rack, and the graph takes it as a fed
-        buffer."""
-        f.fed(self.out_jack)
+        buffer. With the source off that buffer is silence, which a pump can play."""
+        self._graph = f
+        f.fed(self.out_jack, live=self.live)
         f.on_reset(self.reset)
+
+    def live(self):
+        """Whether the mic has a source, and so has to render in Python."""
+        return int(self.params["mic_source"] + 0.5) != 0
+
+    @property
+    def pumped(self):
+        """Whether a pump plays the graph, which cannot wait for a source in Python."""
+        return self._graph is not None and self._graph.pumped

@@ -1,6 +1,11 @@
 {
  "instrument": "vocoder330",
  "spec": {
+  "controls": {
+    "8": {
+      "mic_source": "test"
+    }
+  },
   "hold": 1.5,
   "notes": [
    48,
