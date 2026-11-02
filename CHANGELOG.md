@@ -22,6 +22,10 @@ All notable changes to `audioinstruments` are recorded here.
 - `audioinstruments.panel`: wrap an instrument in the adapter a control panel
   edits through, with macros, patches, bypass, reload and MIDI changes that
   reach the panel. See [docs/panel.md](docs/panel.md).
+- `mono_one`: the Init patch now holds a note at full level. Its amplifier
+  sustain was 0.5, which the exponential VCA puts 30 dB under the attack, so a
+  held note all but vanished. A patch that sets `amp_sustain` itself sounds as
+  before.
 
 ## 0.5.0
 

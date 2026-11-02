@@ -387,6 +387,7 @@ def movement_09():
         polymod_filtenv=0.30,
         polymod_dest_freq_a=0.25,
         vco_a_sync=1.0,
+        amp_sustain=0.5,
     )
     pattern = [36, 36, 48, 39, 41, 36, 46, 48]
     return rack, note_events(midi, pattern, 75, 0.70, 120), pattern_seconds(pattern, 75, 0.6)
