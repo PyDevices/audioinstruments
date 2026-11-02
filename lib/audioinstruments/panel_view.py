@@ -15,7 +15,6 @@ raises ImportError. A host with its own control surface never needs them.
 
 try:
     import lvgl as lv
-
     from controlkit import encoder as _encoder
     from controlkit import sprites
     from controlkit._draw import Lamp as _Led
@@ -23,7 +22,6 @@ try:
     from controlkit._draw import fill as _fill
     from controlkit._draw import finish as _finish
     from controlkit._draw import label as _label
-    from controlkit._draw import plain as _plain
     from controlkit._draw import text_width as _text_width
     from controlkit._safe import safe
     from controlkit.dotmatrix import DotMatrix
@@ -64,7 +62,17 @@ class Panel:
     in edit mode, so the other wheel always turns the control that has focus.
     """
 
-    def __init__(self, adapter, screen=None, group=None, theme=None, title=None, subtitle=None, on_close=None, two_wheels=False):
+    def __init__(
+        self,
+        adapter,
+        screen=None,
+        group=None,
+        theme=None,
+        title=None,
+        subtitle=None,
+        on_close=None,
+        two_wheels=False,
+    ):
         self.adapter = adapter
         self.screen = screen if screen is not None else lv.screen_active()
         self.group = group if group is not None else lv.group_get_default()
@@ -133,7 +141,9 @@ class Panel:
             self._build_patches(inset, top, left_w - inset, height - top)
             divider = left_w + s(10)
             _fill(_box(root, divider, top + s(14), 1, height - top - s(28)), theme["bevel_dark"])
-            _fill(_box(root, divider + 1, top + s(14), 1, height - top - s(28)), theme["bevel_light"])
+            _fill(
+                _box(root, divider + 1, top + s(14), 1, height - top - s(28)), theme["bevel_light"]
+            )
             right_x = divider + s(12)
         else:
             right_x = inset
@@ -142,7 +152,12 @@ class Panel:
         # Four screws hold the faceplate on.
         buf, size = sprites.screw(max(3, s(5)), theme)
         edge = s(7)
-        for x, y in ((edge, edge), (width - edge - size, edge), (edge, height - edge - size), (width - edge - size, height - edge - size)):
+        for x, y in (
+            (edge, edge),
+            (width - edge - size, edge),
+            (edge, height - edge - size),
+            (width - edge - size, height - edge - size),
+        ):
             screw = lv.image(root)
             screw.set_src(buf)
             screw.set_pos(x, y)
@@ -213,7 +228,13 @@ class Panel:
         self._status_led = _Led(header, left + lens + 1, led_y, lens, theme)
         if self.compact:
             brand.add_flag(lv.obj.FLAG.HIDDEN)
-        sub = _label(header, (subtitle if subtitle is not None else theme["subtitle"]).upper(), theme["header_legend_dim"], None, 2)
+        sub = _label(
+            header,
+            (subtitle if subtitle is not None else theme["subtitle"]).upper(),
+            theme["header_legend_dim"],
+            None,
+            2,
+        )
         sub.set_long_mode(lv.label.LONG_MODE.DOTS)
         sub.set_size(max(1, plate_w - int(2 * lens) - s(10)), 16)
         if self.compact:
@@ -231,7 +252,10 @@ class Panel:
         _fill(window, theme["display_bg"])
         window.set_style_radius(s(2), 0)
         self.display = DotMatrix(window, columns, 2, pitch, theme)
-        self.display.obj.set_pos((bezel_w - 2 * s(4) - matrix_w) // 2, (bezel_h - 2 * s(3) - 1 - self.display.height) // 2)
+        self.display.obj.set_pos(
+            (bezel_w - 2 * s(4) - matrix_w) // 2,
+            (bezel_h - 2 * s(3) - 1 - self.display.height) // 2,
+        )
         # A sheen across the top of the glass.
         glass = _box(window, 0, 0, bezel_w - 2 * s(4), (bezel_h - 2 * s(3)) // 2)
         glass.set_style_bg_color(lv.color_hex(0xFFFFFF), 0)
@@ -307,12 +331,16 @@ class Panel:
             button.set_style_border_width(1, 0)
             button.set_style_border_color(lv.color_hex(theme["pad_edge"]), 0)
             _fill(button, theme["button"], theme["button_bottom"])
-            letter = _label(button, BANK_NAMES[i], theme["button_text"] if used else theme["pad_empty_text"])
+            letter = _label(
+                button, BANK_NAMES[i], theme["button_text"] if used else theme["pad_empty_text"]
+            )
             letter.center()
             if used:
                 button.add_flag(lv.obj.FLAG.CLICKABLE)
                 button.set_style_translate_y(1, lv.STATE.PRESSED)
-                button.add_event_cb(safe(lambda e, bank=i: self._on_bank(bank)), lv.EVENT.CLICKED, None)
+                button.add_event_cb(
+                    safe(lambda e, bank=i: self._on_bank(bank)), lv.EVENT.CLICKED, None
+                )
             self.banks.append((button, letter, used))
 
         # The sixteen pads: two columns of eight, numbered down each column.
@@ -373,7 +401,17 @@ class Panel:
             row, column = divmod(i, 4)
             label = labels[i] if i < len(labels) else ""
             enc = _encoder.Encoder(
-                self, self.root, i, label, x + column * cell_w, grid_y + row * cell_h, cell_w, cell_h, geom, theme, i < count
+                self,
+                self.root,
+                i,
+                label,
+                x + column * cell_w,
+                grid_y + row * cell_h,
+                cell_w,
+                cell_h,
+                geom,
+                theme,
+                i < count,
             )
             if i < count and self.group is not None:
                 self.group.add_obj(enc.obj)
@@ -440,7 +478,9 @@ class Panel:
         self.buttons["FINE"][1].set(theme["led_on"] if self.fine else None)
         # RELOAD stays lit from the press until the engine is ready again,
         # and goes out at once on an error: the status light shows that.
-        if self._reload_at is not None and (error or (ready and lv.tick_get() - self._reload_at >= _RELOAD_MS)):
+        if self._reload_at is not None and (
+            error or (ready and lv.tick_get() - self._reload_at >= _RELOAD_MS)
+        ):
             self._reload_at = None
         self.buttons["RELOAD"][1].set(theme["amber"] if self._reload_at is not None else None)
         if state != self._status:
@@ -526,7 +566,11 @@ class Panel:
     # ---- the user's side ---------------------------------------------------------------
 
     def _turned(self, enc, value):
-        label = self.adapter.macro_labels[enc.index] if enc.index < len(self.adapter.macro_labels) else ""
+        label = (
+            self.adapter.macro_labels[enc.index]
+            if enc.index < len(self.adapter.macro_labels)
+            else ""
+        )
         room = self.display.columns - 4
         self._flash(label.upper()[:room] + " " * (room - len(label[:room])) + "%4d" % value)
         self.display.set_line(0, self._patch_line())

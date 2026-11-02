@@ -20,7 +20,9 @@ def _load():
     package = types.ModuleType("audioinstruments")
     package.__path__ = [str(LIB)]
     sys.modules["audioinstruments"] = package
-    spec = importlib.util.spec_from_file_location("audioinstruments.panel_view", LIB / "panel_view.py")
+    spec = importlib.util.spec_from_file_location(
+        "audioinstruments.panel_view", LIB / "panel_view.py"
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
