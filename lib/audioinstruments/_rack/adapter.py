@@ -44,12 +44,12 @@ try:
 except ImportError:  # a build without threads
     _allocate_lock = None
 
-#: Single-module voices ``create(voice=...)`` accepts: the module, the jack
-#: its pitch goes into, the jack its gate goes into, and the jack its audio
 #: The most voices a pump plays unless asked for more. Past what has groups of its own, voices
 #: share them, and a key that sounds runs a neighbour's nodes as well.
 PUMP_VOICES = 24
 
+#: Single-module voices ``create(voice=...)`` accepts: the module, the jack
+#: its pitch goes into, the jack its gate goes into, and the jack its audio
 #: leaves from.
 _MODULE_VOICES = {
     "acid303": ("Acid303", "pitch_in", "gate_in", "audio_out"),
