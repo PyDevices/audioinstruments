@@ -4,6 +4,8 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- Poly106 compiles to a graph at up to 16 voices, from 10: its sub and noise share
+  one switch, and a graph has 32 to share out.
 - Vocoder330's mic is off when fresh, so a board's audio pump can play the
   instrument. Before, the built-in talker rendered in Python on the app's core
   and the sound stuttered with no note held. The vocoder patches are silent
