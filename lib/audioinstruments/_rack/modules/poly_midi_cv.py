@@ -473,7 +473,6 @@ class PolyMidiCV(MidiCVModule):
         bend = 0.0 if pb == 0.0 else pb * (self.params["bend_range"] / 12.0) * 0.1
         if self._mono:
             self._graph_mono_block(bend)
-            self._g_bend = None  # its pitches went in at other bends: back in poly, write all
         else:
             self._graph_glide()
             self._poly_block()

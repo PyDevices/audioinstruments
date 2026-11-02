@@ -88,12 +88,12 @@ def test_a_voice_value_moved_alone_reaches_its_control():
 def test_a_parked_flag_moved_alone_reaches_the_mix():
     inst = _played("poly106")
     mix = inst._pool.mix
+    mix.target[0] = 0.5
     mix._graph_block()
-    mix.parked[0] = not mix.parked[0]
+    assert mix._pushed[0][0] == 0.5
+    mix.parked[0] = True  # a parked voice waits at the gain a note opens it at
     mix._graph_block()
-    level = mix.params["level"]
-    want = (1.0, 0.0, level) if mix.parked[0] else (mix.target[0], mix.pan[0], level)
-    assert mix._pushed[0] == want
+    assert mix._pushed[0] == (1.0, 0.0, mix.params["level"])
     inst.deinit()
 
 
