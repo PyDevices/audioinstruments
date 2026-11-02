@@ -231,7 +231,7 @@ def tone_stats(voice_params):
     plan = {10: (60, 1.0), 70: (60, 0.0), 80: (36, 1.0), 120: (36, 0.0), 130: (96, 1.0)}
     plan.update({170: (96, 0.0), 180: (64, 1.0), 200: (67, 1.0), 240: (64, 0.0), 250: (67, 0.0)})
     want, got = voice_render(voice_params, plan, 280)
-    assert np.abs(want).max() > 500.0
+    assert np.abs(want).max() > 100.0
     diff = want[256:] - got[:-256]
     return float(np.abs(diff).max()), float(np.sqrt(np.mean(diff**2)))
 
@@ -256,6 +256,43 @@ def tone_stats_all_drawbars():
 
 def tone_stats_default():
     return tone_stats({"percussion": 0.0, "click": 0.0})
+
+
+DRAWBAR_NAMES = tuple(NO_DRAWBARS)
+
+
+def tone_stats_one_drawbar(name):
+    """The tone with only drawbar ``name`` out, at 6: its own footage and trim."""
+    return tone_stats(dict(NO_DRAWBARS, percussion=0.0, click=0.0, **{name: 6}))
+
+
+def drawbars_one_at_a_time_ok():
+    for name in DRAWBAR_NAMES:
+        worst, rms = tone_stats_one_drawbar(name)
+        if worst > TONE_BOUND[0] or rms > TONE_BOUND[1]:
+            return False
+    return True
+
+
+def percussion_peak_hz(harmonic, key=60):
+    """The graph's percussion frequency (the FFT peak) and the one the rack plays."""
+    params = dict(NO_DRAWBARS, percussion=1.0, click=0.0, perc_harmonic=harmonic)
+    want, got = voice_render(params, {10: (key, 1.0), 90: (key, 0.0)}, 170)
+    peaks = []
+    for series in (want[256:], got):
+        seg = series[1700 : 1700 + 4096]
+        spectrum = np.abs(np.fft.rfft(seg * np.hanning(len(seg))))
+        peaks.append(float(np.argmax(spectrum)) * RATE / len(seg))
+    return peaks[1], peaks[0]
+
+
+def percussion_pitch_ok():
+    for harmonic in (0.0, 1.0):
+        got, want = percussion_peak_hz(harmonic)
+        if abs(got - want) > 2 * RATE / 4096:
+            return False
+    # and the two settings are different notes (second 4', third 2 2/3')
+    return abs(percussion_peak_hz(1.0)[0] / percussion_peak_hz(0.0)[0] - 1.5) < 0.05
 
 
 def windows(a, size=480):
@@ -343,6 +380,16 @@ def test_create_picks_the_graph():
 def test_the_drawbars_play_the_rack_tone():
     for stats in (tone_stats_default(), tone_stats_all_drawbars()):
         assert stats[0] <= TONE_BOUND[0] and stats[1] <= TONE_BOUND[1], stats
+
+
+@pytest.mark.parametrize("name", DRAWBAR_NAMES)
+def test_each_drawbar_alone_plays_the_rack_tone(name):
+    worst, rms = tone_stats_one_drawbar(name)
+    assert worst <= TONE_BOUND[0] and rms <= TONE_BOUND[1], (name, worst, rms)
+
+
+def test_the_percussion_sounds_the_rack_pitch():
+    assert percussion_pitch_ok()
 
 
 def test_the_scanner_vibrato_and_chorus_sweep_as_the_rack_does():
