@@ -12,7 +12,7 @@ harmonic by ``env``.
 
 from ...core.jack import SignalType
 from ...core.module import Module
-from ...dsp.organ import PercussionCore
+from ...dsp.organ import PERC_DECAY_S, PercussionCore
 from .._util import jack_signal
 
 
@@ -48,3 +48,38 @@ class Tonewheel3Percussion(Module):
             p["perc_decay"] >= 0.5,
             self.env_out.buffer,
         )
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """A ``DECAY`` on the manual's gate, then a gain for the soft setting and the switch.
+
+        ``DECAY`` fires on the gate's rising edge, which is when nothing was held,
+        so it is single-trigger as ``PercussionCore`` is. The gain after it follows
+        the switches at once, as the rack scales its envelope as it writes it.
+        """
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_env = f.buffer()
+        self._n_env = f.add(ag.DECAY, (gate,), b_env)
+        self._n_gain = f.add(ag.MIX, (b_env,), f.output(self.env_out))
+        f.bind(("percussion", "perc_volume", "perc_decay"), self._graph_params)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_params(self):
+        f = self._fragment
+        ag = self._ag
+        p = self.params
+        # PERC_DECAY_S is seconds to fall 60 dB (exp(-6.91 t / s)); DECAY takes seconds to 40 dB
+        seconds = PERC_DECAY_S[0 if p["perc_decay"] >= 0.5 else 1] * (4.60517 / 6.91)
+        f.set(self._n_env, ag.DECAY_DECAY, seconds)
+        f.set(self._n_env, ag.DECAY_RESTRIKE, seconds)
+        on = p["percussion"] >= 0.5
+        f.set(self._n_gain, 0, (0.5 if p["perc_volume"] < 0.5 else 1.0) if on else 0.0)
+
+    def _graph_reset(self):
+        self._fragment.reset(self._n_env)
