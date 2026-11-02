@@ -50,7 +50,11 @@ def test_with_audiograph_auto_is_the_graph():
 
 
 @pytest.mark.skipif(not HAVE_AUDIOGRAPH, reason="needs audiograph")
-def test_a_patch_without_fragments_is_the_rack_unless_asked():
+def test_a_patch_without_fragments_is_the_rack_unless_asked(monkeypatch):
+    # patch2600 compiles; take its fragment away to stand for one that does not
+    from audioinstruments._rack.modules.patch2600 import Patch2600
+
+    monkeypatch.setattr(Patch2600, "fragment", None)
     inst = adapter.create(48000, voice="patch2600", output="pull")
     assert inst.engine == "rack"
     inst.deinit()
