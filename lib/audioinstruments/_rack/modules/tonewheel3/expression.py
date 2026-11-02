@@ -41,3 +41,42 @@ class Tonewheel3Expression(Module):
             clear_buffer(out)
             return
         self.core.render(src, out, self.params["expression"] / 10.0)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """The bass low-pass always running, then ``pedal^2`` of the wire less the bass cut."""
+        import audiobiquad
+        import audiograph as ag
+
+        from ...dsp.organ import SWELL_BASS_HZ
+
+        self._ag = ag
+        self._fragment = f
+        src = f.input(self.audio_in)
+        out = f.output(self.audio_out)
+        if src is None:
+            silent = f.add(ag.MIX, (), out)
+            f.set(silent, ag.MIX_OFFSET, 0.0)
+            return
+        b_low = f.buffer()
+        self._n_low = f.add(ag.BIQUAD, (src,), b_low)
+        f.set(self._n_low, ag.BIQUAD_MODE, audiobiquad.LOW_PASS)
+        f.set(self._n_low, ag.BIQUAD_FREQUENCY, SWELL_BASS_HZ)
+        f.set(self._n_low, ag.BIQUAD_Q, 0.7071)
+        self._n_sum = f.add(ag.MIX, (src, b_low), out)
+        f.bind(("expression",), self._graph_params)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_params(self):
+        from ...dsp.organ import SWELL_BASS_CUT
+
+        pedal = self.params["expression"] / 10.0
+        pedal = 0.0 if pedal < 0.0 else (1.0 if pedal > 1.0 else pedal)
+        sq = pedal * pedal
+        self._fragment.set(self._n_sum, 0, sq)
+        self._fragment.set(self._n_sum, 1, -sq * SWELL_BASS_CUT * (1.0 - pedal))
+
+    def _graph_reset(self):
+        self._fragment.reset(self._n_low)

@@ -49,3 +49,52 @@ class Tonewheel3Vibrato(Module):
         mode = 0 if mode < 0 else (5 if mode > 5 else mode)
         self.core.set(p["vibrato"] >= 0.5, mode % 3 + 1, mode >= 3)
         self.core.render(src, out)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """A gain (half in chorus) into an ``FBDELAY`` swept by the scanner's table."""
+        import audiograph as ag
+
+        from ...dsp.organ import SCANNER_CENTRE_MS, SCANNER_HZ, SCANNER_SHAPE
+
+        self._ag = ag
+        self._fragment = f
+        src = f.input(self.audio_in)
+        out = f.output(self.audio_out)
+        if src is None:
+            self._n_gain = self._n_line = None
+            silent = f.add(ag.MIX, (), out)
+            f.set(silent, ag.MIX_OFFSET, 0.0)
+            return
+        b_in = f.buffer()
+        self._n_gain = f.add(ag.MIX, (src,), b_in)
+        self._n_line = f.add(ag.FBDELAY, (b_in,), out, 20.0)
+        f.set(self._n_line, ag.DELAY_MS, SCANNER_CENTRE_MS)
+        f.set(self._n_line, ag.DELAY_FEEDBACK, 0.0)
+        f.set(self._n_line, ag.DELAY_WOW_HZ, SCANNER_HZ)
+        f.table(self._n_line, SCANNER_SHAPE)
+        f.bind(("vibrato", "vibrato_mode"), self._graph_params)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_params(self):
+        f = self._fragment
+        ag = self._ag
+        from ...dsp.organ import SCANNER_DEPTHS_MS
+
+        p = self.params
+        mode = int(p["vibrato_mode"] + 0.5)
+        mode = 0 if mode < 0 else (5 if mode > 5 else mode)
+        chorus = mode >= 3
+        if p["vibrato"] < 0.5:
+            f.set(self._n_gain, 0, 1.0)
+            f.set(self._n_line, ag.DELAY_WOW_DEPTH_MS, 0.0)
+            f.set(self._n_line, ag.DELAY_MIX, 0.0)
+            return
+        f.set(self._n_gain, 0, 0.5 if chorus else 1.0)
+        f.set(self._n_line, ag.DELAY_WOW_DEPTH_MS, SCANNER_DEPTHS_MS[mode % 3])
+        f.set(self._n_line, ag.DELAY_MIX, 1.0 if chorus else 2.0)
+
+    def _graph_reset(self):
+        self._fragment.reset(self._n_line)
