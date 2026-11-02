@@ -124,6 +124,7 @@ def test_every_patch_plays_a_chord():
     inst = adapter.create(48000, voice="vocoder330", engine="rack")
     for patch in range(12):
         inst.program_change(patch)
+        inst.patch.set_control(inst.voice_pool, "mic_source", "test")
         for note in (48, 55, 60, 64):
             inst.note_on(note, 110)
         top = pull_peak(inst, 120)
@@ -157,6 +158,7 @@ def test_the_vibrato_and_the_align_lines_come_out_the_latency_late():
 def test_the_vocoder_speaks_only_while_a_key_sounds_and_the_mic_is_on():
     inst = adapter.create(48000, voice="vocoder330", engine="rack")
     inst.program_change(8)  # Robot Voice
+    inst.patch.set_control(inst.voice_pool, "mic_source", "test")
     top = pull_peak(inst, 60)
     assert top == 0, "sound with no key down: %d" % top
     inst.note_on(48, 100)
