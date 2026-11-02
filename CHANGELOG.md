@@ -4,6 +4,9 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- The Python that runs around a compiled graph each block is 60-72% smaller on
+  the Poly106, CompactOrgan, StringEnsemble and Tonewheel3, and allocates nothing
+  in `PolyMidiCV` and the voice mix. Renders are byte-identical.
 - Every instrument on the rack now compiles to one `audiograph` graph:
   `create(name, 48000).engine` is `"graph"` for all of them. The drum
   machines, the pianos and organs, the Poly80, the StringEnsemble, the

@@ -417,10 +417,20 @@ class StringEnsembleVoice(Module):
     def _graph_block(self):
         """process(), once a block, with the keyer's state machine in Python and the nodes
         doing the ramp."""
+        gate = self._g_gate
+        if (
+            not gate
+            and self._gain == 0.0
+            and self._g_slope == 0.0
+            and self._g_gain_set == 0.0
+            and not (self._gate_high or self._latched or self._choking or self._closing)
+            and not self._g_run
+        ):
+            return  # shut and still: most of the keys, most of the time
         f = self._fragment
         n = self.block_size
-        self._graph_advance(f.blocks * n)
-        gate = self._g_gate
+        if self._g_slope != 0.0:
+            self._graph_advance(f.blocks * n)
         if gate and not self._gate_high:
             self._gate_high = True
             self._latched = False

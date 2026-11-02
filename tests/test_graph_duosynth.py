@@ -666,6 +666,8 @@ def test_a_second_key_that_never_arrives_fails(monkeypatch):
     assert agrees(3, line())
 
     class Dead:
+        value = 0.0
+
         def set(self, value):
             pass
 

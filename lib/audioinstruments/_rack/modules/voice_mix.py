@@ -308,6 +308,7 @@ class VoiceMix(Module):
             if wire is not None:
                 f.keep(wire)  # peaked after each block, for the park rule
         self._pushed = [None] * n
+        self._seen_level = None  # the block's inputs when they were last pushed
         self._pan_index = getattr(ag, "PAN_PAN", 0)
         f.bind(("level",), self._graph_block)
         f.before_run(self._graph_block)
@@ -352,6 +353,16 @@ class VoiceMix(Module):
         The rack gives such a voice its gain in one step (``open_channel``), so when
         nothing else is ramping the nodes are reset and take every gain as it stands."""
         level = self.params["level"]
+        # Pushed gains are all that's left to do and these say what they were pushed from, so
+        # a block with nothing moved stops here, at a few list comparisons done in C.
+        if (
+            level == self._seen_level
+            and self.parked == self._seen_parked
+            and self.target == self._seen_target
+            and self.pan == self._seen_pan
+            and self.gain == self._seen_gain
+        ):
+            return
         f = self._fragment
         unit = level  # what the mix's own gains carry of the level
         if self._fold is not None:
@@ -408,6 +419,11 @@ class VoiceMix(Module):
             for node in bus_snap:
                 if bus_ramp is None or node not in bus_ramp:
                     f.reset(node)
+        self._seen_level = level
+        self._seen_parked = list(self.parked)
+        self._seen_target = list(self.target)
+        self._seen_pan = list(self.pan)
+        self._seen_gain = list(self.gain)
 
     def _graph_fold(self, level):
         """The level (and the master's scale) to the voices, when it moved; the share of the
@@ -434,20 +450,23 @@ class VoiceMix(Module):
         blocks = f.rendered
         if blocks < 1:
             return
-        quiet_blocks = int(QUIET_SECONDS * self.sample_rate / self.block_size) + 1
-        threshold = QUIET_LEVEL * BRIDGE_SCALE
-        if self._fold is not None:
-            # The wire carries the level and the master's scale the voice took (not the fade).
-            # At the default level the threshold is then a whole count (27), and a peak of
-            # exactly that was anything from 26.5 to 27.5 before it was rounded: as likely
-            # quiet as not. It counts as quiet, so the comparison is strict.
-            threshold = threshold * self._fold_gain + 1e-6
+        threshold = None  # worked out only if some voice needs it: a held chord has none
         for i in range(self.max_voices):
             if self.parked[i]:
                 continue
             if self.gated[i]:
                 self.quiet[i] = 0
                 continue
+            if threshold is None:
+                quiet_blocks = int(QUIET_SECONDS * self.sample_rate / self.block_size) + 1
+                threshold = QUIET_LEVEL * BRIDGE_SCALE
+                if self._fold is not None:
+                    # The wire carries the level and the master's scale the voice took (not the
+                    # fade). At the default level the threshold is then a whole count (27), and
+                    # a peak of exactly that was anything from 26.5 to 27.5 before it was
+                    # rounded: as likely quiet as not. It counts as quiet, so the comparison is
+                    # strict.
+                    threshold = threshold * self._fold_gain + 1e-6
             wire = self._wires[i]
             if wire is not None and f.peak(wire) >= threshold:
                 self.quiet[i] = 0
