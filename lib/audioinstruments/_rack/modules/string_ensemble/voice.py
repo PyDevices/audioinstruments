@@ -429,7 +429,8 @@ class StringEnsembleVoice(Module):
             return  # shut and still: most of the keys, most of the time
         f = self._fragment
         n = self.block_size
-        self._graph_advance(f.blocks * n)
+        if self._g_slope != 0.0:
+            self._graph_advance(f.blocks * n)
         if gate and not self._gate_high:
             self._gate_high = True
             self._latched = False

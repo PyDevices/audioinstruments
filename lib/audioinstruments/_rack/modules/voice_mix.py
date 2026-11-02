@@ -450,20 +450,23 @@ class VoiceMix(Module):
         blocks = f.rendered
         if blocks < 1:
             return
-        quiet_blocks = int(QUIET_SECONDS * self.sample_rate / self.block_size) + 1
-        threshold = QUIET_LEVEL * BRIDGE_SCALE
-        if self._fold is not None:
-            # The wire carries the level and the master's scale the voice took (not the fade).
-            # At the default level the threshold is then a whole count (27), and a peak of
-            # exactly that was anything from 26.5 to 27.5 before it was rounded: as likely
-            # quiet as not. It counts as quiet, so the comparison is strict.
-            threshold = threshold * self._fold_gain + 1e-6
+        threshold = None  # worked out only if some voice needs it: a held chord has none
         for i in range(self.max_voices):
             if self.parked[i]:
                 continue
             if self.gated[i]:
                 self.quiet[i] = 0
                 continue
+            if threshold is None:
+                quiet_blocks = int(QUIET_SECONDS * self.sample_rate / self.block_size) + 1
+                threshold = QUIET_LEVEL * BRIDGE_SCALE
+                if self._fold is not None:
+                    # The wire carries the level and the master's scale the voice took (not the
+                    # fade). At the default level the threshold is then a whole count (27), and
+                    # a peak of exactly that was anything from 26.5 to 27.5 before it was
+                    # rounded: as likely quiet as not. It counts as quiet, so the comparison is
+                    # strict.
+                    threshold = threshold * self._fold_gain + 1e-6
             wire = self._wires[i]
             if wire is not None and f.peak(wire) >= threshold:
                 self.quiet[i] = 0
