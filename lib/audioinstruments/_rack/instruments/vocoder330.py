@@ -20,10 +20,13 @@ filters are not per key: each voice hands the pool five buses, and the shared
 section filters each sum once. The sections come out through a four-line
 ensemble, and the human voice and the vocoder through a vibrato first.
 
-The vocoder needs a voice. With ``mic_source`` at ``"test"`` (the fresh setting) a
+The vocoder needs a voice, and fresh it has none: ``mic_source`` is ``"off"``, so
+the strings and the choir play and the vocoder stays silent. With ``"test"`` a
 built-in talker speaks a short phrase on a loop. ``attach_mic(inst, sample)``
 plays a mono audiodsp sample in instead (the first block of the sample is lost),
-and with none attached ``"input"`` reads the mic module's ``mic_in`` jack.
+and with none attached ``"input"`` reads the mic module's ``mic_in`` jack. All
+three render in Python, so they need ``output="ring"`` or ``"pull"``: an instrument
+on ``output="graph"`` refuses them.
 """
 
 from ..adapter import VoicePatch
@@ -120,7 +123,7 @@ SETTINGS = {
     "vocoder_lower": False,
     "vocoder_ensemble": False,
     "mic_level": 5.0,
-    "mic_source": "test",
+    "mic_source": "off",
     "vocoder_tone": 3.0,
     "vocoder_hold": False,
     # Release, for all three
@@ -416,7 +419,7 @@ class Vocoder330(VoicePatch):
         """Tell the bank and the mic whether anything is listening to them."""
         v = self._values
         vocoder = bool(v["vocoder_upper"] or v["vocoder_lower"])
-        self.bank.set_param("active", 1.0 if vocoder else 0.0)
+        self.bank.set_param("active", 1.0 if vocoder and v["mic_source"] != "off" else 0.0)
         self.mic.set_param("active", 1.0 if vocoder or v["direct_mic"] > 0.0 else 0.0)
 
     def _pitch(self, pool):
@@ -435,6 +438,11 @@ class Vocoder330(VoicePatch):
             choices = _SELECT[name]
             if value not in choices:
                 raise ValueError(f"{name} must be one of {', '.join(choices)}, not {value!r}")
+            if name == "mic_source" and value != "off" and self.mic.pumped:
+                raise ValueError(
+                    'mic_source "%s" renders in Python, and a pump cannot wait for it:'
+                    ' create the instrument with output="ring"' % value
+                )
             self._values[name] = value
             val = float(choices.index(value))
         elif name in _TABLETS:
@@ -453,7 +461,7 @@ class Vocoder330(VoicePatch):
             self.bank.set_param(name, val)
         else:
             self.output.set_param(name, val)
-        if name in ("vocoder_upper", "vocoder_lower", "direct_mic"):
+        if name in ("vocoder_upper", "vocoder_lower", "direct_mic", "mic_source"):
             self._listeners()
         elif name in ("pitch_mode", "pitch_set"):
             self._pitch(pool)
@@ -481,5 +489,5 @@ def attach_mic(inst, sample):
     if not isinstance(patch, Vocoder330):
         raise ValueError("attach_mic needs an instrument made with voice='vocoder330'")
     with inst._lock:
-        patch.mic.attach(sample)
         patch.set_control(inst.voice_pool, "mic_source", "input")
+        patch.mic.attach(sample)

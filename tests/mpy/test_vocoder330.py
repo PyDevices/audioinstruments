@@ -93,6 +93,7 @@ def instrument_rack(block_size):
     """The whole instrument on Singing Vocoder with the choir tablets on, a chord held, the talker on."""
     inst = adapter.create(48000, voice="vocoder330", output="pull", block_size=block_size)
     inst.program_change(9)  # Singing Vocoder: vocoder tablets, vocoder ensemble, vibrato
+    inst.patch.set_control(inst.voice_pool, "mic_source", "test")
     for name in (
         "voice_upper_female4",
         "voice_upper_male8",

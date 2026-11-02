@@ -4,6 +4,13 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- Vocoder330's mic is off when fresh, so a board's audio pump can play the
+  instrument. Before, the built-in talker rendered in Python on the app's core
+  and the sound stuttered with no note held. The vocoder patches are silent
+  until they have a voice: set `mic_source` to `"test"` or call `attach_mic()`,
+  on an instrument made with `output="ring"`. On `output="graph"` both raise
+  `ValueError`.
+
 ## 0.5.1.dev1
 
 - `audioinstruments.panel_view` lays out the control panel for an instrument

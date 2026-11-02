@@ -133,6 +133,7 @@ def render(engine, patch, phrase, controls=None, changes=None, mic=False, block=
     )
     try:
         inst.program_change(patch)
+        inst.patch.set_control(inst.voice_pool, "mic_source", "test")
         if mic:
             attach_mic(inst, mic_sample())
         for name, value in (controls or {}).items():
@@ -190,6 +191,33 @@ def test_the_vocoder330_compiles_to_one_graph():
     inst = adapter.create(RATE, voice="vocoder330", engine="rack", output="pull")
     assert inst.engine == "rack"
     inst.deinit()
+
+
+def test_with_the_mic_off_the_pump_plays_it_and_a_source_is_refused():
+    inst = adapter.create(RATE, voice="vocoder330", output="graph")
+    try:
+        assert inst._attached
+        for source in ("test", "input"):
+            with pytest.raises(ValueError, match="pump"):
+                inst.patch.set_control(inst.voice_pool, "mic_source", source)
+            assert inst.patch._values["mic_source"] == "off"
+        with pytest.raises(ValueError, match="pump"):
+            attach_mic(inst, mic_sample())
+        assert inst.patch.mic._sample is None
+        inst.program_change(9)  # a vocoder patch: it asks for no source of its own
+        assert inst.patch._values["mic_source"] == "off"
+    finally:
+        inst.deinit()
+
+
+def test_a_mic_with_a_source_cannot_attach():
+    inst = adapter.create(RATE, voice="vocoder330", output="pull")
+    try:
+        inst.patch.set_control(inst.voice_pool, "mic_source", "test")
+        with pytest.raises(ValueError, match="feeds the graph"):
+            inst._compiled.attach()
+    finally:
+        inst.deinit()
 
 
 def test_forty_nine_keys_share_groups():

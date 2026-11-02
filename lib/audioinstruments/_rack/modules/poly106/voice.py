@@ -18,7 +18,7 @@ Patch ``Poly106LFO``'s output into ``lfo``.
 Compiled to a graph (``audioinstruments._rack.core.graph``), the voice is twelve nodes:
 constants for its pitch and gate, the ADSR and the gate envelope, the pitch
 mix (key plus LFO), the pulse-width mix, the DCO (saw and pulse from one
-phase), the sub and the noise in groups of their own so a patch without
+phase), the sub and the noise in one group of their own so a patch without
 them skips them, the DCO mix, the filter CV mix, the ladder and the VCA.
 Velocity folds into the VCA's gain and the filter mix's offset rather than
 taking a buffer. The envelope's buffer is the ``env`` output, so a cable
@@ -343,9 +343,10 @@ class Poly106Voice(Module):
             b_pwm = None
             self._n_pwm = None
         self._n_dco = f.add(ag.OSC, (b_pcv, None, b_pwm, None), b_dco)
-        self._g_sub = f.switch("sub", False)
+        # one switch for both: each switch is a group, and a graph has 32 to share out
+        self._g_sub = f.switch("parts", False)
         self._n_sub = f.add(ag.OSC, (b_pcv, None, None, None), b_sub, group=self._g_sub)
-        self._n_noise = f.add(ag.NOISE, (), b_noise, group=f.switch("noise", False))
+        self._n_noise = f.add(ag.NOISE, (), b_noise, group=self._g_sub)
         self._n_mix = f.add(ag.MIX, (b_dco, b_sub, b_noise), b_mix)
         self._n_fcv = f.add(ag.MIX, (b_env, pitch, lfo, bend), b_fcv)
         self._n_vcf = f.add(ag.LADDER, (b_mix, b_fcv), b_vcf)
@@ -423,8 +424,7 @@ class Poly106Voice(Module):
         f.set(self._n_mix, 0, 0.6)
         f.set(self._n_mix, 1, 0.6 * sub)
         f.set(self._n_mix, 2, 0.6 * noise * 1.2)
-        f.enable("sub", sub > 0.0)
-        f.enable("noise", noise > 0.0)
+        f.enable("parts", sub > 0.0 or noise > 0.0)
 
     def _graph_vcf(self):
         p = self.params
