@@ -634,7 +634,7 @@ FAULTS = [
     ),
     (
         "the slop lost",
-        "_graph_pitch_offsets",
+        "_graph_drift",
         lambda self: (
             self._fragment.set(self._n_pcv1, self._ag.MIX_OFFSET, 0.0),
             self._fragment.set(self._n_pcv2, self._ag.MIX_OFFSET, 0.0),

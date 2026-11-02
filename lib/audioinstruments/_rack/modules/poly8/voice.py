@@ -290,6 +290,8 @@ class Poly8Voice(Module):
         )
 
     def process(self, block_size):
+        # a rack step moves what the graph's hook remembers: it looks again next block
+        self._follows = True
         p = self.params
         n = block_size
         if not self._scattered:
@@ -568,6 +570,11 @@ class Poly8Voice(Module):
         self._pending = set()
         self._follow_read = None
         self._glide_ran = False
+        self._follows = True  # whether a glide may reach the envelopes: see _graph_block
+        self._step_blocks = None  # the drift's steps are good for this many blocks
+        self._slop_1_at = self._slop_1 * SLOP_PITCH
+        self._slop_2_at = self._slop_2 * SLOP_PITCH
+        self._pitch_key = 0.0
         b_env1 = f.output(self.env1_out)
         b_env2 = f.output(self.env2_out)
         b_slid = f.buffer()
@@ -731,14 +738,34 @@ class Poly8Voice(Module):
         """The slop's drifts a block on, as ``process`` steps them."""
         if not self.enabled:
             return
-        self._graph_flush()
+        if self._pending:
+            self._graph_flush()
+            self._follows = True  # a knob that might have moved it
         self._hpf_fresh = False
-        self._graph_follow_glide()
-        dt = self.block_size * self._fragment.blocks / float(self.sample_rate)
-        self._drift_1_phase = (self._drift_1_phase + self._drift_1_hz * dt) % 1.0
-        self._drift_2_phase = (self._drift_2_phase + self._drift_2_hz * dt) % 1.0
-        if self.params["slop"] > 0.0:
-            self._graph_pitch_offsets()
+        if self._follows:
+            self._graph_follow_glide()
+        blocks = self._fragment.blocks
+        if blocks != self._step_blocks:
+            dt = self.block_size * blocks / float(self.sample_rate)
+            self._step_blocks = blocks
+            self._drift_1_step = self._drift_1_hz * dt
+            self._drift_2_step = self._drift_2_hz * dt
+        self._drift_1_phase = (self._drift_1_phase + self._drift_1_step) % 1.0
+        self._drift_2_phase = (self._drift_2_phase + self._drift_2_step) % 1.0
+        slop = self.params["slop"]
+        if slop > 0.0:
+            self._graph_drift(slop)
+
+    def _graph_drift(self, slop):
+        """The one thing the slop moves on a block of its own, by the sums of
+        ``_graph_pitch_offsets``."""
+        f = self._fragment
+        index = self._ag.MIX_OFFSET
+        key = self._pitch_key
+        slop_1 = slop * (self._slop_1_at + math.sin(self._drift_1_phase * TWO_PI) * SLOP_DRIFT)
+        f.set(self._n_pcv1, index, (slop_1 + key) * UNIT)
+        slop_2 = slop * (self._slop_2_at + math.sin(self._drift_2_phase * TWO_PI) * SLOP_DRIFT)
+        f.set(self._n_pcv2, index, (slop_2 + key) * UNIT)
 
     def _graph_slops(self):
         """The slop of VCO-1, of VCO-2 and of the cutoff, in CV units."""
@@ -757,6 +784,7 @@ class Poly8Voice(Module):
         f = self._fragment
         ag = self._ag
         _, key = self._graph_slid()
+        self._pitch_key = key
         slop_1, slop_2, _ = self._graph_slops()
         f.set(self._n_pcv1, ag.MIX_OFFSET, (slop_1 + key) * UNIT)
         f.set(self._n_pcv2, ag.MIX_OFFSET, (slop_2 + key) * UNIT)
@@ -960,6 +988,7 @@ class Poly8Voice(Module):
             and p["env2_key_follow"] < 0.5
         ):
             glided = None
+            self._follows = False  # until a knob moves
         elif not self._glide_ran:
             glided = self._key if self._keyed else 0.0  # a glide starts on its note
         else:
