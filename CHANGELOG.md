@@ -4,6 +4,8 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- A PolyA6 voice on a plain patch costs less than half as much on the graph: the parts
+  the patch leaves off stop running, and the pink noise stops while no voice reads it.
 - On `output="graph"` an instrument's pool stops at 24 voices unless you ask for
   more. The 49-key organs and strings shared groups, so a key ran a neighbour's
   nodes too and one note cost a third more; String Ensemble on an ESP32-P4 now

@@ -41,6 +41,9 @@ class PolyA6Noise(Module):
         audio = SignalType.AUDIO
         self.white_out = self.add_output("white", "White Noise", audio)
         self.pink_out = self.add_output("pink", "Pink Noise", audio)
+        self._n_pink = ()
+        self._pink_quiet = set()
+        self._pink_on = True
 
     def reset(self):
         self.noise.reset()
@@ -60,8 +63,11 @@ class PolyA6Noise(Module):
         self._n_white = f.add(ag.NOISE, (), white)
         f.set(self._n_white, 0, 0.5 * UNIT)
         self._n_pink = []
+        self._pink_gains = gains = []
+        self._pink_poles = [pole for pole, _ in PINK_POLES + (PINK_TAIL,)]
+        self._pink_quiet = set()
+        self._pink_on = True
         stages = []
-        gains = []
         for pole, gain in PINK_POLES + (PINK_TAIL,):
             b = f.buffer()
             node = f.add(ag.SAMPLE_HOLD, (white, None), b)
@@ -76,6 +82,28 @@ class PolyA6Noise(Module):
         for i, g in enumerate(gains):
             f.set(self._n_pink_mix, i, g * PINK_SCALE)
         f.on_reset(self._graph_reset)
+
+    def graph_pink_read(self, voice, reads):
+        """A voice says whether it reads the pink. With no reader left the stages stop: a
+        stage at 0 Hz and no lag only copies what it holds."""
+        quiet = self._pink_quiet
+        if reads:
+            quiet.discard(voice)
+        else:
+            quiet.add(voice)
+        on = len(quiet) < len(self.pink_out.cables) or not quiet
+        if on == self._pink_on:
+            return
+        self._pink_on = on
+        f = self._fragment
+        ag = self._ag
+        for i, node in enumerate(self._n_pink):
+            if on:
+                # a stage that stopped kept a raw sample of the white: start it from nothing
+                f.reset(node)
+            f.set(node, ag.SH_RATE, float(self.sample_rate) if on else 0.0)
+            f.set(node, ag.SH_LAG, self._pink_poles[i] if on else 0.0)
+            f.set(self._n_pink_mix, i, self._pink_gains[i] * PINK_SCALE if on else 0.0)
 
     def _graph_reset(self):
         f = self._fragment
