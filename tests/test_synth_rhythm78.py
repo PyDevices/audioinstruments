@@ -375,7 +375,12 @@ def test_tone_tilts_the_whole_kit_from_dark_to_bright():
         flat = centroid(play(make_tone(5.0), note, buffers=30))
         bright = centroid(play(make_tone(8.0), note, buffers=30))
         # The hat has little below the tilt: a thousandth either way is no change
-        assert dark < flat * 1.001 and flat < bright * 1.001 and dark < bright, (note, dark, flat, bright)
+        assert dark < flat * 1.001 and flat < bright * 1.001 and dark < bright, (
+            note,
+            dark,
+            flat,
+            bright,
+        )
 
 
 def make_tone(value):
