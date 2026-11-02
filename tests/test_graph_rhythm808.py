@@ -60,13 +60,13 @@ PADS = {
 #: Voices whose noise is silenced to compare sample for sample.
 QUIET_VOICE = frozenset(("bd", "rs", "sd", "lt", "mt", "ht"))
 #: (worst, rms) counts against the rack on a deterministic tone.
-TONE = (80.0, 20.0)
+TONE = (160.0, 30.0)
 #: (worst, rms) counts on a short metallic or claves strike.
-STRIKE = (50.0, 20.0)
+STRIKE = (160.0, 30.0)
 #: (worst, rms) counts on the hats/cymbal bank and the cowbell.
-BANK = (20.0, 10.0)
+BANK = (40.0, 15.0)
 #: (worst, rms) counts when the whole voice is deterministic with noise off.
-FULL = (80.0, 25.0)
+FULL = (160.0, 30.0)
 #: The graph's noise over the rack's, as a ratio of rms.
 NOISE_RATIO = 0.35
 

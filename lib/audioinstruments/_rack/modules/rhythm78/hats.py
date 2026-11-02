@@ -81,7 +81,7 @@ class Rhythm78HiHat(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 2.5
+        gain = (self.level / 10.0) * accent_gain * 1.25
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -134,7 +134,7 @@ class Rhythm78HiHat(Module):
         self._g.apply(
             decay_sec=decay_sec,
             bp_hz=bp_hz,
-            gain=(self.level / 10.0) * accent_gain * 2.5,
+            gain=(self.level / 10.0) * accent_gain * 1.25,
             velocity=v,
         )
 
@@ -184,7 +184,7 @@ class Rhythm78Cymbal(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 2.5
+        gain = (self.level / 10.0) * accent_gain * 1.25
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -220,6 +220,6 @@ class Rhythm78Cymbal(Module):
         self._g.apply(
             decay_sec=1.2,
             bp_hz=5200.0,
-            gain=(self.level / 10.0) * accent_gain * 2.5,
+            gain=(self.level / 10.0) * accent_gain * 1.25,
             velocity=v,
         )

@@ -73,7 +73,7 @@ class Rhythm606BassDrum(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 3.0
+        gain = (self.level / 10.0) * accent_gain * 4.745
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -109,6 +109,6 @@ class Rhythm606BassDrum(Module):
             bend_time_sec=0.025,
             click_level=0.35 * (0.8 + 0.4 * accent_bright),
             click_tone_hz=2800.0 * (0.8 + 0.4 * accent_bright),
-            gain=(self.level / 10.0) * accent_gain * 3.0,
+            gain=(self.level / 10.0) * accent_gain * 4.745,
             velocity=v,
         )

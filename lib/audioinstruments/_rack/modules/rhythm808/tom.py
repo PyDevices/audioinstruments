@@ -89,7 +89,7 @@ class Rhythm808Tom(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 1.5
+        gain = (self.level / 10.0) * accent_gain * 7.95
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -133,6 +133,6 @@ class Rhythm808Tom(Module):
             click_tone_hz=1500.0,
             noise_mix=0.08,
             noise_decay_sec=0.025,
-            gain=(self.level / 10.0) * accent_gain * 1.5,
+            gain=(self.level / 10.0) * accent_gain * 7.95,
             velocity=v,
         )

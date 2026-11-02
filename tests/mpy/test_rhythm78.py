@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Rhythm78 on MicroPython: 14 voices, 4 presets, every pad sounds, hat cutoff, re-strike, flat allocation."""
+"""Rhythm78 on MicroPython: 15 voices, 4 presets, every pad sounds, hat cutoff, re-strike, flat allocation."""
 
 import array
 import gc
@@ -28,6 +28,7 @@ VOICE_PADS = (
     60,  # HB
     61,  # LB
     64,  # LC
+    55,  # MB
 )
 
 
@@ -49,9 +50,9 @@ def peak(x):
     return top
 
 
-def test_fourteen_voices_zero_latency_and_four_patches():
+def test_fifteen_voices_zero_latency_and_four_patches():
     inst = adapter.create(48000, voice="rhythm78", engine="rack")
-    assert inst.voices == 14 and inst.latency_samples == 0
+    assert inst.voices == 15 and inst.latency_samples == 0
     assert len(inst.patches) == 4
     assert len(inst.macro_labels) == 6
     inst.deinit()
@@ -160,7 +161,13 @@ def rms(x):
 
 
 def test_level_knobs_scale_their_voice():
-    for knob, pad in (("cb_level", 56), ("hh_level", 42), ("bd_level", 36), ("tb_level", 54)):
+    for knob, pad in (
+        ("cb_level", 56),
+        ("hh_level", 42),
+        ("bd_level", 36),
+        ("tb_level", 54),
+        ("mb_level", 55),
+    ):
         got = []
         for value in (3.0, 6.0):
             inst = adapter.create(48000, voice="rhythm78", engine="rack")
@@ -182,3 +189,11 @@ def test_cowbell_level_survives_a_strike():
     second = rms(pulled(inst, 40))
     inst.deinit()
     assert 0.4 < second / first < 0.6, "x%.2f" % (second / first)
+
+
+def test_metal_beat_sounds_on_the_graph():
+    inst = adapter.create(48000, voice="rhythm78", engine="graph")
+    inst.note_on(55, 100)
+    top = peak(pulled(inst, 15))
+    inst.deinit()
+    assert 5000 < top < 20000, "peak: %d" % top

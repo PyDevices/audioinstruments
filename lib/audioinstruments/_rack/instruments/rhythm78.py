@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""Rhythm78, an analog preset rhythm machine with fourteen sounds, inspired by the Roland CR-78.
+"""Rhythm78, an analog preset rhythm machine with fifteen sounds, inspired by the Roland CR-78.
 
     import audioinstruments._rack.adapter as adapter
 
@@ -9,10 +9,10 @@
     inst.note_on(36, 100)   # bass drum
     inst.note_on(38, 100)   # snare drum
 
-Fourteen dedicated voice circuits inspired by the CR-78:
+Fifteen dedicated voice circuits inspired by the CR-78:
 gentle bridged-T bass drum, snare drum with tone and band-passed noise,
 rim shot, claves, cowbell, high bongo, low bongo, low conga, maracas,
-tambourine with metallic jingles, short and long guiro scrapes,
+tambourine with metallic jingles, short and long guiro scrapes, metal beat,
 and hi-hat and cymbal voiced from noise through ringing band-pass filters.
 
 Closed hi-hat (keys 42, 44) and open hi-hat (key 46) share a single voice circuit,
@@ -41,6 +41,7 @@ SETTINGS = {
     "hb_level": 7.0,
     "lb_level": 7.0,
     "lc_level": 7.0,
+    "mb_level": 7.0,
 }
 
 #: The four factory patches: (name, difference from SETTINGS).
@@ -110,6 +111,7 @@ PADS = (
     (64, 13),
     (63, 13),
     (62, 13),  # LC
+    (55, 14),  # MB
 )
 
 CHOKE = ()
@@ -129,6 +131,7 @@ ALL_VOICE_MODS = (
     "hb",
     "lb",
     "lc",
+    "mb",
 )
 
 #: Each voice's sound, by voice index.
@@ -152,7 +155,7 @@ class Rhythm78(VoicePatch):
 
     NAME = "rhythm78"
     DISPLAY_NAME = "Rhythm78"
-    VOICES = 14
+    VOICES = 15
     LATENCY_SAMPLES = 0
     CATEGORIES = ("Drum",)
     PADS = PADS
@@ -238,8 +241,12 @@ class Rhythm78(VoicePatch):
 
             m = voice.add(Rhythm78Drum, "lc")
             m.set_which("lc")
+        elif idx == 14:
+            from ..modules.rhythm78.metal import Rhythm78MetalBeat
+
+            m = voice.add(Rhythm78MetalBeat, "mb")
         else:
-            raise ValueError("voice index %d out of range (VOICES = 14)" % idx)
+            raise ValueError("voice index %d out of range (VOICES = 15)" % idx)
 
         voice.connect(voice.gate, m.gate_in)
         voice.connect(voice.velocity, m.vel_in)
@@ -277,6 +284,7 @@ class Rhythm78(VoicePatch):
         pool.set_param("hb", "level", self.values["hb_level"] * drum_bal)
         pool.set_param("lb", "level", self.values["lb_level"] * drum_bal)
         pool.set_param("lc", "level", self.values["lc_level"] * drum_bal)
+        pool.set_param("mb", "level", self.values["mb_level"] * drum_bal)
 
         # Cymbal & hi-hat group
         pool.set_param("hh", "level", self.values["hh_level"] * cym_bal)

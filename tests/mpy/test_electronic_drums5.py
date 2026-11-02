@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""ElectronicDrums5 on MicroPython: 5 voices, 5 presets, every pad sounds, macros, re-strike, flat allocation."""
+"""ElectronicDrums5 on MicroPython: 8 voices, 5 presets, every pad sounds, macros, re-strike, hat choke, flat allocation."""
 
 import array
 import gc
@@ -18,6 +18,9 @@ VOICE_PADS = (
     48,  # T1
     45,  # T2
     41,  # T3
+    42,  # CH
+    46,  # OH
+    49,  # CY
 )
 
 
@@ -39,9 +42,9 @@ def peak(x):
     return top
 
 
-def test_five_voices_zero_latency_and_five_patches():
+def test_eight_voices_zero_latency_and_five_patches():
     inst = adapter.create(48000, voice="electronic_drums5", engine="rack")
-    assert inst.voices == 5 and inst.latency_samples == 0
+    assert inst.voices == 8 and inst.latency_samples == 0
     assert len(inst.patches) == 5
     assert len(inst.macro_labels) == 8
     inst.deinit()
@@ -49,7 +52,7 @@ def test_five_voices_zero_latency_and_five_patches():
 
 def test_every_pad_sounds():
     inst = adapter.create(48000, voice="electronic_drums5", engine="rack")
-    for pad in (35, 36, 37, 38, 39, 40, 48, 50, 45, 47, 41, 43):
+    for pad in (35, 36, 37, 38, 39, 40, 48, 50, 45, 47, 41, 43, 42, 46, 49):
         inst.note_on(pad, 100)
         x = pulled(inst, 15)
         top = peak(x)
@@ -122,7 +125,7 @@ def test_allocation_flat_over_strike_of_every_pad():
     inst.deinit()
 
 
-KEYS = {"bd": 36, "sd": 38, "t1": 48, "t2": 45, "t3": 41}
+KEYS = {"bd": 36, "sd": 38, "t1": 48, "t2": 45, "t3": 41, "ch": 42, "oh": 46, "cy": 49}
 
 
 def strike(channel, buffers=6, velocity=100, **controls):
@@ -153,9 +156,13 @@ def test_tone_noise_and_click_make_the_sound_and_zero_is_silent():
 
 
 def test_decay_lengthens_the_fall():
-    for ch in KEYS:
+    for ch in ("bd", "sd", "t1", "t2", "t3", "ch"):
         short = energy(strike(ch, 12, **{ch + "_decay": 1}), 6000)
         long = energy(strike(ch, 12, **{ch + "_decay": 9}), 6000)
+        assert long > 4 * short, ch
+    for ch in ("oh", "cy"):
+        short = energy(strike(ch, 60, **{ch + "_decay": 1}), 12000)
+        long = energy(strike(ch, 60, **{ch + "_decay": 9}), 12000)
         assert long > 4 * short, ch
 
 
@@ -196,3 +203,34 @@ def test_tom_macros_keep_each_toms_offset():
         inst.set_macro(index, 76)
         assert _toms(mods, param) == [5.984, 3.984, 8.984], _toms(mods, param)
         inst.deinit()
+
+
+def _tail_after_cut(engine):
+    inst = adapter.create(48000, voice="electronic_drums5", engine=engine)
+    inst.patch.set_control(inst.voice_pool, "ch_noise", 0.0)
+    inst.note_on(46, 100)
+    pulled(inst, 3)
+    alone = peak(pulled(inst, 2))
+    inst.note_on(42, 100)
+    pulled(inst, 7)  # the cut comes out past the six blocks already in the ring
+    tail = peak(pulled(inst, 8))
+    inst.deinit()
+    return alone, tail
+
+
+def test_closed_hat_cuts_open_hat_on_both_engines():
+    for engine in ("rack", "graph"):
+        alone, tail = _tail_after_cut(engine)
+        assert alone > 500, "%s: open hat too quiet: %d" % (engine, alone)
+        assert tail < 20, "%s: open hat rang on: %d" % (engine, tail)
+
+
+def test_hats_and_cymbal_sound_on_the_graph():
+    inst = adapter.create(48000, voice="electronic_drums5", engine="graph")
+    for pad in (42, 46, 49):
+        inst.note_on(pad, 100)
+        top = peak(pulled(inst, 15))
+        assert 2000 < top < 20000, "pad %d peak: %d" % (pad, top)
+        inst.all_notes_off()
+        pulled(inst, 80)
+    inst.deinit()

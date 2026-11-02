@@ -4,7 +4,7 @@
 
     python examples/electronic_drums5_demo.py    # writes wav_exports/electronic_drums5_demo.wav
 
-One five-channel drum kit plays the whole piece and changes patches between sections,
+One eight-channel drum kit plays the whole piece and changes patches between sections,
 demonstrating the swept analog tones, punchy strike clicks, and filtered noise of the SDS-V:
 1. Classic: 1984 rock beat with signature swept tom fills diving down high, mid, and low toms.
 2. Deep Toms: a slow tribal tom groove with low resting pitches and long decaying bends.
@@ -40,6 +40,9 @@ SD = 38  # Snare Drum
 T1 = 48  # High Tom
 T2 = 45  # Mid Tom
 T3 = 41  # Low Tom
+CH = 42  # Closed Hi-Hat
+OH = 46  # Open Hi-Hat
+CY = 49  # Cymbal
 
 VELOCITIES = {
     "X": 127,  # Accented hit
@@ -85,16 +88,21 @@ def classic(t):
         T1: "................",
         T2: "................",
         T3: "................",
+        CH: "x.x.x.x.x.x.x...",
+        OH: "..............x.",
     }
     # Bar 1: Variation
     b1 = {
         BD: "X.......X...X...",
         SD: "....X.......X...",
+        CH: "x.x.x.x.x.x.x...",
+        OH: "..............x.",
     }
     # Bar 2: Groove
     b2 = {
         BD: "X...X...X.......",
         SD: "....X.......X.o.",
+        CH: "x.x.x.x.x.x.x.x.",
     }
     # Bar 3: Tom fill down all three toms
     b3 = {
@@ -109,6 +117,7 @@ def classic(t):
         BD: "X.......X...X...",
         SD: "....X.......X...",
         T3: "X.X.............",
+        CY: "X...............",
     }
     return parse_grid(t, [b0, b1, b2, b3, b4])
 
@@ -159,6 +168,7 @@ def electro(t):
         T1: "..........x...x.",
         T2: "......x.........",
         T3: "..x.........x...",
+        CH: "x.x.x.x.x.x.x.x.",
     }
     b1 = {
         BD: "X...X...X...X.X.",
@@ -221,6 +231,7 @@ def syndrum(t):
         BD: "X...X...X...X...",
         SD: "....X.......X...",
         T3: "X.X.............",
+        CY: "X...............",
     }
     return parse_grid(t, [b0, b1, b2, b3, b4])
 

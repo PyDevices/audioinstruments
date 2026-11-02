@@ -86,7 +86,7 @@ class Rhythm606Snare(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 1.4
+        gain = (self.level / 10.0) * accent_gain * 1.11
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -150,7 +150,7 @@ class Rhythm606Snare(Module):
         tune_ratio = 2.0 ** ((self.tune - 5.0) / 15.0)
         decay_mult = 2.0 ** ((self.decay - 5.0) / 5.0)
         snappy = min(10.0, 9.0 * ((1.0 - a) + a * (0.3 + 1.1 * (v**1.2))))
-        gain = (self.level / 10.0) * accent_gain * 1.4
+        gain = (self.level / 10.0) * accent_gain * 1.11
         self._bt1.apply(
             frequency=200.0 * tune_ratio,
             decay_sec=0.12 * decay_mult,

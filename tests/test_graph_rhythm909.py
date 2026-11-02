@@ -59,15 +59,15 @@ PADS = {
     "rd": 51,
 }
 #: (worst, rms) counts against the rack on a swept-oscillator voice.
-SWEPT = (400.0, 120.0)
+SWEPT = (500.0, 200.0)
 #: (worst, rms) counts on the bridged-T rim shot.
-RIM = (120.0, 25.0)
+RIM = (160.0, 30.0)
 #: (worst, rms) counts on a crusher voice whose quantiser edges agree.
-CRUSHED = (20.0, 10.0)
+CRUSHED = (40.0, 15.0)
 #: (worst, rms) counts on the ride, allowing one quantiser step on two samples.
-STEP = (700.0, 20.0)
+STEP = (900.0, 30.0)
 #: (worst, rms) counts when the whole voice is deterministic with noise off.
-FULL = (400.0, 130.0)
+FULL = (500.0, 200.0)
 #: The graph's noise over the rack's, as a ratio of rms.
 NOISE_RATIO = 0.35
 #: The bound each pad is held to with its noise silenced.

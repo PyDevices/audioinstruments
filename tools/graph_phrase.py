@@ -5,9 +5,10 @@
     micropython tools/graph_phrase.py poly6 4 graph out.pcm
     micropython tools/graph_phrase.py poly5 6 graph out.pcm
 
-The phrase is five single notes, one note at three velocities, then eight
-overlapping keys on an instrument with six or five voices (so two or three are
-stolen), let go one by one. ``tests/test_graph_poly6.py`` and
+The phrase is five single notes, then a kit's pads the rest of the phrase
+misses, one note at three velocities, then eight overlapping keys on an
+instrument with six or five voices (so two or three are stolen), let go one by
+one. ``tests/test_graph_poly6.py`` and
 ``tests/test_graph_poly5.py`` run it in-process on CPython and under
 MicroPython and hold the two renders to the same samples; the compiled form
 should come out byte for byte the same on every interpreter that has
@@ -27,13 +28,15 @@ import audioinstruments._rack.adapter as adapter  # noqa: E402
 
 SAMPLE_RATE = 48000
 BUFFER = 256
+#: A kit's pads that the phrase's own notes would not strike.
+EXTRA_NOTES = {"electronic_drums5": (42, 46, 49)}
 
 
-def phrase():
+def phrase(name=None):
     """The phrase as [(frame, on, note, velocity)] sorted by frame, and its length in buffers."""
     events = []
     t = 4 * BUFFER
-    for note in (36, 48, 60, 72, 84):
+    for note in (36, 48, 60, 72, 84) + EXTRA_NOTES.get(name, ()):
         events.append((t, 1, note, 100))
         events.append((t + 40 * BUFFER, 0, note, 0))
         t += 70 * BUFFER
@@ -62,7 +65,7 @@ def render(name, patch, engine, path, controls=None):
         inst.program_change(patch)
         for control, value in (controls or {}).items():
             inst.patch.set_control(inst._pool, control, value)
-        events, buffers = phrase()
+        events, buffers = phrase(name)
         k = 0
         with open(path, "wb") as f:
             for b in range(buffers):

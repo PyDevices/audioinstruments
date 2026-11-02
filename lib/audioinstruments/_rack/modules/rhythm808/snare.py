@@ -59,7 +59,7 @@ class Rhythm808Snare(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 1.4
+        gain = (self.level / 10.0) * accent_gain * 1.76
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -125,7 +125,7 @@ class Rhythm808Snare(Module):
         t = max(0.0, min(1.0, self.tone / 10.0))
         g1 = 1.2 - 0.4 * t
         g2 = 0.5 + 0.5 * t
-        gain = (self.level / 10.0) * accent_gain * 1.4
+        gain = (self.level / 10.0) * accent_gain * 1.76
         self._bt1.apply(
             frequency=238.0,
             decay_sec=0.09,

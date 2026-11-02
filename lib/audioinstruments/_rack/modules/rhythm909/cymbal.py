@@ -152,7 +152,7 @@ class Rhythm909Crash(Module):
         out = self.audio_out.buffer
         self.crusher.process(self._mix_buf, out)
 
-        gain = (self.level / 10.0) * accent_gain * 2.5
+        gain = (self.level / 10.0) * accent_gain * 1.25
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -329,7 +329,7 @@ class Rhythm909Ride(Module):
         out = self.audio_out.buffer
         self.crusher.process(self._mix_buf, out)
 
-        gain = (self.level / 10.0) * accent_gain * 2.5
+        gain = (self.level / 10.0) * accent_gain * 1.25
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------

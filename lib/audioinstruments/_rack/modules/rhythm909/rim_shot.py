@@ -108,7 +108,7 @@ class Rhythm909RimShot(Module):
         out = self.audio_out.buffer
         self.hpf.process(self._sum, out)
 
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 1.76
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -155,7 +155,7 @@ class Rhythm909RimShot(Module):
         v = max(0.0, min(1.0, self._velocity))
         a = self.accent / 10.0
         accent_gain = (1.0 - a) + a * (v**1.85)
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 1.76
         self._bt1.apply(
             frequency=220.0,
             decay_sec=0.022,

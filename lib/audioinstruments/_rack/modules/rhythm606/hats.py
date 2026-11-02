@@ -88,7 +88,7 @@ class Rhythm606ClosedHat(Module):
         self.core.render_hats(out)
         self.env.render(gate if rising >= 0 else None, self._env_buf)
 
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 1.98
         mul(out, self._env_buf)
         scale(out, gain)
 
@@ -123,7 +123,7 @@ class Rhythm606ClosedHat(Module):
         accent_gain = (1.0 - a) + a * (v**1.85)
         self._bank.apply(
             decay_sec=0.038 * 2.0 ** ((self.decay - 5.0) / 5.0),
-            gain_low=(self.level / 10.0) * accent_gain * 2.8,
+            gain_low=(self.level / 10.0) * accent_gain * 1.98,
             velocity=v,
         )
 
@@ -202,7 +202,7 @@ class Rhythm606OpenHat(Module):
         self.core.render_hats(out)
         self.env.render(gate if rising >= 0 else None, self._env_buf)
 
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 2.49
         mul(out, self._env_buf)
         scale(out, gain)
 
@@ -237,6 +237,6 @@ class Rhythm606OpenHat(Module):
         accent_gain = (1.0 - a) + a * (v**1.85)
         self._bank.apply(
             decay_sec=0.25 * 2.0 ** ((self.decay - 5.0) / 5.0),
-            gain_low=(self.level / 10.0) * accent_gain * 2.8,
+            gain_low=(self.level / 10.0) * accent_gain * 2.49,
             velocity=v,
         )

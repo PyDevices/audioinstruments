@@ -87,6 +87,7 @@ _REGISTRY = (
     ("Rhythm606Snare", "Rhythm606Snare", "rhythm606.snare"),
     ("Rhythm606Tom", "Rhythm606Tom", "rhythm606.tom"),
     ("Rhythm78Cowbell", "Rhythm78Cowbell", "rhythm78.cowbell"),
+    ("Rhythm78MetalBeat", "Rhythm78MetalBeat", "rhythm78.metal"),
     ("Rhythm78Cymbal", "Rhythm78Cymbal", "rhythm78.hats"),
     ("Rhythm78Drum", "Rhythm78Drum", "rhythm78.drum"),
     ("Rhythm78Guiro", "Rhythm78Guiro", "rhythm78.guiro"),

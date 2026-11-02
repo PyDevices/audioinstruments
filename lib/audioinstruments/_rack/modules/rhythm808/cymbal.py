@@ -97,8 +97,8 @@ class Rhythm808Cymbal(Module):
         self.env_high.render(gate if rising >= 0 else None, self._env_high_buf)
 
         t = self.tone / 10.0
-        gain_low = (1.2 - 0.5 * t) * (self.level / 10.0) * accent_gain * 2.5
-        gain_high = (0.5 + 0.7 * t) * (self.level / 10.0) * accent_gain * 2.5
+        gain_low = (1.2 - 0.5 * t) * (self.level / 10.0) * accent_gain * 1.25
+        gain_high = (0.5 + 0.7 * t) * (self.level / 10.0) * accent_gain * 1.25
 
         mul(self._low_buf, self._env_low_buf)
         scale(self._low_buf, gain_low)
@@ -135,7 +135,7 @@ class Rhythm808Cymbal(Module):
         d = self.decay / 10.0
         decay_sec = 0.30 * ((3.0 / 0.30) ** d)
         t = self.tone / 10.0
-        base = (self.level / 10.0) * accent_gain * 2.5
+        base = (self.level / 10.0) * accent_gain * 1.25
         self._bank.apply(
             decay_sec=decay_sec,
             gain_low=(1.2 - 0.5 * t) * base,

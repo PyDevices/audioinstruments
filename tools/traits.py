@@ -248,7 +248,7 @@ SPECS = {
     "electronic_drums5": {
         "patches": (0, 1),
         "drums": True,
-        "notes": (36, 38, 48, 45, 41),
+        "notes": (36, 38, 48, 45, 41, 42, 46, 49),
         "velocity": 100,
         "velocities": (40, 100, 127),
         "ring": 10.0,
@@ -357,7 +357,7 @@ SPECS = {
     "rhythm78": {
         "patches": (0, 1),
         "drums": True,
-        "notes": (36, 38, 37, 42, 49, 70, 75, 56, 54, 73, 74, 60, 61, 64),
+        "notes": (36, 38, 37, 42, 49, 70, 75, 56, 54, 73, 74, 60, 61, 64, 55),
         "velocity": 100,
         "velocities": (40, 100, 127),
         "ring": 10.0,

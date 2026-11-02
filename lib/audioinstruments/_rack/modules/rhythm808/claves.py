@@ -58,7 +58,7 @@ class Rhythm808Claves(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 1.5
+        gain = (self.level / 10.0) * accent_gain * 2.985
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -93,6 +93,6 @@ class Rhythm808Claves(Module):
             bend_time_sec=0.035,
             click_level=0.3,
             click_tone_hz=4000.0,
-            gain=(self.level / 10.0) * accent_gain * 1.5,
+            gain=(self.level / 10.0) * accent_gain * 2.985,
             velocity=v,
         )

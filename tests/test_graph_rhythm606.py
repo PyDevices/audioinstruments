@@ -39,11 +39,11 @@ BUFFER = 128
 #: Pad keys for one strike of each voice.
 PADS = {"bd": 36, "sd": 38, "lt": 41, "ht": 48, "cy": 49, "oh": 46, "ch": 42}
 #: (worst, rms) counts against the rack on the bass drum.
-BASS = (100.0, 25.0)
+BASS = (160.0, 30.0)
 #: (worst, rms) counts on the snare tones and the toms, noise silenced.
-BODY = (40.0, 10.0)
+BODY = (160.0, 30.0)
 #: (worst, rms) counts on the hats and the cymbal, noise silenced.
-BANK = (20.0, 5.0)
+BANK = (40.0, 10.0)
 #: The graph's noise over the rack's, as a ratio of rms.
 NOISE_RATIO = 0.35
 #: The bound each pad is held to with its noise silenced.

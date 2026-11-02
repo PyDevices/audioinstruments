@@ -114,7 +114,8 @@ class Rhythm78Output(Module):
         self._update_tone()
         self.bridge.process(out_l, out_l)
 
-        vol_gain = (self.volume / 10.0) * 1.2
+        # Voices run at half level so a hard hit stays clear of the wires' limit; made up here
+        vol_gain = (self.volume / 10.0) * 2.4
         out_l *= vol_gain
 
         # Soft ceiling (tanh) prevents hard clipping when fourteen accented sounds play
@@ -169,7 +170,7 @@ class Rhythm78Output(Module):
         self._graph_tone()
 
     def _graph_volume(self):
-        vol_gain = (self.params["volume"] / 10.0) * 1.2
+        vol_gain = (self.params["volume"] / 10.0) * 2.4
         self._fragment.set(self._n_tanh, self._ag.TANH_DRIVE, vol_gain)
 
     def _graph_tone(self):

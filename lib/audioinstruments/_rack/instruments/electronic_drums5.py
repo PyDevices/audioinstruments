@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""ElectronicDrums5, a five-channel electronic drum kit with swept tones, inspired by the Simmons SDS-V.
+"""ElectronicDrums5, an electronic drum kit with swept tones and noise hats, inspired by the Simmons SDS-V.
 
     import audioinstruments._rack.adapter as adapter
 
@@ -12,6 +12,8 @@
 Five dedicated analog drum channels: bass drum, snare, and low, mid, and high toms.
 Each channel mixes a swept tone (an oscillator diving in pitch after the strike),
 filtered white noise, and a strike click, shaped under one amplitude envelope.
+Three more channels, closed hi-hat, open hi-hat and cymbal, have the same controls
+but play white noise through a high-pass filter, with the tone and click turned down.
 The pads are velocity-sensitive: harder hits sound louder and bend further in pitch,
 scaled by the kit's pad sensitivity control.
 
@@ -21,16 +23,20 @@ The sounds play from General MIDI drum keys on pads 35 through 50:
 - Voice 2: Tom 1 / High Tom (keys 48, 50)
 - Voice 3: Tom 2 / Mid Tom (keys 45, 47)
 - Voice 4: Tom 3 / Low Tom (keys 41, 43)
+- Voice 5: Closed Hi-Hat (key 42)
+- Voice 6: Open Hi-Hat (key 46)
+- Voice 7: Cymbal (key 49)
 
-No voice choking is used; each voice rings freely over repeated strikes.
+The closed and open hi-hats cut each other; every other voice rings freely over
+repeated strikes.
 Master volume and soft ceiling saturation protect the shared mono output stage.
 """
 
 from ..adapter import VoicePatch
 
-VOICE_NAMES = ("bd", "sd", "t1", "t2", "t3")
+VOICE_NAMES = ("bd", "sd", "t1", "t2", "t3", "ch", "oh", "cy")
 
-#: All five voice channels and their panel controls on a 0..10 scale, plus sensitivity and volume.
+#: All eight voice channels and their panel controls on a 0..10 scale, plus sensitivity and volume.
 SETTINGS = {
     # Bass Drum
     "bd_tone": 7.0,
@@ -72,6 +78,30 @@ SETTINGS = {
     "t3_decay": 5.0,
     "t3_filter": 5.0,
     "t3_click": 5.0,
+    # Closed Hi-Hat
+    "ch_tone": 0.0,
+    "ch_noise": 7.0,
+    "ch_pitch": 5.0,
+    "ch_bend": 5.0,
+    "ch_decay": 5.0,
+    "ch_filter": 5.0,
+    "ch_click": 0.0,
+    # Open Hi-Hat
+    "oh_tone": 0.0,
+    "oh_noise": 7.0,
+    "oh_pitch": 5.0,
+    "oh_bend": 5.0,
+    "oh_decay": 5.0,
+    "oh_filter": 5.0,
+    "oh_click": 0.0,
+    # Cymbal
+    "cy_tone": 0.0,
+    "cy_noise": 7.0,
+    "cy_pitch": 5.0,
+    "cy_bend": 5.0,
+    "cy_decay": 5.0,
+    "cy_filter": 5.0,
+    "cy_click": 0.0,
     # Global controls
     "sensitivity": 5.0,
     "volume": 7.0,
@@ -94,6 +124,7 @@ PRESETS = (
             "t3_pitch": 3.0,
             "t3_bend": 7.5,
             "t3_decay": 7.5,
+            "cy_decay": 7.0,
         },
     ),
     (
@@ -111,6 +142,11 @@ PRESETS = (
             "t2_decay": 3.0,
             "t3_click": 8.0,
             "t3_decay": 3.0,
+            "ch_filter": 7.0,
+            "oh_filter": 7.0,
+            "oh_decay": 3.0,
+            "cy_filter": 7.0,
+            "cy_decay": 3.0,
         },
     ),
     (
@@ -140,6 +176,8 @@ PRESETS = (
             "t1_decay": 2.2,
             "t2_decay": 2.2,
             "t3_decay": 2.2,
+            "oh_decay": 2.0,
+            "cy_decay": 2.0,
         },
     ),
 )
@@ -170,10 +208,13 @@ PADS = (
     (47, 3),  # T2
     (41, 4),
     (43, 4),  # T3
+    (42, 5),  # CH
+    (46, 6),  # OH
+    (49, 7),  # CY
 )
 
-#: No voice choking; each channel rings freely.
-CHOKE = ()
+#: The closed and open hi-hats cut each other; the rest ring freely.
+CHOKE = ((5, 6),)
 
 
 def settings(index):
@@ -196,7 +237,7 @@ class ElectronicDrums5(VoicePatch):
 
     NAME = "electronic_drums5"
     DISPLAY_NAME = "ElectronicDrums5"
-    VOICES = 5
+    VOICES = 8
     LATENCY_SAMPLES = 0
     CATEGORIES = ("Drum",)
     PADS = PADS
@@ -221,8 +262,8 @@ class ElectronicDrums5(VoicePatch):
 
     def build(self, voice):
         idx = voice.index
-        if not 0 <= idx < 5:
-            raise ValueError("voice index %d out of range (VOICES = 5)" % idx)
+        if not 0 <= idx < 8:
+            raise ValueError("voice index %d out of range (VOICES = 8)" % idx)
 
         from ..modules.electronic_drums5.voice import ElectronicDrums5Voice
 

@@ -152,6 +152,7 @@ MODULES = [
     audioinstruments._rack.Rhythm606Snare,
     audioinstruments._rack.Rhythm606Tom,
     audioinstruments._rack.Rhythm78Cowbell,
+    audioinstruments._rack.Rhythm78MetalBeat,
     audioinstruments._rack.Rhythm78Cymbal,
     audioinstruments._rack.Rhythm78Drum,
     audioinstruments._rack.Rhythm78Guiro,

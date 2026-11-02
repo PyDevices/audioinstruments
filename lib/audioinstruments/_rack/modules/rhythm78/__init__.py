@@ -6,6 +6,7 @@ from .cowbell import Rhythm78Cowbell
 from .drum import Rhythm78Drum
 from .guiro import Rhythm78Guiro
 from .hats import Rhythm78Cymbal, Rhythm78HiHat
+from .metal import Rhythm78MetalBeat
 from .output import Rhythm78Output
 from .snare import Rhythm78Snare
 from .tambourine import Rhythm78Tambourine
@@ -16,6 +17,7 @@ __all__ = [
     "Rhythm78Drum",
     "Rhythm78Guiro",
     "Rhythm78HiHat",
+    "Rhythm78MetalBeat",
     "Rhythm78Output",
     "Rhythm78Snare",
     "Rhythm78Tambourine",
