@@ -10,6 +10,7 @@ each voice drive ``newkey`` (high for the block in which any gate rose) and
 ``anykey`` (high while any key is down).
 """
 
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...dsp.blocks import EdgeDetector
@@ -162,3 +163,103 @@ class Poly80Mod(Module):
         pwm2_speed = slider_time(self.params.get("ch2_pwm_speed", 0.4), PWM_HZ)
         self.pwm2_lfo.render(pwm2_speed, tri=self.pwm2_out.buffer)
         self.pwm2_out.buffer *= 2.0
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """The sub-oscillator and the two PWM triangles as nodes. Which gates rose and which
+        are down, and the hardest pressure, are known once a block (``before_run``), so the
+        sub-oscillator's speed and the two key gates are set there."""
+        import audiograph as ag
+
+        if not hasattr(ag, "ADSR2"):
+            return False
+        self._ag = ag
+        self._fragment = f
+        g_noise = f.switch("noise", False)
+
+        b_lfo = f.buffer()
+        b_noise = f.buffer()
+        self._n_sub_lfo = f.add(ag.LFO, (), b_lfo)
+        f.set(self._n_sub_lfo, ag.LFO_AMPLITUDE, 0.5 * UNIT)
+        self._n_sub_noise = f.add(ag.NOISE, (), b_noise, group=g_noise)
+        f.set(self._n_sub_noise, 0, 0.5 * UNIT)
+        self._n_sub = f.add(ag.MIX, (b_lfo, b_noise), f.output(self.sub_out))
+
+        self._n_pwm = []
+        for out in (self.pwm1_out, self.pwm2_out):
+            node = f.add(ag.LFO, (), f.output(out))
+            f.set(node, ag.LFO_SHAPE, ag.LFO_TRIANGLE)
+            f.set(node, ag.LFO_AMPLITUDE, 1.0 * UNIT)  # the rack's triangle, twice its +-0.5
+            self._n_pwm.append(node)
+
+        self._newkey = f.control(self.newkey_out, 0.0)
+        self._anykey = f.control(self.anykey_out, 0.0)
+        self._gates = [False] * self.voices
+        self._was = [False] * self.voices
+        self._presses = [0.0] * self.voices
+        for i in range(self.voices):
+            f.watch(self.inputs["gate%d" % (i + 1)], self._watch_gate(i))
+            f.watch(self.inputs["press%d" % (i + 1)], self._watch_press(i))
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_knobs()
+
+    def _watch_gate(self, i):
+        def gate(value):
+            self._gates[i] = value > 0.5
+
+        return gate
+
+    def _watch_press(self, i):
+        def press(value):
+            self._presses[i] = value
+
+        return press
+
+    def _graph_knobs(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        wave = p.get("sub_wave", "sine")
+        shape, amp = {
+            "sine": (ag.LFO_SINE, 0.5),
+            "saw": (ag.LFO_SAW, 0.5),
+            "saw_up": (ag.LFO_SAW, -0.5),
+            "square": (ag.LFO_SQUARE, 0.5),
+        }.get(wave, (ag.LFO_SINE, 0.0))
+        f.set(self._n_sub_lfo, ag.LFO_SHAPE, shape)
+        f.set(self._n_sub_lfo, ag.LFO_AMPLITUDE, amp * UNIT)
+        f.set(self._n_sub, 0, 1.0)
+        f.set(self._n_sub, 1, 1.0 if wave == "noise" else 0.0)
+        f.enable("noise", wave == "noise")
+        f.set(self._n_pwm[0], ag.LFO_RATE, slider_time(p.get("ch1_pwm_speed", 0.4), PWM_HZ))
+        f.set(self._n_pwm[1], ag.LFO_RATE, slider_time(p.get("ch2_pwm_speed", 0.4), PWM_HZ))
+
+    def _graph_block(self):
+        # set_param here does not tell the fragment, so the knobs are read every block
+        self._graph_knobs()
+        f = self._fragment
+        rose = False
+        high = False
+        press = 0.0
+        for i in range(self.voices):
+            gate = self._gates[i]
+            if gate and not self._was[i]:
+                rose = True
+            self._was[i] = gate
+            if gate:
+                high = True
+            if self._presses[i] > press:
+                press = self._presses[i]
+        self._newkey.set(1.0 if rose else 0.0)
+        self._anykey.set(1.0 if high else 0.0)
+        speed = slider_time(self.params.get("sub_speed", 0.5), SUB_HZ)
+        speed *= 2.0 ** (TOUCH_SPEED_OCT * self.params.get("touch_speed", 0.0) * press)
+        f.set(self._n_sub_lfo, self._ag.LFO_RATE, min(speed, 0.45 * self.sample_rate))
+
+    def _graph_reset(self):
+        f = self._fragment
+        for node in [self._n_sub_lfo, self._n_sub_noise] + self._n_pwm:
+            f.reset(node)
+        self._was = [False] * self.voices

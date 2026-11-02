@@ -51,13 +51,17 @@ def phrase():
     return events, (t + 130 * BUFFER) // BUFFER
 
 
-def render(name, patch, engine, path):
-    """Play the phrase on patch ``patch`` into the file ``path``; the instrument's latency."""
+def render(name, patch, engine, path, controls=None):
+    """Play the phrase on patch ``patch`` into the file ``path``; the instrument's latency.
+
+    ``controls`` is a dict of ``inst.patch.set_control`` settings made after the patch."""
     inst = adapter.create(
         SAMPLE_RATE, voice=name, engine=engine, output="pull", buffer_frames=BUFFER
     )
     try:
         inst.program_change(patch)
+        for control, value in (controls or {}).items():
+            inst.patch.set_control(inst._pool, control, value)
         events, buffers = phrase()
         k = 0
         with open(path, "wb") as f:
@@ -78,7 +82,15 @@ def render(name, patch, engine, path):
 
 def main(argv):
     name, patch, engine, path = argv[0], int(argv[1]), argv[2], argv[3]
-    print("latency %d" % render(name, patch, engine, path))
+    controls = {}
+    for pair in argv[4:]:  # name=value, a number unless it is not one
+        key, value = pair.split("=")
+        try:
+            value = float(value)
+        except ValueError:
+            pass
+        controls[key] = value
+    print("latency %d" % render(name, patch, engine, path, controls))
 
 
 if __name__ == "__main__":

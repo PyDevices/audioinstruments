@@ -7,6 +7,8 @@ Every input is normalled the way the panel is pre-wired; plugging a cable in
 breaks the normal. Levels and modulation depths are sliders.
 """
 
+from ..core.bridge import OSC_LEVEL, PITCH_OCTAVES, PWM_DEPTH
+from ..core.graph import UNIT
 from ..core.jack import SignalType
 from ..core.module import Module
 from ..core.signal import BASE_FREQ_C4, add_scaled, copy_into, crossfade_into
@@ -399,3 +401,328 @@ class Patch2600(Module):
             self.master_r_out.buffer,
             mix=p["reverb_mix"],
         )
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def _read_by_a_normal(self, out):
+        """True when an input with no cable reads output jack ``out`` through its normal."""
+        return any(jack.cable is None and jack.normal is out for jack in self.inputs.values())
+
+    def _graph_used(self, out):
+        return bool(out.cables) or self._read_by_a_normal(out)
+
+    def fragment(self, f):
+        """The patch as nodes. The panel's normals are the wires of the graph: an input with
+        no cable reads the buffer of the output it is normalled to. What nothing reads is not
+        built, and the noise and sample and hold, and VCO 3 and the ring modulator, run in
+        two groups the rack's own conditions switch on and off."""
+        import audiograph as ag
+
+        if not hasattr(ag, "SPRING"):
+            return False
+        self._ag = ag
+        self._fragment = f
+        nodes = self._nodes = []
+
+        def add(kind, inputs, output, group=None):
+            node = f.add(kind, inputs, output, group=group)
+            nodes.append(node)
+            return node
+
+        used = self._graph_used
+        g_noise = f.switch("noise", False)
+        # two switches only: a graph has 32 groups and eight voices of this take theirs from them
+        g_sh = g_noise  # the sample and hold hears noise: it runs where noise does
+        g_vco3 = f.switch("vco3", False)
+        g_ring = g_vco3  # the ring modulator runs where VCO 3 does
+
+        # noise: white, pinked, and crossfaded by the colour knob
+        b_white = f.buffer()
+        b_pink = f.buffer()
+        self._n_white = add(ag.NOISE, (), b_white, g_noise)
+        f.set(self._n_white, 0, 0.5 * UNIT)
+        self._n_pink = add(ag.PINK, (b_white,), b_pink, g_noise)
+        f.set(self._n_pink, ag.PINK_LEVEL, 1.0)
+        self._n_color = add(ag.MIX, (b_white, b_pink), f.output(self.noise_out), g_noise)
+
+        # sample and hold, clocked by a square LFO unless a cable brings a clock
+        if self.sh_clock_in.cable is not None:
+            clock = f.input(self.sh_clock_in)
+            self._n_sh_clock = None
+        else:
+            clock = f.buffer()
+            self._n_sh_clock = add(ag.LFO, (), clock, g_sh)
+            f.set(self._n_sh_clock, ag.LFO_SHAPE, ag.LFO_SQUARE)
+            f.set(self._n_sh_clock, ag.LFO_AMPLITUDE, 0.5 * UNIT)
+        self._n_sh = add(
+            ag.SAMPLE_HOLD, (f.input(self.sh_signal_in), clock), f.output(self.sh_out), g_sh
+        )
+
+        # envelopes
+        self._n_adsr = add(ag.ENV, (f.input(self.adsr_gate_in),), f.output(self.adsr_out))
+        self._n_ar = add(ag.ENV, (f.input(self.ar_gate_in),), f.output(self.ar_out))
+        f.set(self._n_ar, ag.ENV_DECAY, 0.01)
+        f.set(self._n_ar, ag.ENV_SUSTAIN, 1.0)
+
+        # VCOs: one OSC a waveform, all on the same CV, so their phases stay together
+        vco_jacks = (
+            (
+                "vco1",
+                (self.vco1_fm1_in, self.vco1_fm2_in, self.vco1_fm3_in),
+                self.vco1_pwm_in,
+                None,
+                ((1, self.vco1_saw_out), (2, self.vco1_pulse_out)),
+                None,
+            ),
+            (
+                "vco2",
+                (self.vco2_fm1_in, self.vco2_fm2_in, self.vco2_fm3_in),
+                self.vco2_pwm_in,
+                self.vco2_sync_in,
+                (
+                    (4, self.vco2_tri_out),
+                    (1, self.vco2_saw_out),
+                    (2, self.vco2_pulse_out),
+                    (8, self.vco2_sine_out),
+                ),
+                None,
+            ),
+            (
+                "vco3",
+                (self.vco3_fm1_in, self.vco3_fm2_in, self.vco3_fm3_in),
+                self.vco3_pwm_in,
+                None,
+                ((1, self.vco3_saw_out), (2, self.vco3_pulse_out)),
+                g_vco3,
+            ),
+        )
+        self._n_cv = {}
+        self._n_pwm = {}
+        self._n_sync = None
+        self._n_osc = {}
+        for which, fms, pwm_in, sync_in, waves, group in vco_jacks:
+            b_cv = f.buffer()
+            self._n_cv[which] = add(ag.MIX, tuple(f.input(j) for j in fms), b_cv, group)
+            b_pwm = f.buffer()
+            self._n_pwm[which] = add(ag.MIX, (f.input(pwm_in),), b_pwm, group)
+            b_sync = None
+            if sync_in is not None:
+                b_sync = f.buffer()
+                self._n_sync = add(ag.MIX, (f.input(sync_in),), b_sync, group)
+            for wave, jack in waves:
+                if which == "vco3" or used(jack):
+                    node = add(ag.OSC, (b_cv, None, b_pwm, b_sync), f.output(jack), group)
+                    f.set(node, ag.OSC_WAVEFORM, wave)
+                    f.set(node, ag.OSC_LEVEL, OSC_LEVEL)
+                    f.set(node, ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+                    f.set(node, ag.OSC_PWM_DEPTH, PWM_DEPTH)
+                    self._n_osc.setdefault(which, []).append(node)
+
+        # ring modulator: x times y over the unit, times four
+        self._n_ring = add(
+            ag.VCA,
+            (f.input(self.ring_in_x), f.input(self.ring_in_y), None),
+            f.output(self.ring_mod_out),
+            g_ring,
+        )
+        f.set(self._n_ring, ag.VCA_SELECT, 0.0)
+        f.set(self._n_ring, ag.VCA_CURVE, ag.VCA_LINEAR)
+        f.set(self._n_ring, ag.VCA_GAIN, 4.0)
+
+        # voltage processor
+        self._n_inv = self._n_lag = None
+        if self.inv_out.cables:
+            self._n_inv = add(ag.MIX, (f.input(self.inv_in),), f.output(self.inv_out))
+            f.set(self._n_inv, 0, -1.0)
+        if self.lag_out.cables:
+            self._n_lag = add(ag.LAG, (f.input(self.lag_in), None, None), f.output(self.lag_out))
+            f.set(self._n_lag, ag.LAG_SHAPE, ag.LAG_ONE_POLE)
+
+        # VCF: the five audio inputs and three modulations mixed, then the ladder
+        b_mixed = f.buffer()
+        b_mod = f.buffer()
+        b_lad = f.buffer()
+        self._n_vcf_mix = add(
+            ag.MIX,
+            (
+                f.input(self.vcf_in1),
+                f.input(self.vcf_in2),
+                f.input(self.vcf_in3),
+                f.input(self.vcf_in4),
+                f.input(self.vcf_in5),
+            ),
+            b_mixed,
+        )
+        self._n_vcf_mod = add(
+            ag.MIX,
+            (f.input(self.vcf_mod1), f.input(self.vcf_mod2), f.input(self.vcf_mod3)),
+            b_mod,
+        )
+        self._n_vcf = add(ag.LADDER, (b_mixed, b_mod), b_lad)
+        f.set(self._n_vcf, ag.LADDER_DRIVE, 2.0)
+        f.set(self._n_vcf, ag.LADDER_CUTOFF_OCTAVES, 20.0)
+        f.set(self._n_vcf, ag.LADDER_POLES, 4.0)
+        f.set(self._n_vcf, ag.LADDER_PASSBAND_COMP, 0.0)
+        # NodeLadderCore halves the ladder's output on the way back to the wire
+        self._n_vcf_out = None
+        if self.vcf_out.cables:
+            self._n_vcf_out = add(ag.MIX, (b_lad,), f.output(self.vcf_out))
+            f.set(self._n_vcf_out, 0, 0.5)
+        if self.vca_audio_in.cable is None:
+            vca_audio, self._vca_half = b_lad, 0.5
+        else:
+            vca_audio, self._vca_half = f.input(self.vca_audio_in), 1.0
+
+        # VCA: exponential, its control the two mod sliders and the initial gain
+        b_vca_cv = f.buffer()
+        b_vca = f.output(self.vca_out)
+        self._n_vca_cv = add(
+            ag.MIX, (f.input(self.vca_exp_mod_in), f.input(self.vca_lin_mod_in)), b_vca_cv
+        )
+        self._n_vca = add(ag.VCA, (vca_audio, b_vca_cv, None), b_vca)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        f.set(self._n_vca, ag.VCA_CURVE, ag.VCA_EXPONENTIAL)
+
+        # spring reverb, when a master output is patched
+        self._n_spring = None
+        if self.master_l_out.cables or self.master_r_out.cables:
+            left = f.output(self.master_l_out)
+            right = f.output(self.master_r_out)
+            self._n_spring = add(ag.SPRING, (b_vca,), (left, right))
+
+        for names, fn in (
+            (
+                tuple(
+                    v + suffix
+                    for v in ("vco1", "vco2", "vco3")
+                    for suffix in (
+                        "_freq",
+                        "_fine",
+                        "_pw",
+                        "_pwm_lvl",
+                        "_fm1_lvl",
+                        "_fm2_lvl",
+                        "_fm3_lvl",
+                    )
+                )
+                + ("vco2_sync",),
+                self._graph_vcos,
+            ),
+            (
+                ("vcf_cutoff", "vcf_fine", "vcf_res")
+                + tuple("vcf_in%d_lvl" % i for i in range(1, 6))
+                + tuple("vcf_mod%d_lvl" % i for i in range(1, 4)),
+                self._graph_vcf,
+            ),
+            (
+                ("vca_init_gain", "vca_audio_lvl", "vca_lin_lvl", "vca_exp_lvl"),
+                self._graph_vca,
+            ),
+            (
+                (
+                    "adsr_attack",
+                    "adsr_decay",
+                    "adsr_sustain",
+                    "adsr_release",
+                    "ar_attack",
+                    "ar_release",
+                ),
+                self._graph_envs,
+            ),
+            (("noise_color", "sh_rate", "lag_time", "reverb_mix"), self._graph_misc),
+            (
+                (
+                    "vco1_fm2_lvl",
+                    "vco2_fm2_lvl",
+                    "vco3_fm2_lvl",
+                    "vcf_in3_lvl",
+                    "vcf_in4_lvl",
+                    "vcf_in5_lvl",
+                ),
+                self._graph_switches,
+            ),
+        ):
+            f.bind(names, fn)
+        f.on_reset(self._graph_reset)
+
+    def _graph_vcos(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        for which in ("vco1", "vco2", "vco3"):
+            cv = self._n_cv[which]
+            for i in range(3):
+                f.set(cv, i, p["%s_fm%d_lvl" % (which, i + 1)])
+            f.set(self._n_pwm[which], 0, 1.0 if p[which + "_pwm_lvl"] > 0.0 else 0.0)
+            hz = BASE_FREQ_C4 * (2.0 ** (p[which + "_freq"] + p[which + "_fine"]))
+            for node in self._n_osc.get(which, ()):
+                f.set(node, ag.OSC_FREQUENCY, hz)
+                f.set(node, ag.OSC_PULSE_WIDTH, p[which + "_pw"])
+        f.set(self._n_sync, 0, 1.0 if p["vco2_sync"] >= 0.5 else 0.0)
+
+    def _graph_vcf(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        for i in range(5):
+            f.set(self._n_vcf_mix, i, p["vcf_in%d_lvl" % (i + 1)])
+        for i in range(3):
+            f.set(self._n_vcf_mod, i, p["vcf_mod%d_lvl" % (i + 1)])
+        c_norm = max(0.0, min(1.0, p["vcf_cutoff"] + p["vcf_fine"]))
+        fc = max(10.0, min(knob_hz(c_norm, 20.0, 20000.0), self.sample_rate * 0.45))
+        f.set(self._n_vcf, ag.LADDER_CUTOFF_HZ, fc)
+        f.set(self._n_vcf, ag.LADDER_RESONANCE, p["vcf_res"] * 4.0)
+
+    def _graph_vca(self):
+        p = self.params
+        f = self._fragment
+        f.set(self._n_vca_cv, 0, p["vca_exp_lvl"])
+        f.set(self._n_vca_cv, 1, p["vca_lin_lvl"])
+        f.set(self._n_vca_cv, self._ag.MIX_OFFSET, p["vca_init_gain"] * UNIT)
+        f.set(self._n_vca, self._ag.VCA_GAIN, p["vca_audio_lvl"] * self._vca_half)
+
+    def _graph_envs(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_adsr, ag.ENV_ATTACK, p["adsr_attack"])
+        f.set(self._n_adsr, ag.ENV_DECAY, p["adsr_decay"])
+        f.set(self._n_adsr, ag.ENV_SUSTAIN, p["adsr_sustain"])
+        f.set(self._n_adsr, ag.ENV_RELEASE, p["adsr_release"])
+        f.set(self._n_ar, ag.ENV_ATTACK, p["ar_attack"])
+        f.set(self._n_ar, ag.ENV_RELEASE, p["ar_release"])
+
+    def _graph_misc(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_color, 0, 1.0 - p["noise_color"])
+        f.set(self._n_color, 1, p["noise_color"])
+        if self._n_sh_clock is not None:
+            f.set(self._n_sh_clock, ag.LFO_RATE, p["sh_rate"])
+        if self._n_lag is not None:
+            f.set(self._n_lag, ag.LAG_TIME, p["lag_time"])
+        if self._n_spring is not None:
+            f.set(self._n_spring, ag.SPRING_MIX, p["reverb_mix"])
+
+    def _graph_switches(self):
+        """The rack renders these only while something hears them (see ``process``)."""
+        p = self.params
+        f = self._fragment
+        sh = bool(self.sh_out.cables) or p["vco1_fm2_lvl"] > 0.0 or p["vco2_fm2_lvl"] > 0.0
+        noise = (
+            bool(self.noise_out.cables) or p["vcf_in4_lvl"] > 0.0 or sh or p["vco3_fm2_lvl"] > 0.0
+        )
+        ring = bool(self.ring_mod_out.cables) or p["vcf_in5_lvl"] > 0.0
+        vco3 = (
+            bool(self.vco3_saw_out.cables)
+            or bool(self.vco3_pulse_out.cables)
+            or p["vcf_in3_lvl"] > 0.0
+            or ring
+        )
+        f.enable("noise", noise)
+        f.enable("vco3", vco3)
+
+    def _graph_reset(self):
+        for node in self._nodes:
+            self._fragment.reset(node)
