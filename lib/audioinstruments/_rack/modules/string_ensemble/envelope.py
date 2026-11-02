@@ -7,8 +7,9 @@ holding a released key (latched) close in the block the envelope comes back
 to 0, which they learn on the rack from the jack's last sample. A graph's
 voices decide before the block renders, so an ``EnvelopeCore`` in Python
 follows the node a block ahead, in floats, into the jack's buffer, and says
-whether this block ends at 0. (The node's own wire is a step behind and rounded to int16, which moves
-the close a block and the voice's oscillators with it.)
+whether this block ends at 0. (The node's own wire is a step behind and
+rounded to int16, which moves the close a block and the voice's oscillators
+with it.)
 """
 
 from ...core.jack import SignalType
