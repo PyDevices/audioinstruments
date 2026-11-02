@@ -68,6 +68,7 @@ def make(voices=None, **controls):
     inst = adapter.create(RATE, voice="vocoder330", output="pull", block_size=BLOCK, **options)
     quiet = {name: False for name in TABLETS}
     quiet.update(vib_depth=0.0, strings_attack=0.0, voice_attack=0.0, release=2.0)
+    quiet["mic_source"] = "test"
     set_controls(inst, **quiet)
     set_controls(inst, **controls)
     return inst
@@ -1176,6 +1177,7 @@ def test_route_mic_source():
 def talker_rack():
     rack = Rack(sample_rate=RATE, block_size=BLOCK)
     mic = rack.add_module(mic_module.Vocoder330Mic("mic", sample_rate=RATE, block_size=BLOCK))
+    mic.set_param("mic_source", 1.0)
     rack.connect(mic.out_jack, rack.master_left_in)
     return rack, mic
 
@@ -1332,7 +1334,7 @@ def test_silence_on_every_vocoder_patch():
     for patch in (8, 9, 10):
         inst = adapter.create(RATE, voice="vocoder330", output="pull", block_size=BLOCK)
         inst.program_change(patch)
-        set_controls(inst, direct_mic=0.0)
+        set_controls(inst, mic_source="test", direct_mic=0.0)
         assert rms(Recording(inst).run(2.5).L) < 1e-4, patch  # the talker speaks, no key is down
         set_controls(
             inst, vocoder_tone=10.0, direct_mic=0.0
@@ -1347,6 +1349,7 @@ def test_silence_on_every_vocoder_patch():
 def test_no_zipper_at_the_block_rate_on_robot_voice():
     inst = adapter.create(RATE, voice="vocoder330", output="pull", block_size=BLOCK)
     inst.program_change(8)
+    set_controls(inst, mic_source="test")
     inst.note_on(48, 100)
     inst.note_on(55, 100)
     inst.note_on(64, 100)
@@ -1450,6 +1453,7 @@ def level_table():
     for patch in range(12):
         inst = adapter.create(RATE, voice="vocoder330", output="pull", block_size=BLOCK)
         inst.program_change(patch)
+        set_controls(inst, mic_source="test")
         rec = play(inst, CHORD, 2.5)
         table.append(db(loudest(rec.L)))
         inst.deinit()

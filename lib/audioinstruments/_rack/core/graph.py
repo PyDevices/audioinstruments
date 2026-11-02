@@ -304,16 +304,24 @@ class Fragment:
         c = self._c
         return c.graph.peak(buf if c.phys is None else c.phys[buf])
 
-    def fed(self, jack):
+    def fed(self, jack, live=None):
         """Output ``jack`` is written by the module's own ``process()`` each block, in Python,
         and fed into the graph before the run (a microphone, a talker). The module renders in
-        step with the graph, so a rack with one cannot be attached to a pump."""
+        step with the graph, so a rack with one cannot be attached to a pump, unless ``live``
+        is given and says the jack is silent: the wire then stays at zero on the pump."""
         c = self._c
         buf = c.buffer_for(jack, claim=True)
         c.feeds.append((jack, buf))
+        if live is not None:
+            c.feed_live[jack] = live
         if self.module not in c.fed:
             c.fed.append(self.module)
         return buf
+
+    @property
+    def pumped(self):
+        """Whether the graph is attached, so nothing written in Python reaches it."""
+        return self._c.pumped
 
     def add(self, kind, inputs, output, arg=0.0, group=None):
         """A node in the module's group (or ``group``, from ``switch``). A node with two
@@ -664,6 +672,7 @@ class CompiledRack:
         self.claimed = set()  # output jacks a fragment writes
         self.feeds = []  # (OutputJack of a rack-side module, buffer id)
         self.fed = []  # fragment modules that render in Python and feed the graph
+        self.feed_live = {}  # OutputJack -> says whether its fed block can be other than silence
         self.readbacks = []  # (OutputJack of a graph module read by the rack, buffer id)
         self._read_back = set()
         self.kept = set()  # wires a fragment asked to keep to itself
@@ -967,6 +976,9 @@ class CompiledRack:
                 " which an attached graph cannot wait for" % module.id
             )
         for jack, _ in self.feeds:
+            live = self.feed_live.get(jack)
+            if live is not None and not live():
+                continue
             raise ValueError(
                 "%s feeds the graph from Python every block, which an attached graph"
                 " cannot wait for" % jack.qualified_name
