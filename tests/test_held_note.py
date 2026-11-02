@@ -13,6 +13,7 @@ import pytest
 from audioinstruments._rack.core import Rack, np
 from audioinstruments._rack.modules.midi_cv import MidiCVModule
 from audioinstruments._rack.modules.paraphonic_synth import ParaphonicSynth
+from audioinstruments._rack.modules.semi32 import Semi32
 
 BUFFER = 256
 WINDOW = 960  # 20 ms at 48 kHz
@@ -55,6 +56,23 @@ def test_the_paraphonic_synth_holds_a_note_near_its_attack():
     voice = rack.add_module(ParaphonicSynth("voice", sample_rate=48000))
     rack.connect(midi.pitch_out, voice.kybd_cv_in)
     rack.connect(midi.gate_out, voice.kybd_gate_in)
+    rack.connect(voice.vca_out, rack.master_left_in)
+    midi.note_on(60, 100)
+    blocks = []
+    for _ in range(HOLD_BUFFERS * 4):
+        rack.step()
+        blocks.append(np.array(voice.vca_out.get_buffer()))
+    peak, sustain = _attack_and_hold(np.concatenate(blocks))
+    assert peak - sustain <= MOST_DROP
+
+
+def test_semi32_holds_a_note_with_its_sustain_switch_on():
+    rack = Rack(sample_rate=48000, block_size=64)
+    midi = rack.add_module(MidiCVModule("midi", sample_rate=48000))
+    voice = rack.add_module(Semi32("voice", sample_rate=48000))
+    voice.set_param("sustain", 1.0)
+    rack.connect(midi.pitch_out, voice.vco_1v_oct_in)
+    rack.connect(midi.gate_out, voice.gate_in)
     rack.connect(voice.vca_out, rack.master_left_in)
     midi.note_on(60, 100)
     blocks = []

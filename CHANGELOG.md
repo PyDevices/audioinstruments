@@ -22,6 +22,8 @@ All notable changes to `audioinstruments` are recorded here.
 - `audioinstruments.panel`: wrap an instrument in the adapter a control panel
   edits through, with macros, patches, bypass, reload and MIDI changes that
   reach the panel. See [docs/panel.md](docs/panel.md).
+- `Semi32`: the sustain switch now holds at 0.9 instead of 0.70, which the
+  exponential VCA put 15 dB under the attack. With the switch off nothing changes.
 - `mono_one`: the Init patch now holds a note at full level. Its amplifier
   sustain was 0.5, which the exponential VCA puts 30 dB under the attack, so a
   held note all but vanished. A patch that sets `amp_sustain` itself sounds as
