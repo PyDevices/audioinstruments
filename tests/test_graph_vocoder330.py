@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 """The Vocoder330 compiled to a graph sounds the rack's Vocoder330, part by part.
 
-The graph has no bridges, so each path is 512 frames sooner than the rack's, less the
-block the bank adds (its followers read a block, and the carrier waits for them). The
-comparisons line the graph's output up by that many frames.
+The graph has no bridges, so each path is two bridges' chunks (``2 * LATENCY_FRAMES``)
+sooner than the rack's, less the block the bank adds (its followers read a block, and the
+carrier waits for them). The comparisons line the graph's output up by that many frames.
 
 What is held, and what each bound is for:
 
@@ -20,6 +20,8 @@ What is held, and what each bound is for:
   to the same count, so those stretches have a bound of their own.
 * The mic is a fed buffer: its module renders in Python and the graph takes the block,
   so a known sample played in matches the rack to the rounding.
+* The rack clips its PCM at ``PCM_SCALE`` (27000) and the graph at the int16 rails, so a
+  chord loud enough to pass 27000 is compared with the graph clipped where the rack is.
 """
 
 import array
@@ -31,6 +33,7 @@ import audioinstruments._rack.core.bridge as bridge
 import audioinstruments._rack.core.signal as signal
 import numpy as np
 import pytest
+from audioinstruments._rack.dsp.ensemble import LATENCY_FRAMES
 from audioinstruments._rack.instruments.vocoder330 import attach_mic
 from audioinstruments._rack.modules.vocoder330 import bank as bank_module
 from audioinstruments._rack.modules.vocoder330 import filters as filters_module
@@ -45,7 +48,13 @@ pytestmark = pytest.mark.skipif(
 RATE = 48000
 BUFFER = 256
 BLOCK = 128
-LATENCY = 2 * 256 - BLOCK  # frames the graph is sooner than the rack
+
+
+def latency(block=BLOCK):
+    """Frames the graph is sooner than the rack: two bridges' chunks less the bank's block."""
+    return 2 * LATENCY_FRAMES - block
+
+
 PATCHES = tuple(range(12))
 
 
@@ -88,6 +97,17 @@ def staggered():
     return events, 330
 
 
+def dense(keys):
+    """Every key down at once, at velocity 30, and let go together."""
+    events = [(4, 1, key, 30) for key in keys] + [(150, 0, key, 0) for key in keys]
+    return events, 300
+
+
+#: Seventeen keys over the whole keyboard, and the twelve lowest of them.
+DENSE = tuple(range(36, 85, 3))
+DENSE_TWELVE = DENSE[:12]
+
+
 def mic_sample():
     """A known signal: a chirp from 120 Hz to 3 kHz with a burst of noise, 1.5 s."""
     t = np.arange(int(1.5 * RATE)) / RATE
@@ -99,15 +119,17 @@ def mic_sample():
     return audiocore.RawSample(data, channel_count=1, sample_rate=RATE)
 
 
-def render(engine, patch, phrase, controls=None, changes=None, mic=False):
+def render(engine, patch, phrase, controls=None, changes=None, mic=False, block=BLOCK, voices=None):
     """The phrase on a fresh Vocoder330 as int16 stereo."""
+    options = {} if voices is None else {"voices": voices}
     inst = adapter.create(
         RATE,
         voice="vocoder330",
         engine=engine,
         output="pull",
         buffer_frames=BUFFER,
-        block_size=BLOCK,
+        block_size=block,
+        **options,
     )
     try:
         inst.program_change(patch)
@@ -134,12 +156,13 @@ def render(engine, patch, phrase, controls=None, changes=None, mic=False):
         inst.deinit()
 
 
-def compare(patch, phrase, controls=None, changes=None, mic=False):
+def compare(patch, phrase, controls=None, changes=None, mic=False, block=BLOCK, voices=None):
     """(difference per sample, the rack) with the graph lined up to the rack."""
-    rack = render("rack", patch, phrase, controls, changes, mic)
-    graph = render("graph", patch, phrase, controls, changes, mic)
-    diff = np.abs(rack[LATENCY:] - graph[: len(graph) - LATENCY])
-    return diff, rack[LATENCY:]
+    rack = render("rack", patch, phrase, controls, changes, mic, block, voices)
+    graph = render("graph", patch, phrase, controls, changes, mic, block, voices)
+    late = latency(block)
+    diff = np.abs(rack[late:] - graph[: len(graph) - late])
+    return diff, rack[late:]
 
 
 def stats(patch, phrase, controls=None, changes=None, mic=False):
@@ -208,6 +231,27 @@ def test_the_release_is_cut_by_the_next_key():
     assert level > 100.0 and worst <= 40.0 and rms <= 2.0, (worst, rms)
 
 
+def dense_stats(keys, voices):
+    """(worst, rms, the rack's peak) of a dense strings chord, the graph clipped at the
+    rack's PCM ceiling."""
+    rack = render("rack", 1, dense(keys), STRINGS, voices=voices)
+    graph = render("graph", 1, dense(keys), STRINGS, voices=voices)
+    late = latency()
+    clipped = np.clip(graph, -adapter.PCM_SCALE, adapter.PCM_SCALE)
+    diff = np.abs(rack[late:] - clipped[: len(clipped) - late])
+    return float(diff.max()), float(np.sqrt(np.mean(diff**2))), float(np.abs(rack).max())
+
+
+@pytest.mark.parametrize(
+    "keys,voices", [(DENSE_TWELVE, 12), (DENSE, 49)], ids=["twelve-keys", "seventeen-keys"]
+)
+def test_a_dense_chord_matches_the_rack(keys, voices):
+    # loud enough that the rack's PCM clips: the graph is held to it everywhere else
+    worst, rms, peak = dense_stats(keys, voices)
+    assert peak >= adapter.PCM_SCALE, peak
+    assert worst <= 40.0 and rms <= 2.0, (worst, rms)
+
+
 # -- the choir and the output -----------------------------------------------------------
 
 
@@ -230,12 +274,14 @@ def test_the_rack_tracker_takes_a_little_of_the_choir():
     assert worst <= 250.0 and rms <= 0.025 * level, (worst, rms, level)
 
 
-def test_a_steady_vibrato_matches(rack_without_tracker):
+@pytest.mark.parametrize("block", (64, 128, 256))
+def test_a_steady_vibrato_matches(rack_without_tracker, block):
+    # the graph's sweep starts where the rack's is at every block size
     controls = {"vib_depth": 4.0, "vib_delay": 0.0, "voice_ensemble": False}
-    diff, rack = compare(3, chord(), controls)
+    diff, rack = compare(3, chord(), controls, block=block)
     steady = diff[20000:36000]  # the vibrato is at full depth and the fade has finished
     assert np.abs(rack[20000:36000]).max() > 1000.0
-    assert steady.max() <= 20.0, steady.max()
+    assert steady.max() <= 20.0, (block, steady.max())
 
 
 # -- the bank and the mic ---------------------------------------------------------------
@@ -451,3 +497,21 @@ def test_a_wrong_mic_is_seen(monkeypatch):
     }
     worst, rms, level = stats(0, chord(), controls, mic=True)
     assert worst > 40.0, worst
+
+
+def test_a_wrong_key_at_the_top_is_seen_in_a_dense_chord(monkeypatch):
+    """The strings a fifth quieter on the keys from E5 up, in the graph only: no other
+    phrase here reaches them."""
+    route = voice_module.Vocoder330Voice._graph_route
+
+    def quiet_top(self):
+        route(self)
+        if self.folded >= 76:
+            node = self._n_vca[0]
+            self._fragment.set(
+                node, self._ag.VCA_GAIN, 0.8 * self._fragment.get(node, self._ag.VCA_GAIN)
+            )
+
+    monkeypatch.setattr(voice_module.Vocoder330Voice, "_graph_route", quiet_top)
+    worst, rms, _ = dense_stats(DENSE, 49)
+    assert worst > 40.0 or rms > 2.0, (worst, rms)
