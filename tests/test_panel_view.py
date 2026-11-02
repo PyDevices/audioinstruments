@@ -52,17 +52,17 @@ class PanelViewTest(unittest.TestCase):
             sys.modules["audioinstruments"] = self._saved
 
     def test_it_loads_without_the_shared_controls_and_build_says_so(self):
-        saved = sys.modules.get("controls")
-        sys.modules["controls"] = None
+        saved = sys.modules.get("controlkit")
+        sys.modules["controlkit"] = None
         try:
             view = _load()
             with self.assertRaises(ImportError):
                 view.build(FakeInstrument())
         finally:
             if saved is None:
-                sys.modules.pop("controls", None)
+                sys.modules.pop("controlkit", None)
             else:
-                sys.modules["controls"] = saved
+                sys.modules["controlkit"] = saved
 
     def test_build_wraps_an_instrument_and_passes_the_options_to_the_panel(self):
         view = _load()

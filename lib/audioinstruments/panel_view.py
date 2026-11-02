@@ -8,7 +8,7 @@ already wrapped. Sixteen encoders with LED rings on the right, sixteen
 patch pads in eight banks on the left, a dot-matrix display, and the
 FINE, BYPASS, RELOAD and EXIT buttons.
 
-The controls come from ``controls`` (apps/lib/controls) and LVGL, imported
+The controls come from ``controls`` (apps/lib/controlkit) and LVGL, imported
 here inside a guard: without them this module still loads, and ``build()``
 raises ImportError. A host with its own control surface never needs them.
 """
@@ -16,25 +16,25 @@ raises ImportError. A host with its own control surface never needs them.
 try:
     import lvgl as lv
 
-    from controls import encoder as _encoder
-    from controls import sprites
-    from controls._draw import Lamp as _Led
-    from controls._draw import box as _box
-    from controls._draw import fill as _fill
-    from controls._draw import finish as _finish
-    from controls._draw import label as _label
-    from controls._draw import plain as _plain
-    from controls._draw import text_width as _text_width
-    from controls._safe import safe
-    from controls.dotmatrix import DotMatrix
-    from controls.theme import resolve
+    from controlkit import encoder as _encoder
+    from controlkit import sprites
+    from controlkit._draw import Lamp as _Led
+    from controlkit._draw import box as _box
+    from controlkit._draw import fill as _fill
+    from controlkit._draw import finish as _finish
+    from controlkit._draw import label as _label
+    from controlkit._draw import plain as _plain
+    from controlkit._draw import text_width as _text_width
+    from controlkit._safe import safe
+    from controlkit.dotmatrix import DotMatrix
+    from controlkit.theme import resolve
 except ImportError:  # the shared controls, or LVGL, are optional: this file still loads
     lv = None
 
 
 def _require():
     if lv is None:
-        raise ImportError("this panel needs LVGL and the shared controls (apps/lib/controls)")
+        raise ImportError("this panel needs LVGL and the shared controls (apps/lib/controlkit)")
 
 
 MACRO_COUNT = 16
