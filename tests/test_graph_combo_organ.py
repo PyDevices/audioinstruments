@@ -13,12 +13,13 @@ then the whole instrument on its presets.
 What matches to how many counts, and why:
 
 * **Voice.** Three ``WAVETABLE`` nodes play the rack's tables through its
-  contacts. The node works its frequency out in float32 and the rack's synth takes
-  a double, so the two step a table at rates that differ by a 65536th of a table
-  entry now and then; the gap walks apart at about 0.0007 of a cycle a second, and
-  after a second or so a square's edge lands one table entry over: the difference
-  is the height of that edge, on a few samples. So a bound has two parts, how far
-  apart the two are on all but eight samples, and how far apart they are in rms.
+  contacts. With the vibrato off they agree to a few counts. With it on, the
+  vibrato frequencies differ from block to block by under 0.005 cents (the rack
+  works its sine in float32 and the graph in doubles), and on a steep square edge
+  that is enough to move a single sample across it: the difference is the height of
+  that edge, on a few samples. Of 76288 samples on preset 3 only 18 pass 100 counts,
+  and with its vibrato off the same chord is within 14 counts. So a bound has three
+  parts: the worst, how far apart the two are on all but eight samples, and the rms.
 * **Vibrato.** The rack retunes its notes once a 256-frame chunk, at the chunk's
   last block, and reads the vibrato at the middle of that block. The graph's voice
   asks the vibrato module for that value ahead of time, and the sine is the same
@@ -191,7 +192,8 @@ def voice_stats(name, vibrato=False, jack="audio_out"):
 
 #: a note's first 50 samples can have an edge a sample off: 28 counts on a bass key
 VOICE_BOUND = (60.0, 25.0, 1.5)
-VIBRATO_VOICE_BOUND = (240.0, 40.0, 8.0)
+#: measured 1085 / 31 / 6.0: the worst is one edge a sample over
+VIBRATO_VOICE_BOUND = (1200.0, 40.0, 7.0)
 
 
 def test_each_footage_plays_the_rack_tone():
@@ -213,6 +215,7 @@ def test_a_bass_key_goes_to_the_bass_bus_and_the_rest_to_the_manual():
 
 def test_the_voice_with_vibrato_follows_the_rack():
     worst, top, rms = voice_stats("all", True)
+    assert worst <= VIBRATO_VOICE_BOUND[0], worst
     assert top <= VIBRATO_VOICE_BOUND[1] and rms <= VIBRATO_VOICE_BOUND[2], (worst, top, rms)
 
 
@@ -424,10 +427,10 @@ def instrument_stats(patch, phrase, controls=None):
     return worst, top, rms, float(np.sqrt(np.mean(rack**2)))
 
 
-#: without vibrato: a lone square edge a table entry off is up to this tall (worst), the
+#: without vibrato: a lone square edge a sample off is up to this tall (worst), the
 #: rest within the bound that holds for all but eight samples
 STEADY = (90.0, 70.0, 3.0)
-#: with vibrato, edges drift past one another more, and the rest follows
+#: with vibrato, a few more samples cross an edge, and the rest follows
 VIBRATO = (700.0, 220.0, 7.0)
 STEADY_PATCHES = (1, 4)
 VIBRATO_PATCHES = (0, 2, 3, 5)
@@ -549,6 +552,15 @@ def _vibrato_ok():
     return float(np.abs(want - got).max()) * 12000.0 < 0.005
 
 
+def _vibrato_voice_ok():
+    worst, top, rms = voice_stats("all", True)
+    return (
+        worst <= VIBRATO_VOICE_BOUND[0]
+        and top <= VIBRATO_VOICE_BOUND[1]
+        and (rms <= VIBRATO_VOICE_BOUND[2])
+    )
+
+
 def _output_ok():
     return all(output_stats(p)[0] <= OUTPUT_BOUND[0] for p in OUTPUTS)
 
@@ -603,9 +615,17 @@ FAULTS = [
         "the vibrato twice as deep",
         vibrato_module,
         ComboOrganVibrato,
-        "return VIBRATO_DEPTH_CV * math.sin(",
-        "return 2.0 * VIBRATO_DEPTH_CV * math.sin(",
+        "value = VIBRATO_DEPTH_CV * math.sin(",
+        "value = 2.0 * VIBRATO_DEPTH_CV * math.sin(",
         _vibrato_ok,
+    ),
+    (
+        "the vibrato twice as deep, heard in the voice",
+        vibrato_module,
+        ComboOrganVibrato,
+        "value = VIBRATO_DEPTH_CV * math.sin(",
+        "value = 2.0 * VIBRATO_DEPTH_CV * math.sin(",
+        _vibrato_voice_ok,
     ),
     (
         "the reed added the right way up",
@@ -632,6 +652,7 @@ FAULT_IDS = [
     "mixture_pitch",
     "bass_bus",
     "vibrato_depth",
+    "vibrato_depth_in_voice",
     "reed_sign",
     "swell_bass",
 ]

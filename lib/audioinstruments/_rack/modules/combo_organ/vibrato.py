@@ -64,6 +64,7 @@ class ComboOrganVibrato(Module):
     def fragment(self, f):
         self._g_phase = 0.0  # where the sine stands at the start of the block being rendered
         self._g_started = False
+        self._g_cache = {}
         self._g_step = VIBRATO_HZ / float(self.sample_rate)
         self._g_on = self.params["vibrato"] >= 0.5
         self._g_control = f.control(self.cv_out, 0.0)
@@ -93,6 +94,7 @@ class ComboOrganVibrato(Module):
             self._g_started = True
             if blocks > 1 and self._g_on:
                 self._g_phase = math.fmod((blocks - 1) * self.block_size * self._g_step, 1.0)
+        self._g_cache = {}  # ahead -> value, for the block now rendering
         self._g_control.set(self.graph_cv(0))
 
     def graph_cv(self, ahead=0):
@@ -100,6 +102,11 @@ class ComboOrganVibrato(Module):
         rendering (the rack's voices read the middle of their block)."""
         if not self._g_on:
             return 0.0
+        value = self._g_cache.get(ahead)
+        if value is not None:
+            return value  # every voice asks the same, so the sine is worked out once a block
         n = self.block_size
         phase = self._g_phase + ((ahead * n) + (n >> 1) + 1) * self._g_step
-        return VIBRATO_DEPTH_CV * math.sin(2.0 * math.pi * (phase - math.floor(phase)))
+        value = VIBRATO_DEPTH_CV * math.sin(2.0 * math.pi * (phase - math.floor(phase)))
+        self._g_cache[ahead] = value
+        return value
