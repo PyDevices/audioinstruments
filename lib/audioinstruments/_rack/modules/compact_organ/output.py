@@ -236,6 +236,12 @@ class CompactOrganOutput(Module):
         multi = p["multi_tone"]
         gain_db = (multi / 10.0) * 12.0
         if gain_db != self._booster_gain:
+            if self._booster_gain < 0.0:
+                # The first setting after a build or reset is where the shelf
+                # starts, not a move: the node would otherwise walk to it from
+                # flat over its 20 ms, because the bridge's priming pull ran it
+                # at the 0 dB it was built with.
+                self._booster_node.clear()
             self._booster_gain = gain_db
             self._booster_node.gain_db = gain_db
 

@@ -13,10 +13,17 @@ What matches to how many counts, and why:
   and a lone key match the rack to 48 counts at the worst and 4 counts rms:
   the oscillators, the keyers, the tab filters and the swell run on the
   rack's recurrences, and the few counts are the 16-bit wires between them.
-* With vibrato on (2 to 5), the LFO node is put back at 0 every period, where
-  the rack's sine is, and between those points it drifts from the rack's
-  sine by a hair. Through the oscillators' phase that is up to a couple of
-  hundred counts on the sharpest pulse edges, 16 counts rms at most.
+* With vibrato on (2 to 5), the graph's pitch wire is the rack's to a
+  fraction of a count, but a fraction that leans one way: the LFO node keeps
+  its phase in float32, and over a period its wave sits a few hundredths of a
+  count below the rack's. A held key is very slightly flat, so its phase
+  walks away from the rack's a little more each second. On the phrases here
+  that is up to a couple of hundred counts on the sharpest pulse edges and
+  16 counts rms; on a chord held 16 seconds, about 110 counts rms by the end
+  on the deepest preset.
+* A note played in the first buffers after create() matches as well as any
+  other: the rack's booster shelf starts at its setting rather than walking
+  up to it from flat.
 * The rack clips its PCM at 27000 and the graph at the int16 rails, so the
   phrases here stay under 27000: a chord of every key is played with the
   volume down.
@@ -79,6 +86,18 @@ def full():
     events = [(4, 1, key, 100) for key in range(36, 85)]
     events += [(30, 0, key, 0) for key in range(36, 85)]
     return events, 50
+
+
+def first():
+    """A key in the very first buffer, then three more, one a buffer."""
+    events = [(b, 1, key, 100) for b, key in enumerate((60, 64, 67, 72))]
+    events += [(20, 0, key, 0) for key in (60, 64, 67, 72)]
+    return events, 30
+
+
+def held(seconds=16):
+    """Two keys held for ``seconds``."""
+    return [(4, 1, 60, 100), (4, 1, 64, 100)], 4 + seconds * 48000 // BUFFER
 
 
 def render(engine, patch, phrase, controls=None):
@@ -162,6 +181,36 @@ def test_each_vibrato_preset_stays_with_the_rack(patch):
     _peak, top8, rms, level = worst(patch, chord())
     assert level > 100.0
     assert top8 <= VIBRATO_TOP and rms <= VIBRATO_RMS, (patch, top8, rms)
+
+
+@pytest.mark.parametrize("patch", (0, 5))
+def test_a_note_in_the_first_buffer_after_create_matches(patch):
+    peak, top8, rms, level = worst(patch, first())
+    assert level > 200.0
+    if patch in VIBRATO_PATCHES:
+        assert top8 <= VIBRATO_TOP and rms <= VIBRATO_RMS, (patch, top8, rms)
+    else:
+        assert peak <= MATCH and rms <= RMS, (patch, peak, rms)
+
+
+#: rms difference in counts, graph against rack, in the first and the last second of a
+#: 60+64 chord held 16 seconds. The vibrato's pitch leans a few hundredths of a count
+#: flat (the LFO node's float32 phase), so the difference grows by a few counts a second.
+HELD = {3: (8.0, 30.0), 4: (15.0, 140.0)}
+
+
+@pytest.mark.parametrize("patch", sorted(HELD))
+def test_a_chord_held_sixteen_seconds_stays_with_the_rack(patch):
+    rack = render("rack", patch, held()).astype(np.float64)[:, 0]
+    graph = render("graph", patch, held()).astype(np.float64)[:, 0]
+    diff = rack - graph
+    second = 48000
+    start = 4 * BUFFER
+    head = float(np.sqrt(np.mean(diff[start : start + second] ** 2)))
+    tail = float(np.sqrt(np.mean(diff[-second:] ** 2)))
+    assert float(np.sqrt(np.mean(rack[-second:] ** 2))) > 100.0
+    first_bound, last_bound = HELD[patch]
+    assert head <= first_bound and tail <= last_bound, (patch, head, tail)
 
 
 def test_every_key_down_at_once_matches_with_keys_sharing_groups():
