@@ -21,10 +21,13 @@ floating point, so they are not built.
 """
 
 import math
+from array import array
+
+import audiobiquad
 
 from ...core.jack import SignalType
 from ...core.module import Module
-from ...core.signal import add, add_scaled, copy_into, mul, np
+from ...core.signal import BRIDGE_SCALE, add, add_scaled, copy_into, from_int16, mul, np
 from ...dsp.biquad import BiquadFilter
 from ..voice_mix import QUIET_LEVEL, QUIET_SECONDS
 from .filters import DCTracker, clear_filter
@@ -235,3 +238,161 @@ class Vocoder330Bank(Module):
             self._ramp_between(g0, g1)
             mul(self._cons, self._ramp)
             add_scaled(out, self._cons, gain, self._band)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """Ten analysis chains on the mic and ten synthesis chains on the carrier, each two
+        ``BIQUAD`` band-passes; the consonant path two high-passes. The followers are
+        block-rate: after each block the mic's bands are read back, their RMS about the mean
+        moves the levels as it does on the rack, and the levels become the synthesis
+        ``MIX`` gains, which ramp across the next block. The rack ramps from the last block's
+        level to this one's within the block, so the carrier and the mic go through a
+        one-block ``FBDELAY`` first and the bank sounds a block late.
+
+        The ported ``synthio.Biquad`` of the rack settles on a constant offset that
+        the rack takes out with a tracker; the graph's float ``BIQUAD`` has none."""
+        import audiograph as ag
+
+        self._ag = ag
+        n = self.block_size
+        sr = self.sample_rate
+        carrier = f.input(self.carrier_in)
+        mic = f.input(self.mic_in)
+        if carrier is None or mic is None:
+            return False
+        self._g_on = f.switch("bank", self.params["active"] >= 0.5)
+        grp = self._g_on
+        self._g_nodes = []
+        self._g_carrier = carrier
+        self._g_mic = mic
+        f.keep(carrier)
+        f.keep(mic)
+        frames_ms = 1000.0 * n / sr
+
+        def line(src):
+            b = f.buffer()
+            node = f.add(ag.FBDELAY, (src,), b, arg=frames_ms + 1.0, group=grp)
+            f.set(node, ag.DELAY_MS, frames_ms)
+            f.set(node, ag.DELAY_FEEDBACK, 0.0)
+            f.set(node, ag.DELAY_MIX, 2.0)
+            self._g_nodes.append(node)
+            return b
+
+        def chain(src, mode, hz, q, stages):
+            for _ in range(stages):
+                b = f.buffer()
+                node = f.add(ag.BIQUAD, (src,), b, group=grp)
+                f.set(node, ag.BIQUAD_MODE, mode)
+                f.set(node, ag.BIQUAD_FREQUENCY, hz)
+                f.set(node, ag.BIQUAD_Q, q)
+                self._g_nodes.append(node)
+                src = b
+            return src
+
+        self._g_bands = []
+        for hz in BAND_HZ:
+            band = chain(mic, audiobiquad.BAND_PASS, hz, BAND_Q, BAND_STAGES)
+            f.keep(band)
+            self._g_bands.append(band)
+        c_late = line(carrier)
+        m_late = line(mic)
+        synth = [chain(c_late, audiobiquad.BAND_PASS, hz, BAND_Q, BAND_STAGES) for hz in BAND_HZ]
+        cons = chain(m_late, audiobiquad.HIGH_PASS, CONSONANT_HZ, 0.707, CONSONANT_STAGES)
+        b_lo = f.buffer()
+        self._n_lo = f.add(ag.MIX, tuple(synth[:8]), b_lo, group=grp)
+        self._n_out = f.add(
+            ag.MIX, (b_lo,) + tuple(synth[8:]) + (cons,), f.output(self.out_jack), group=grp
+        )
+        f.set(self._n_out, 0, 1.0)
+        self._g_i16 = array("h", bytes(2 * n))
+        self._g_unit = self._band  # float scratch
+        self._g_floor = QUIET_LEVEL * BRIDGE_SCALE
+        self._g_mic_quiet = MIC_QUIET * BRIDGE_SCALE
+        self._g_set = [None] * (len(BAND_HZ) + 1)
+        self._graph_clear()
+        f.bind(("active",), self._graph_active)
+        f.bind(("vocoder_tone",), self._graph_gains)
+        f.after_run(self._graph_after)
+        f.on_reset(self._graph_clear)
+
+    def _graph_clear(self):
+        for i in range(len(BAND_HZ)):
+            self.level[i] = 0.0
+            self._prev[i] = 0.0
+        self._gate = 0.0
+        self._quiet = 0
+        self._g_set = [None] * (len(BAND_HZ) + 1)
+        f = self._fragment
+        if f is not None and getattr(self, "_g_nodes", None):
+            for node in self._g_nodes:
+                f.reset(node)
+            self._graph_gains()
+
+    def _graph_active(self):
+        f = self._fragment
+        on = self.params["active"] >= 0.5
+        if on != getattr(self, "_g_was_on", None):
+            self._g_was_on = on
+            f.enable("bank", on)
+            if not on:
+                self._stop()
+            self._graph_clear()
+
+    def _graph_gains(self):
+        """The synthesis ``MIX`` gains at the levels the last block ended at, and the
+        consonant gain at the gate's."""
+        f = self._fragment
+        for i in range(len(BAND_HZ)):
+            k = self.level[i] * VOCODER_GAIN
+            if k != self._g_set[i]:
+                self._g_set[i] = k
+                if i < 8:
+                    f.set(self._n_lo, i, k)
+                else:
+                    f.set(self._n_out, 1 + i - 8, k)
+        gain = self._gate * self.params["vocoder_tone"] * CONSONANT_GAIN / 10.0
+        if gain != self._g_set[-1]:
+            self._g_set[-1] = gain
+            f.set(self._n_out, 3, gain)
+
+    def _graph_after(self, sounding):
+        """The followers and the consonant gate, on the block that just rendered."""
+        f = self._fragment
+        if self.params["active"] < 0.5:
+            if self.params["vocoder_hold"] >= 0.5:
+                for i in range(len(BAND_HZ)):
+                    self.level[i] *= self._sag
+            self._graph_gains()
+            return
+        hold = self.params["vocoder_hold"] >= 0.5
+        sounding_now = f.peak(self._g_carrier) > self._g_floor
+        self._quiet = 0 if sounding_now else self._quiet + 1
+        dead = self._quiet >= self._quiet_blocks
+        if hold:
+            for i in range(len(BAND_HZ)):
+                self.level[i] *= self._sag
+        elif dead or f.peak(self._g_mic) < self._g_mic_quiet and max(self.level) < SKIP_LEVEL:
+            for i in range(len(BAND_HZ)):
+                self.level[i] = 0.0
+        else:
+            n = self.block_size
+            band = self._g_unit
+            sq = self._sq
+            i16 = self._g_i16
+            for i in range(len(BAND_HZ)):
+                f.read(self._g_bands[i], i16)
+                from_int16(band, i16)
+                mean = float(np.sum(band)) / n
+                copy_into(sq, band)
+                mul(sq, sq)
+                rms = math.sqrt(max(0.0, float(np.sum(sq)) / n - mean * mean))
+                lvl = self.level[i]
+                coef = self._attack if rms > lvl else self._release
+                self.level[i] = rms + (lvl - rms) * coef
+        target = 1.0 if sounding_now else 0.0
+        g1 = self._gate + (target - self._gate) * self._gate_coef
+        if g1 < 1e-3 and target == 0.0:
+            g1 = 0.0
+        self._gate = g1
+        self._graph_gains()

@@ -22,10 +22,11 @@ import math
 
 from ...core.jack import SignalType
 from ...core.module import Module
-from ...core.signal import BASE_FREQ_C4, add, copy_into, mul, scale
+from ...core.signal import BASE_FREQ_C4, BRIDGE_SCALE, add, copy_into, mul, scale
 from ...dsp.envelope import EnvelopeCore
 from ...dsp.oscillator import OscillatorCore
 from .._util import jack_signal
+from ..compact_organ.voice import PITCH_OCTAVES, frozen_hz
 
 #: The keyboard: 49 keys, MIDI 36 (C2) to 84 (C6) here, split at middle C.
 LOWEST_KEY = 36
@@ -290,3 +291,179 @@ class Vocoder330Voice(Module):
                 add(out, self._buses[i].buffer)
         if first:
             out[:] = 0.0
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """Two ``OSC`` nodes (the 4' synced to the 8'), three ``ENV`` nodes and a ``VCA`` a
+        bus. The pitch wire is the key in floats (a ``MIX`` offset, from the pool's controls)
+        plus the keys' shift, rounded once. A tablet is a ``VCA`` gain of 0 or ``BUS_LEVEL``;
+        the oscillators stand still while no tablet on the key's half asks for them."""
+        if not (f.is_control(self.pitch_in) and f.is_control(self.note_in)):
+            return False
+        import audiograph as ag
+
+        self._ag = ag
+        shift = f.input(self.shift_in)
+        b_cv = f.buffer()
+        self._n_cv = f.add(ag.MIX, () if shift is None else (shift,), b_cv)
+        if shift is not None:
+            source = f.source_module(self.shift_in)
+            f.set(self._n_cv, 0, 1.0 / getattr(source, "graph_wire_scale", 1.0))
+        gate = f.input(self.gate_in)
+        self._n_env = []
+        envs = []
+        for _ in range(3):
+            b = f.buffer()
+            self._n_env.append(f.add(ag.ENV, (gate,), b))
+            envs.append(b)
+        b_s8, b_s4 = f.buffer(), f.buffer()
+        self._n_osc8 = f.add(ag.OSC, (b_cv, None, None, None), b_s8)
+        self._n_osc4 = f.add(ag.OSC, (b_cv, None, None, b_s8), b_s4)
+        for node in (self._n_osc8, self._n_osc4):
+            f.set(node, ag.OSC_WAVEFORM, 1)
+            f.set(node, ag.OSC_LEVEL, 0.25)  # the node's +-0.5, as OscillatorCore's
+        b_b = f.buffer()  # choir b: the 4' or the upper 8'
+        self._n_pick = f.add(ag.MIX, (b_s4, b_s8), b_b)
+        outs = []
+        self._n_vca = []
+        # strings: 4' on the strings envelope; a: 8'; b: picked; c: 4'; carrier: 8'
+        for jack, src, env in (
+            (self.strings_out, b_s4, envs[0]),
+            (self.choir_a_out, b_s8, envs[1]),
+            (self.choir_b_out, b_b, envs[1]),
+            (self.choir_c_out, b_s4, envs[1]),
+            (self.carrier_out, b_s8, envs[2]),
+        ):
+            wire = f.output(jack)
+            node = f.add(ag.VCA, (src, env, None), wire)
+            f.set(node, ag.VCA_SELECT, 0.0)
+            f.set(node, ag.VCA_GAIN, 0.0)
+            self._n_vca.append(node)
+            outs.append(wire)
+        self._n_level = f.add(ag.MIX, tuple(outs), f.output(self.level_out))
+        for i in range(len(outs)):
+            f.set(self._n_level, i, 1.0)
+        self._frozen_hz = frozen_hz(self.sample_rate, self.block_size)
+        self._g_gate = False
+        self._g_press = False
+        self._g_note = 0.0
+        self._g_pitch = 0.0
+        self._g_run = None
+        self._g_release = None
+        self._g_pushed = None
+        f.watch(self.gate_in, self._graph_gate)
+        f.watch(self.press_in, self._graph_press)
+        f.watch(self.note_in, self._graph_note)
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.bind(("strings_attack", "voice_attack"), self._graph_attack)
+        f.bind(tuple(TABLETS) + ("bend",), self._graph_route)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+
+    def _graph_gate(self, value):
+        self._g_gate = value > 0.5
+
+    def _graph_press(self, value):
+        self._g_press = value > 0.5
+
+    def _graph_note(self, value):
+        self._g_note = value
+        self._graph_route()
+
+    def _graph_pitch(self, value):
+        self._g_pitch = value
+        self._graph_route()
+
+    def _graph_attack(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        attacks = (
+            slider_seconds(p["strings_attack"], ATTACK_MIN_S, ATTACK_MAX_S) / ATTACK_TO_PEAK,
+            slider_seconds(p["voice_attack"], ATTACK_MIN_S, ATTACK_MAX_S) / ATTACK_TO_PEAK,
+            VOCODER_ATTACK_S / ATTACK_TO_PEAK,
+        )
+        for node, attack in zip(self._n_env, attacks):
+            f.set(node, ag.ENV_ATTACK, attack)
+            f.set(node, ag.ENV_DECAY, DECAY_S)
+            f.set(node, ag.ENV_SUSTAIN, 1.0)
+
+    def _graph_route(self):
+        """The key's fold, and which tablets its half has on: the pitch wire's offset, the
+        buses' gains and whether the oscillators run."""
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        fold = self._fold(self._g_note)
+        source = self._g_pitch if p["bend"] >= 0.5 else self._g_note
+        f.set(self._n_cv, ag.MIX_OFFSET, (source + fold) * BRIDGE_SCALE)
+        if self.folded < SPLIT_KEY:
+            strings = p["strings_lower"] >= 0.5
+            male4 = p["voice_lower_male4"] >= 0.5
+            male8 = p["voice_lower_male8"] >= 0.5
+            female4 = False
+            vocoder = p["vocoder_lower"] >= 0.5
+            male8_upper = False
+        else:
+            strings = p["strings_upper"] >= 0.5
+            male4 = male8 = False
+            female4 = p["voice_upper_female4"] >= 0.5
+            vocoder = p["vocoder_upper"] >= 0.5
+            male8_upper = p["voice_upper_male8"] >= 0.5
+        gains = (
+            BUS_LEVEL if strings else 0.0,
+            BUS_LEVEL if male8 else 0.0,
+            BUS_LEVEL if (male4 or male8_upper) else 0.0,
+            BUS_LEVEL if female4 else 0.0,
+            BUS_LEVEL if vocoder else 0.0,
+        )
+        for node, gain in zip(self._n_vca, gains):
+            f.set(node, ag.VCA_GAIN, gain)
+        f.set(self._n_pick, 0, 1.0 if male4 else 0.0)
+        f.set(self._n_pick, 1, 0.0 if male4 else 1.0)
+        need4 = strings or male4 or female4
+        need8 = male8 or male8_upper or vocoder
+        self._g_need = need4 or need8
+        self._graph_tune()
+
+    def _graph_tune(self):
+        """The oscillators on the pitch wire while a tablet asks for them, else standing still."""
+        run = bool(self._g_need and self.enabled)
+        if run == self._g_run:
+            return
+        self._g_run = run
+        f = self._fragment
+        ag = self._ag
+        for node, ratio in ((self._n_osc8, 1.0), (self._n_osc4, 2.0)):
+            if run:
+                f.set(node, ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+                f.set(node, ag.OSC_FREQUENCY, BASE_FREQ_C4 * ratio)
+            else:
+                f.set(node, ag.OSC_PITCH_OCTAVES, 0.0)
+                f.set(node, ag.OSC_FREQUENCY, (self._frozen_hz or 0.0) * ratio)
+
+    def _graph_block(self):
+        """The release rule of ``process()`` for the coming block, and the oscillators' run."""
+        if self._g_gate and not self._gate_high:
+            self._cut = False
+        elif self._g_press and not self._g_gate:
+            self._cut = True
+        self._gate_high = self._g_gate
+        release = (
+            TAIL_CUT_S
+            if self._cut
+            else slider_seconds(self.params["release"], RELEASE_MIN_S, RELEASE_MAX_S)
+        )
+        if release != self._g_release:
+            self._g_release = release
+            for node in self._n_env:
+                self._fragment.set(node, self._ag.ENV_RELEASE, release)
+        self._graph_tune()
+
+    def _graph_reset(self):
+        f = self._fragment
+        for node in self._n_env + [self._n_osc8, self._n_osc4]:
+            f.reset(node)
+        self._gate_high = False
+        self._cut = False

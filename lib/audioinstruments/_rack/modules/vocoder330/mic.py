@@ -299,3 +299,12 @@ class Vocoder330Mic(Module):
         gain = MIC_GAIN_AT_10 * (p["mic_level"] / 10.0) ** 2
         if gain != 1.0:
             out *= gain
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """The talker, the attached sample and the ``mic_in`` jack have no node: the module
+        renders its block in Python as it does on the rack, and the graph takes it as a fed
+        buffer."""
+        f.fed(self.out_jack)
+        f.on_reset(self.reset)

@@ -18,7 +18,7 @@ The sliders are on the 0 to 10 scale the panel uses. Pitch is CV at 0.1 per octa
 
 from ...core.jack import SignalType
 from ...core.module import Module
-from ...core.signal import copy_into
+from ...core.signal import BRIDGE_SCALE, copy_into
 
 #: ``pitch_mode``'s positions, as the module stores them.
 PITCH_MODES = ("off", "auto", "manual")
@@ -39,6 +39,9 @@ PITCH_SET_MAX_SEMITONES = 13.0
 #: ``pitch_time`` runs from the first to the second, exponential: how long a swoop takes.
 PITCH_TIME_MIN_S = 0.03
 PITCH_TIME_MAX_S = 2.0
+
+#: How much larger the graph's wire carries the shift than the rack's.
+WIRE_SCALE = 16.0
 
 #: A key before the first one, so the vibrato is at full depth until one is played.
 _LONG_AGO = 1.0e6
@@ -161,3 +164,83 @@ class Vocoder330Keys(Module):
             self.vib_out.buffer[:] = v1
         else:
             self._ramp(self.vib_out.buffer, v0, v1)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``press`` and ``vib`` are one value a block (controls). ``shift`` is a ramp across
+        the block: a ``MIX`` whose gain moves from the last block's value to this one's,
+        on a constant, with the wire carrying it ``WIRE_SCALE`` times larger so the voices
+        round the pitch once, as the rack does."""
+        import audiograph as ag
+
+        self._ag = ag
+        self._c_press = f.control(self.press_out, 0.0)
+        self._c_vib = f.control(self.vib_out, 1.0)
+        self._g_gates = [0.0] * self.max_voices
+        for i, jack in enumerate(self.gate_ins):
+            if jack.is_connected or jack.is_normalled:
+                if not f.is_control(jack):
+                    raise ValueError("the keys' gates must come from controls to compile")
+                f.watch(jack, self._graph_gate(i))
+        b_one = f.buffer()
+        self._n_one = f.add(ag.CONST, (), b_one)
+        f.set(self._n_one, 0, BRIDGE_SCALE)
+        self._n_shift = f.add(ag.MIX, (b_one,), f.output(self.shift_out))
+        f.set(self._n_shift, 0, 0.0)
+        self._g_shift = 0.0
+        self.graph_wire_scale = WIRE_SCALE
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+
+    def _graph_gate(self, i):
+        def set_gate(value):
+            self._g_gates[i] = value
+
+        return set_gate
+
+    def _graph_reset(self):
+        self.reset()
+        self._c_press.set(0.0)
+        self._c_vib.set(1.0)
+        self._fragment.set(self._n_shift, 0, 0.0)
+        self._g_shift = 0.0
+
+    def _graph_block(self):
+        """``process()`` for the coming block, from the gates the controls hold."""
+        p = self.params
+        f = self._fragment
+        blocks = f.blocks
+        n = self.block_size
+        dt = n / self.sample_rate
+        was_down = False
+        pressed = False
+        for i in range(self.max_voices):
+            up = self._g_gates[i] > 0.5
+            if self._down[i]:
+                was_down = True
+            elif up:
+                pressed = True
+            self._down[i] = up
+        self._c_press.set(1.0 if pressed else 0.0)
+        if pressed:
+            self._swoop_t = 0.0
+            if not was_down:
+                self._vib_t = 0.0
+        end = 0.0
+        if p["pitch_mode"] > 0.5 and p["pitch_mode"] < 1.5:
+            t = self._swoop_t + dt * blocks
+            span = pitch_time_seconds(p["pitch_time"])
+            if t < span:
+                end = -pitch_set_semitones(p["pitch_set"]) * (1.0 - t / span)
+            self._swoop_t = t
+        shift_end = end / 120.0 + p["tune"] / 12000.0
+        self._shift_end = shift_end
+        gain = shift_end * WIRE_SCALE
+        if gain != self._g_shift:
+            self._g_shift = gain
+            f.set(self._n_shift, 0, gain)
+        delay = VIB_DELAY_MAX_S * p["vib_delay"] / 10.0
+        t1 = self._vib_t + dt * blocks
+        self._vib_t = t1 if t1 < _LONG_AGO else _LONG_AGO
+        self._c_vib.set(min(1.0, max(0.0, (t1 - delay) / VIB_FADE_S)))
