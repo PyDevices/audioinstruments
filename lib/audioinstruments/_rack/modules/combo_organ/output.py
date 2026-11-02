@@ -5,6 +5,14 @@
 The footage drawbars live on this panel too, but the voices read them: each
 voice sums its drawn footages into the manual bus, so the drawbars are already
 in what arrives here.
+
+Compiled to a graph, every filter is a ``BIQUAD`` node and every sum a ``MIX``:
+the manual at its headroom into the two tone colour filters, those and the
+bass section's two low-passes into one sum at the colours' and the bass
+volume's gains, and the swell pedal as the pedal's gains on the sum and on
+its own low-pass. The filters all run while the organ plays, where the rack
+skips a colour that is off and the blocks that have gone silent; every filter
+settles to zero, so that needs no graph form.
 """
 
 import audiobiquad
@@ -18,7 +26,7 @@ from ...core.signal import (
     copy_into,
     scaled_into,
 )
-from ...dsp.organ import SwellPedalCore
+from ...dsp.organ import SWELL_BASS_CUT, SWELL_BASS_HZ, SwellPedalCore
 from .._util import jack_signal
 from .voice import _db_level
 
@@ -177,3 +185,76 @@ class ComboOrganOutput(Module):
         left = self.left_out.buffer
         scaled_into(left, expressed, vol)
         copy_into(self.right_out.buffer, left)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+
+        def biquad(src, mode, hz, q):
+            out = f.buffer()
+            node = f.add(ag.BIQUAD, (src,), out)
+            f.set(node, ag.BIQUAD_MODE, mode)
+            f.set(node, ag.BIQUAD_FREQUENCY, hz)
+            f.set(node, ag.BIQUAD_Q, q)
+            f.set(node, ag.BIQUAD_GAIN_DB, 0.0)
+            f.set(node, ag.BIQUAD_MIX, 1.0)
+            return out
+
+        manual = f.input(self.manual_in)
+        bass = f.input(self.bass_in)
+        tone = []
+        if manual is not None:
+            b_head = f.buffer()
+            n_head = f.add(ag.MIX, (manual,), b_head)
+            f.set(n_head, 0, TAB_HEADROOM)
+            tone.append(biquad(b_head, audiobiquad.LOW_PASS, 1200.0, 0.7071))
+            tone.append(biquad(b_head, audiobiquad.HIGH_PASS, 900.0, 1.4))
+        if bass is not None:
+            b_bass = biquad(bass, audiobiquad.LOW_PASS, 200.0, 0.7071)
+            tone.append(biquad(b_bass, audiobiquad.LOW_PASS, 200.0, 0.7071))
+        # the gains of the three, set by _graph_sum: flute, reed (inverted), bass
+        self._g_has = (manual is not None, manual is not None, bass is not None)
+        b_sum = f.buffer()
+        self._n_sum = f.add(ag.MIX, tuple(tone), b_sum)
+        b_low = biquad(b_sum, audiobiquad.LOW_PASS, SWELL_BASS_HZ, 0.7071)
+        b_left = f.output(self.left_out)
+        self._n_left = f.add(ag.MIX, (b_sum, b_low), b_left)
+        self._n_right = f.add(ag.MIX, (b_left,), f.output(self.right_out))
+        f.set(self._n_right, 0, 1.0)
+        scale = f.take_master_scale((self.left_out, self.right_out))
+        self._g_scale = 1.0 if scale is None else scale
+        f.bind(("flute", "reed", "bass_volume"), self._graph_sum)
+        f.bind(("expression", "volume"), self._graph_level)
+
+    def _graph_sum(self):
+        p = self.params
+        f = self._fragment
+        gains = (
+            _db_level(p["flute"]) * FLUTE_TRIM,
+            -_db_level(p["reed"]) * REED_TRIM,  # inverted, see REED_TRIM
+            (p["bass_volume"] / 10.0) * 1.5 * TAB_HEADROOM,
+        )
+        slot = 0
+        for has, gain in zip(self._g_has, gains):
+            if has:
+                f.set(self._n_sum, slot, gain)
+                slot += 1
+
+    def _graph_level(self):
+        """The swell pedal and the volume: the sum less a share of its low end, at the pedal
+        squared, then the volume and the master's scale, in the last two gains."""
+        p = self.params
+        pedal = p["expression"] / 10.0
+        pedal = 0.0 if pedal < 0.0 else (1.0 if pedal > 1.0 else pedal)
+        vol = (p["volume"] / 10.0) * MASTER_GAIN_SCALE * self._g_scale
+        f = self._fragment
+        if pedal >= 1.0:
+            f.set(self._n_left, 0, vol)
+            f.set(self._n_left, 1, 0.0)
+        else:
+            level = pedal * pedal * vol
+            f.set(self._n_left, 0, level)
+            f.set(self._n_left, 1, -SWELL_BASS_CUT * (1.0 - pedal) * level)
