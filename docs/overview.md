@@ -11,7 +11,8 @@ and a rack that renders a block at a time on
 MicroPython builds that carry audiodsp and ulab. On a build with
 `audiograph`, a rack whose modules declare graph fragments compiles to one C
 graph and renders as one call a block, which is what plays in real time on
-an ESP32-P4; the Poly106, the Poly5 and the Poly6 do today
+an ESP32-P4. Every instrument built on the rack does this; only the
+SoundFont players, which are not racks, do not
 ([docs/architecture.md](architecture.md#a-graph-fragment)).
 
 ```python

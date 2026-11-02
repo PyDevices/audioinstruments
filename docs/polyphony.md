@@ -126,8 +126,21 @@ ignore it. Buses are mono: a unison spread's pan does not reach them.
 With buses, `build_shared(rack, left, right, buses)` takes a fourth
 argument, a dict from each name to the jack carrying that bus's sum
 (`pool.buses` is the same dict); without buses it gets the three it always
-did. A pool with buses renders on the rack: `engine="auto"` picks the rack and
-`engine="graph"` raises `ValueError`.
+did. On the graph a bus compiles to a chain of `MIX` nodes, and the voices
+that feed it are summed in the graph like the rest.
+
+## How many voices a graph holds
+
+A compiled graph has 32 groups, and each voice is a group, plus one for each
+of its `switch`es (the Poly5 voice has two, so it takes three). A pool of up
+to 32 voices without switches fits as it is. A pool of more than 32 shares
+groups: neighbouring voices go two to a group (49 keys in 25), then three,
+until the graph fits. A shared group runs while any of its voices sounds, so a
+voice whose partner still plays keeps running and must stay silent while it is
+parked. `compile_rack(...)` reports `shared` (how many voices to a group) and
+`group_count`. A pool whose voices carry switches of their own, such as the
+Poly106's, does not share past what fits: under `engine="graph"` it raises
+`TooManyGroups`, and under `"auto"` it plays on the rack.
 
 ## Which voice plays a note
 

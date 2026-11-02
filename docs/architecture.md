@@ -136,7 +136,10 @@ turns on and off: the Poly106 and Poly6 voices put their sub-oscillator and
 noise behind switches, the Poly6's output section its three effects, and the
 Poly5 voice each of its oscillators, so a patch without them does not run them.
 A graph has 32 groups, a voice with its switches takes one for each, and the
-Poly5's two make three: ten voices fit. `f.before_run(fn)`
+Poly5's two make three: ten voices fit. A pool of more than 32 voices that
+needs no switch groups does fit: neighbouring voices share a group, two to a
+group (49 keys in 25), then three, until they do
+([polyphony.md](polyphony.md#how-many-voices-a-graph-holds)). `f.before_run(fn)`
 and `f.after_run(fn)` run every block around the graph call; the latter gets
 the mask of groups whose envelopes are still sounding (the voice mix parks by
 `f.peak(wire)` of a wire it `keep`s instead, the rack's rule, and `f.rendered`
@@ -151,6 +154,14 @@ block its source just rendered. A cable that closes a loop (one of
 nodes come after its reader's. The caller can hand modules out in groups
 (`VoicePool` hands its voices): a group is masked out of the run while none
 of its modules is `enabled`, and costs nothing then.
+
+`f.fed(jack)` is for a module that makes an output in Python and has no
+nodes for it, a microphone or a talker. It returns the buffer for that output
+jack; the module's `process()` runs each block before the graph, in step with
+it, and what it wrote is fed into the graph's buffer for the run. The
+Vocoder330's mic is the one that does. A graph with a fed module renders only
+under `step()`: `attach()` refuses it with a `ValueError`, because an attached
+graph is pulled by something else and cannot wait for Python every block.
 
 A module with no `fragment` stays on the rack. Its `process()` runs before
 the graph each block, the outputs the graph reads are written into graph
@@ -200,9 +211,12 @@ stands parked for 0.05 to 0.4 ms on a desktop CPython and 0.3 to 1.5 ms on
 the MicroPython unix port, from the 26-node Mono101 to the 676-node PolyA6;
 the compile, which it plays through, takes 0.5 to 7 ms and 1.6 to 54 ms.
 A module that still runs in Python can't be added to an attached graph: the
-change is refused and the old patch plays on.
+change is refused and the old patch plays on. The same goes for a `fed` module.
 
-The fragments that exist: `PolyMidiCV` (poly and mono), `VoiceMix` (a mix with buses has none: see [polyphony.md](polyphony.md#buses)), the voice, LFO
+Every module of every instrument on the rack declares a fragment, so
+`create(name, 48000).engine` is `"graph"` for all of them; the SoundFont
+players are not racks. A pool's buses compile too
+([polyphony.md](polyphony.md#buses)). Among them: `PolyMidiCV` (poly and mono), `VoiceMix`, the voice, LFO
 and output section of the Poly106 and of the Poly6, the voice and LFO of the
 Poly5, the voice, noise and output of the PolyA6, the voice and LFO of the Poly8, the voice, LFO and output of the PolyXa, the voice and LFO of the Mono101, the voice of the MonoSynth, the voice, LFO and output of the DuoSynth, and the
 Duo20, HybridMono, WestCoastSynth and ModalResonator modules. The
