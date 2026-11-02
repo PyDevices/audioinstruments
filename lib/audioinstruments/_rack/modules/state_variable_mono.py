@@ -407,7 +407,7 @@ class StateVariableMono(Module):
             env1_0 = self._still_cv
         else:
             env1_0 = float(self._cv[0])
-            if env1.state == state and (state == STATE_IDLE or state == STATE_SUSTAIN):
+            if env1.state == state and state in (STATE_IDLE, STATE_SUSTAIN):
                 self._still_state = state
                 self._still_level = env1.sustain_level
                 self._still_cv = env1_0
