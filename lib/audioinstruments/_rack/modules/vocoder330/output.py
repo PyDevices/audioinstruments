@@ -35,10 +35,16 @@ from ...core.signal import add, add_scaled, copy_into, mul, np, scale, scaled_in
 from ...dsp.biquad import BiquadFilter
 from ...dsp.ensemble import (
     LATENCY_FRAMES,
+    MAX_DELAY_MS,
+    VIB_CENTRE_MS,
+    VIB_TABLE_LEN,
     AlignCore,
     EnsembleCore,
     EnsembleLine,
     VibratoCore,
+    _Sweep,
+    _sine_table,
+    sweep_table,
 )
 from .filters import DCTracker, clear_filter
 
@@ -346,3 +352,184 @@ class Vocoder330Output(Module):
         add_scaled(left, self._dc_l, -1.0, self._tmp)
         self._dc_bridges[1].process(right, self._dc_r)
         add_scaled(right, self._dc_r, -1.0, self._tmp)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """The strings' low-pass, the choir's seven band-passes, the vibratos, the four
+        ensemble lines and the DC block are ``BIQUAD``, ``FBDELAY`` and ``PHASER`` nodes
+        joined by ``MIX`` nodes. A ``MIX`` gain that moves ramps across the block, which is
+        the rack's cross-fade between the ensemble and the plain delay.
+
+        The graph has no bridges, so every path is 512 frames sooner than the rack's. The
+        bank sounds one block late (see ``Vocoder330Bank``), so the other paths are
+        delayed that block too and come out together. The lines' sweeps start where the rack's
+        do, after the bridge's 256 frames of silence (``prime``)."""
+        import audiograph as ag
+
+        self._ag = ag
+        n = self.block_size
+        sr = self.sample_rate
+        strings = f.input(self.strings_in)
+        a, b, c = (f.input(j) for j in (self.choir_a_in, self.choir_b_in, self.choir_c_in))
+        voc = f.input(self.vocoder_in)
+        mic = f.input(self.mic_in)
+        if None in (strings, a, b, c, voc, mic) or not f.is_control(self.vib_in):
+            return False
+        block_ms = 1000.0 * n / sr
+
+        def node(kind, src, out=None, arg=0.0, group=None):
+            wire = f.buffer() if out is None else out
+            return f.add(kind, src, wire, arg=arg, group=group), wire
+
+        def delay(src, ms, out=None, group=None):
+            nd, wire = node(ag.FBDELAY, (src,), out, arg=MAX_DELAY_MS, group=group)
+            f.set(nd, ag.DELAY_MS, ms)
+            f.set(nd, ag.DELAY_FEEDBACK, 0.0)
+            f.set(nd, ag.DELAY_MIX, 2.0)
+            return nd, wire
+
+        # strings
+        self._n_tone, w = node(ag.BIQUAD, (strings,))
+        f.set(self._n_tone, ag.BIQUAD_MODE, audiobiquad.LOW_PASS)
+        f.set(self._n_tone, ag.BIQUAD_Q, TONE_Q)
+        self._n_strings, w = node(ag.MIX, (w,))
+        centre_ms = VIB_CENTRE_MS
+        _, s2 = delay(w, centre_ms + block_ms)
+        # choir: the sums, the seven filters, one gain
+        self._n_ab, ab = node(ag.MIX, (a, b))
+        self._n_abc, abc = node(ag.MIX, (ab, c))
+        for nd in (self._n_ab, self._n_abc):
+            for i in range(2):
+                f.set(nd, i, 1.0)
+        f.set(self._n_abc, 1, 1.0)
+        bands = []
+        for hz, feed in zip(CHOIR_FILTERS_HZ, CHOIR_FEEDS):
+            src = {"a": a, "b": b, "c": c, "ab": ab, "abc": abc}[feed]
+            nd, wire = node(ag.BIQUAD, (src,))
+            f.set(nd, ag.BIQUAD_MODE, audiobiquad.BAND_PASS)
+            f.set(nd, ag.BIQUAD_FREQUENCY, hz)
+            f.set(nd, ag.BIQUAD_Q, CHOIR_Q)
+            bands.append(wire)
+        self._n_choir, choir = node(ag.MIX, tuple(bands))
+        # vibrato: a sine-swept wet line, the choir's one block later than the vocoder's
+        self._g_vib_tables = [_sine_table(VIB_TABLE_LEN), _sine_table(VIB_TABLE_LEN)]
+        self._n_vib = []
+        self._g_vibrato = f.switch("vibrato")
+        self._n_voc, voc_g = node(ag.MIX, (voc,))
+        vib_wires = []
+        for k, (src, extra) in enumerate(((choir, block_ms), (voc_g, 0.0))):
+            nd, wire = delay(src, VIB_CENTRE_MS + extra, group=self._g_vibrato)
+            f.set(nd, ag.DELAY_WOW_HZ, 5.0)
+            f.set(nd, ag.DELAY_WOW_DEPTH_MS, 0.0)
+            f.table(nd, self._g_vib_tables[k])
+            self._n_vib.append((nd, extra))
+            vib_wires.append(wire)
+        choir_v, voc_v = vib_wires
+        # the ensemble takes the strings and what is switched to it; the rest goes round
+        self._n_ens_in, ens_in = node(ag.MIX, (s2, choir_v, voc_v))
+        self._n_byp, byp = node(ag.MIX, (choir_v, voc_v))
+        # the direct mic, as late as the rest
+        _, mic_d = delay(mic, VIB_CENTRE_MS + block_ms)
+        # the lines (a group of their own, so the voices' primes leave them alone)
+        self._g_lines = f.switch("lines")
+        self._g_tables = []
+        self._n_lines = []
+        lines = []
+        for spec in ensemble_lines():
+            sweep = _Sweep(spec, ENSEMBLE_SLOW_MS, ENSEMBLE_FAST_MS, "triangle")
+            tbl, peak = sweep_table(sweep, ENSEMBLE_TABLE_LEN)
+            self._g_tables.append(tbl)
+            nd, wire = node(ag.FBDELAY, (ens_in,), None, MAX_DELAY_MS, self._g_lines)
+            f.set(nd, ag.DELAY_MS, ENSEMBLE_CENTRE_MS)
+            f.set(nd, ag.DELAY_FEEDBACK, 0.0)
+            f.set(nd, ag.DELAY_MIX, spec.mix)
+            f.set(nd, ag.DELAY_WOW_HZ, spec.slow_hz)
+            f.set(nd, ag.DELAY_WOW_DEPTH_MS, peak)
+            f.set(nd, ag.DELAY_DAMPING_HZ, ENSEMBLE_TONE_HZ)
+            f.table(nd, tbl)
+            self._n_lines.append(nd)
+            lines.append(wire)
+        scale = f.take_master_scale((self.left_out, self.right_out))
+        self._g_scale = 1.0 if scale is None else scale
+        self._n_dc = []
+        self._n_sides = []
+        for jack, side in ((self.left_out, "left"), (self.right_out, "right")):
+            used = [i for i, spec in enumerate(ensemble_lines()) if getattr(spec, side) != 0.0]
+            side_wire = f.buffer()
+            nd = f.add(ag.MIX, tuple(lines[i] for i in used) + (byp, mic_d), side_wire)
+            for j, i in enumerate(used):
+                f.set(nd, j, getattr(ensemble_lines()[i], side))
+            f.set(nd, len(used), 1.0)
+            self._n_sides.append((nd, len(used) + 1))
+            lp = f.buffer()
+            dc = f.add(ag.PHASER, (side_wire,), lp, arg=1.0)
+            f.set(dc, ag.PHASER_FREQUENCY, DC_HZ)
+            f.set(dc, ag.PHASER_FEEDBACK, 0.0)
+            f.set(dc, ag.PHASER_MIX, 0.5)
+            self._n_dc.append(dc)
+            out = f.add(ag.MIX, (side_wire, lp), f.output(jack))
+            f.set(out, 0, self._g_scale)
+            f.set(out, 1, -self._g_scale)
+        self._g_vib = 1.0
+        self._g_ens = [0.0, 0.0]  # the shares of the choir and the vocoder the ensemble takes
+        f.watch(self.vib_in, self._graph_vib)
+        f.bind(
+            ("strings_tone", "strings_level", "voice_level", "direct_mic", "voice_ensemble",
+             "vocoder_ensemble", "vib_depth", "vib_rate"),
+            self._graph_params,
+        )
+        f.on_reset(self._graph_reset)
+        f.prime(self._graph_prime)
+
+    def _graph_vib(self, value):
+        self._g_vib = value
+        self._graph_params()
+
+    def _graph_params(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        tone_hz = TONE_MIN_HZ * ((TONE_MAX_HZ / TONE_MIN_HZ) ** (p["strings_tone"] / 10.0))
+        f.set(self._n_tone, ag.BIQUAD_FREQUENCY, tone_hz)
+        f.set(self._n_strings, 0, STRINGS_GAIN * LEVEL_SCALE * p["strings_level"])
+        voice_gain = LEVEL_SCALE * p["voice_level"]
+        for i in range(len(CHOIR_FILTERS_HZ)):
+            f.set(self._n_choir, i, CHOIR_GAIN * voice_gain)
+        f.set(self._n_voc, 0, voice_gain)
+        rate = VIB_MIN_HZ * ((VIB_MAX_HZ / VIB_MIN_HZ) ** (p["vib_rate"] / 10.0))
+        semitones = VIB_MAX_SEMITONES * p["vib_depth"] / 10.0 * self._g_vib
+        swing = (2.0 ** (semitones / 12.0) - 1.0) / (2.0 * math.pi * rate)
+        depth = max(0.0, min(VIB_CENTRE_MS * 0.9, swing * 1000.0))
+        ag = self._ag
+        for nd, _ in self._n_vib:
+            f.set(nd, ag.DELAY_WOW_HZ, rate)
+            f.set(nd, ag.DELAY_WOW_DEPTH_MS, depth)
+        k_choir = 1.0 if p["voice_ensemble"] >= 0.5 else 0.0
+        k_voc = 1.0 if p["vocoder_ensemble"] >= 0.5 else 0.0
+        f.set(self._n_ens_in, 1, k_choir)
+        f.set(self._n_ens_in, 2, k_voc)
+        f.set(self._n_byp, 0, 1.0 - k_choir)
+        f.set(self._n_byp, 1, 1.0 - k_voc)
+        f.set(self._n_ens_in, 0, 1.0)
+        direct = LEVEL_SCALE * p["direct_mic"]
+        for nd, last in self._n_sides:
+            f.set(nd, last, direct)
+
+    def _graph_prime(self, run):
+        """The rack's sweeps run on the bridges' time: the vibrato's line hears a bridge's
+        256 frames of silence first, and the ensemble's lines a second bridge's, less the
+        block the bank adds. The graph is that much sooner, so the nodes run that far ahead."""
+        n = self.block_size
+        vib = tuple(nd for nd, _ in self._n_vib)
+        ens = tuple(self._n_lines)
+        ahead = max(0, 2 * LATENCY_FRAMES - n) // n
+        for _ in range(max(0, ahead - LATENCY_FRAMES // n)):
+            run(1 << self._g_lines, ens)
+        for _ in range(LATENCY_FRAMES // n):
+            run((1 << self._g_lines) | (1 << self._g_vibrato), ens + vib)
+
+    def _graph_reset(self):
+        f = self._fragment
+        for nd in [self._n_tone] + self._n_lines + self._n_dc + [nd for nd, _ in self._n_vib]:
+            f.reset(nd)

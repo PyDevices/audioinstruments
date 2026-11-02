@@ -290,6 +290,17 @@ class Fragment:
         c = self._c
         return c.graph.peak(buf if c.phys is None else c.phys[buf])
 
+    def fed(self, jack):
+        """Output ``jack`` is written by the module's own ``process()`` each block, in Python,
+        and fed into the graph before the run (a microphone, a talker). The module renders in
+        step with the graph, so a rack with one cannot be attached to a pump."""
+        c = self._c
+        buf = c.buffer_for(jack, claim=True)
+        c.feeds.append((jack, buf))
+        if self.module not in c.fed:
+            c.fed.append(self.module)
+        return buf
+
     def add(self, kind, inputs, output, arg=0.0, group=None):
         """A node in the module's group (or ``group``, from ``switch``). A node with two
         outputs (``PAN``) takes them as a pair, ``(left, right)``."""
@@ -630,6 +641,7 @@ class CompiledRack:
         self.after = []
         self.claimed = set()  # output jacks a fragment writes
         self.feeds = []  # (OutputJack of a rack-side module, buffer id)
+        self.fed = []  # fragment modules that render in Python and feed the graph
         self.readbacks = []  # (OutputJack of a graph module read by the rack, buffer id)
         self._read_back = set()
         self.kept = set()  # wires a fragment asked to keep to itself
@@ -867,6 +879,9 @@ class CompiledRack:
             )
         size = self.rack.block_size
         for module in self.rack_side:
+            if module.enabled:
+                module.process(size)
+        for module in self.fed:
             if module.enabled:
                 module.process(size)
         g = self.graph
