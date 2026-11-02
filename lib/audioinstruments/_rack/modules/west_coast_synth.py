@@ -144,6 +144,8 @@ class WestCoastSynth(Module):
             core.reset()
 
     def process(self, block_size):
+        # a rack step moves what the graph's hook remembers: it looks again next block
+        self._scanned = self._still = None
         p = self.params
         n = block_size
 
@@ -253,6 +255,8 @@ class WestCoastSynth(Module):
                 return False
         self._ag = ag
         self._gate = 0.0
+        self._scanned = None  # the gate the generators' edge detectors last saw
+        self._still = None  # the gate both generators ran out under: nothing more to do at it
         b_mod = f.output(self.mod_osc_out)
         b_fm = f.buffer()
         b_osc = f.buffer()
@@ -351,12 +355,18 @@ class WestCoastSynth(Module):
 
     def _graph_block(self):
         # process()'s function generators and random voltage, once a block
+        gate = self._gate
+        if gate == self._still:
+            return
+        self._still = None
         p = self.params
-        trig = None
-        if self.kybd_gate_in.is_connected:
+        trig = None  # a gate that has not moved has no edge to find
+        if gate != self._scanned and self.kybd_gate_in.is_connected:
             trig = self._trig
-            fill(trig, self._gate)
+            fill(trig, gate)
+            self._scanned = gate
         before = self.func1.state
+        before2 = self.func2.state
         self.func1.render(trig, self.func1_out.buffer, p["func1_rise"], p["func1_fall"])
         if before == 0 and self.func1.state != 0:
             self.random_val = (random.random() * 2.0 - 1.0) * 0.5
@@ -369,6 +379,8 @@ class WestCoastSynth(Module):
             f.set(self._n_lpg1, ag.LPG_MANUAL, float(self.func1_out.buffer[0]))
         if not self._ctrl2:
             f.set(self._n_lpg2, ag.LPG_MANUAL, float(self.func2_out.buffer[0]))
+        if before == 0 and before2 == 0 and self.func1.state == 0 and self.func2.state == 0:
+            self._still = gate  # a block all at 0 went to the gates, and they wait for an edge
 
     def _graph_reset(self):
         # as reset(): the oscillators, the gates and the function generators
@@ -377,3 +389,4 @@ class WestCoastSynth(Module):
             f.reset(node)
         self.func1.reset()
         self.func2.reset()
+        self._scanned = self._still = None
