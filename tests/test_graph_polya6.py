@@ -56,6 +56,7 @@ import math
 
 import audioinstruments._rack.adapter as adapter
 import audioinstruments._rack.core.bridge as bridge
+import audioinstruments._rack.core.graph as vgraph
 import audioinstruments._rack.core.signal as signal
 import numpy as np
 import pytest
@@ -490,6 +491,7 @@ def noise_jacks(engine, blocks=200):
         48000, voice="polya6", engine=engine, output="pull", buffer_frames=BUFFER, voices=1
     )
     try:
+        inst.program_change(11)  # Noise Wind: a voice that reads the pink keeps it running
         noise = inst.patch.noise
         white, pink = [], []
         i16 = array.array("h", bytes(2 * 128))
@@ -897,3 +899,231 @@ def test_auto_stays_on_the_rack_when_the_graph_has_no_room(monkeypatch):
     assert np.abs(np.frombuffer(b"".join(inst._pull() for _ in range(20)), np.int16)).max() > 300
     with pytest.raises(MemoryError):
         adapter.create(48000, voice="polya6", engine="graph")
+
+
+# -- what a patch leaves switched off --------------------------------------------------------
+
+
+def _extras(inst, voice=0):
+    return inst._pool.voices[voice].members[0]._fragment
+
+
+def _wants(patch, controls=None):
+    """Whether voice 1 of a fresh PolyA6 at this patch runs its extras, once it plays."""
+    inst = adapter.create(
+        48000, voice="polya6", engine="graph", output="pull", buffer_frames=BUFFER, voices=VOICES
+    )
+    try:
+        inst.program_change(patch)
+        for name, value in (controls or {}).items():
+            inst.patch.set_control(inst._pool, name, value)
+        inst.note_on(60, 100)
+        inst._pull()
+        f = _extras(inst)
+        return f.switches["extras"][1]
+    finally:
+        inst.deinit()
+
+
+def test_a_patch_runs_the_extras_only_when_it_needs_them():
+    assert [_wants(i) for i in range(len(PRESETS))] == [
+        False,  # Init
+        False,  # Brass Swell
+        True,  # PWM Strings: the LFO 2 and Filter 1
+        True,  # Huge Pad: a sub and Filter 1
+        False,  # Unison Lead
+        False,  # Sync Sweep
+        False,  # Ring Bells: a sine a VCO, on the first wave node
+        False,  # FM Clang: the same
+        True,  # Series Notch: Filter 1
+        True,  # Pluck Bass: a sub
+        True,  # S&H Steps: two waves on OSC 1, the sample and hold
+        True,  # Noise Wind: Filter 1
+    ]
+
+
+#: A control that needs a part behind the switch, with nothing else needing it.
+NEEDS = [
+    {"f2_lfo2": 30},
+    {"f2_sh": 30},
+    {"mix_sub1": 60},
+    {"mix_sub2": 60},
+    {"osc1_square": True, "osc2_fm_pwm": 30, "osc1_saw": "off"},
+    {"post_f1_lp": 80},
+    {"post_f1_hp": 80},
+    {"post_f1_bp": 80},
+    {"f2_input": "bp", "post_f2_lp": 100},
+    {"osc1_tri": True},
+    {"osc2_sine": True},
+    {"post_direct": 60, "direct_sine1": True, "osc1_saw": "off", "osc1_sine": True},
+]
+
+
+@pytest.mark.parametrize("controls", NEEDS, ids=_ids)
+def test_a_part_behind_the_switch_turns_it_on(controls):
+    assert _wants(0, controls)
+
+
+@pytest.mark.parametrize("controls", NEEDS, ids=_ids)
+def test_the_switch_left_off_is_seen(monkeypatch, tone_noise, controls):
+    bound = 40.0 if "f2_sh" in controls else MATCH
+    assert agrees(0, controls, None, bound)
+
+    def leave_off(self):
+        self._fragment.enable("extras", False)
+
+    _wrap(monkeypatch, V, "_graph_extras", leave_off)
+    assert not agrees(0, controls, None, bound)
+
+
+@pytest.mark.parametrize("patch", (6, 7), ids=("Ring Bells", "FM Clang"))
+def test_the_first_wave_node_left_on_the_saw_is_seen(monkeypatch, patch):
+    assert agrees(patch, None, None, NEAR)
+
+    def saw(self):
+        f = self._fragment
+        for nodes in (self._n_osc1, self._n_osc2):
+            f.set(nodes[0], self._ag.OSC_WAVEFORM, 1)
+
+    _wrap(monkeypatch, V, "_graph_osc", saw)
+    assert not agrees(patch, None, None, NEAR)
+
+
+def _second_wave_lag():
+    """Play on one wave, add a second wave to OSC 1: the samples between the saw's and the
+    pulse's fall, which the rack's single oscillator holds at none."""
+    old, vgraph.REUSE = vgraph.REUSE, False
+    inst = adapter.create(
+        48000, voice="polya6", engine="graph", output="pull", buffer_frames=BUFFER, voices=1
+    )
+    try:
+        inst.program_change(0)
+        inst.patch.set_control(inst._pool, "slop", 0)
+        inst.note_on(60, 100)
+        for _ in range(7):
+            inst._pull()
+        inst.patch.set_control(inst._pool, "osc1_square", True)
+        for _ in range(3):
+            inst._pull()
+        v = inst._pool.voices[0].members[0]
+        i16 = array.array("h", bytes(2 * 128))
+        saw, pulse = [], []
+        real = inst._compiled.step
+
+        def step(out, k):
+            sounding = real(out, k)
+            v._fragment.read(v._b["saw1"], i16)
+            saw.append(np.array(i16, dtype=np.float64))
+            v._fragment.read(v._b["pulse1"], i16)
+            pulse.append(np.array(i16, dtype=np.float64))
+            return sounding
+
+        inst._compiled.step = step
+        for _ in range(4):
+            inst._pull()
+        saw, pulse = np.concatenate(saw), np.concatenate(pulse)
+        falls = np.nonzero(np.diff(saw) < -8000)[0]
+        rises = np.nonzero(np.diff(pulse) > 8000)[0]
+        return min(abs(falls[0] - r) for r in rises)
+    finally:
+        inst.deinit()
+        vgraph.REUSE = old
+
+
+def test_a_second_wave_after_one_starts_in_phase():
+    assert _second_wave_lag() <= 2
+
+
+def test_a_second_wave_left_out_of_phase_is_seen(monkeypatch):
+    def forget(self):
+        self._drifted[0] = self._drifted[1] = False
+
+    _wrap(monkeypatch, V, "_graph_osc", forget)
+    assert _second_wave_lag() > 2
+
+
+@keeps_every_wire
+def _pink_rms(off_first=False):
+    inst = adapter.create(
+        48000, voice="polya6", engine="graph", output="pull", buffer_frames=BUFFER, voices=2
+    )
+    try:
+        comp = inst._compiled
+        noise = inst.patch.noise
+        i16 = array.array("h", bytes(2 * 128))
+        if off_first:
+            inst.program_change(11)
+            for _ in range(8):
+                comp.step(inst._slots[0][0], 0)
+            inst.program_change(0)
+            for _ in range(8):
+                comp.step(inst._slots[0][0], 0)
+        inst.program_change(11)
+        out = []
+        for _ in range(40):
+            comp.step(inst._slots[0][0], 0)
+            comp.graph.read(comp.buffers[noise.pink_out], i16)
+            out.append(np.array(i16, dtype=np.float64))
+        return np.concatenate(out)
+    finally:
+        inst.deinit()
+
+
+def test_the_pink_stops_with_no_reader_and_comes_back_from_nothing():
+    inst = adapter.create(
+        48000, voice="polya6", engine="graph", output="pull", buffer_frames=BUFFER, voices=2
+    )
+    try:
+        assert inst.patch.noise._pink_on is False  # Init reads no noise
+        inst.program_change(11)
+        assert inst.patch.noise._pink_on is True
+        inst.program_change(0)
+        assert inst.patch.noise._pink_on is False
+    finally:
+        inst.deinit()
+    fresh, again = _pink_rms(), _pink_rms(True)
+    assert 1200.0 < fresh.std() < 4000.0
+    assert again[:128].std() < 2.0 * max(fresh.std(), 1.0)
+    assert np.abs(again[:128]).max() < 16000.0
+    assert abs(again.std() / fresh.std() - 1.0) < 0.3
+
+
+def test_the_pink_left_off_for_a_voice_that_reads_it_is_seen(monkeypatch):
+    real = PolyA6Noise.graph_pink_read
+    monkeypatch.setattr(PolyA6Noise, "graph_pink_read", lambda self, v, reads: real(self, v, False))
+    with pytest.raises(AssertionError):
+        test_the_white_and_pink_noise_are_the_rack_s_in_level_and_spectrum()
+
+
+def test_a_stage_restarted_starts_from_nothing():
+    # a stage that stopped holds a raw sample of the white: the restart clears it
+    inst = adapter.create(
+        48000, voice="polya6", engine="graph", output="pull", buffer_frames=BUFFER, voices=2
+    )
+    try:
+        noise = inst.patch.noise
+        f = noise._fragment
+        real, cleared = f.reset, []
+
+        def reset(node):
+            cleared.append(node)
+            real(node)
+
+        f.reset = reset
+        inst.program_change(11)
+        assert sorted(cleared) == sorted(noise._n_pink)
+    finally:
+        inst.deinit()
+
+
+def test_sixteen_voices_keep_a_group_each_and_the_distortion_its_own():
+    inst = adapter.create(48000, voice="polya6", engine="auto", output="pull", voices=16)
+    try:
+        c = inst._compiled
+        assert inst.engine == "graph" and c.rack_side == [] and c.shared == 1
+        assert c.group_count == 32
+        switched = [_extras(inst, i).switches.get("extras") is not None for i in range(16)]
+        assert switched == [True] * 15 + [False]
+        assert inst._pool.voices[15].members[0]._extras_on is True
+    finally:
+        inst.deinit()

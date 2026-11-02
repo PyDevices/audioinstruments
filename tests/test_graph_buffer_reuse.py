@@ -23,9 +23,16 @@ def compile_instrument(name, monkeypatch, reuse=True):
     seen = {}
     real = vgraph.plan_buffers
 
-    def spy(nodes, count, pinned):
-        phys, used = real(nodes, count, pinned)
-        seen.update(nodes=list(nodes), pinned=set(pinned), phys=phys, used=used)
+    def spy(nodes, count, pinned, within=None, gated=()):
+        phys, used = real(nodes, count, pinned, within, gated)
+        seen.update(
+            nodes=list(nodes),
+            pinned=set(pinned),
+            phys=phys,
+            used=used,
+            within=dict(within or {}),
+            gated=set(gated),
+        )
         return phys, used
 
     monkeypatch.setattr(vgraph, "plan_buffers", spy)
@@ -79,11 +86,15 @@ def test_a_compiled_plan_shares_and_never_shares_a_pinned_wire(name, monkeypatch
         assert any(len(wires) > 1 for wires in owners.values())  # sharing happens
         for wire in pinned:
             assert owners[phys[wire]] == [wire], "pinned wire %d shares a buffer" % wire
-        # a wire written in one group and read in another is never shared
+        # a wire written in one group and read in another is never shared, unless the
+        # reader is a switch of the writer's or the module declared the wire gated
         writer = {}
+        within, gated = seen["within"], seen["gated"]
         for group, inputs, output in nodes:
             for b in inputs:
-                if b is not None and writer.get(b, group) != group:
+                if b is None or writer.get(b, group) == group or b in gated:
+                    continue
+                if within.get(group) != writer[b]:
                     assert owners[phys[b]] == [b]
             for out in _outputs(output):
                 writer[out] = group
@@ -186,3 +197,17 @@ def test_a_wire_named_twice_by_a_node_is_released_once():
         assert output is None or phys[output] not in [phys[b] for b in inputs]
     # two live at once can never end up in one buffer
     assert phys[1] != phys[2]
+
+
+def test_a_switch_reads_its_modules_wire_without_a_pin():
+    # wire 0 written in group 0, read in its switch, group 1
+    nodes = [(0, (), 0), (1, (0,), 1), (0, (1,), 2), (0, (2,), 3)]
+    assert alone(plan_buffers(nodes, 4, set())[0], 0)
+    assert not alone(plan_buffers(nodes, 4, set(), {1: 0})[0], 0)
+
+
+def test_a_gated_wire_read_across_groups_goes_unpinned():
+    # wire 0 written in a switch, group 1, read in the module's group 0
+    nodes = [(1, (), 0), (0, (0,), 1), (0, (1,), 2), (0, (2,), 3)]
+    assert alone(plan_buffers(nodes, 4, set(), {1: 0})[0], 0)
+    assert not alone(plan_buffers(nodes, 4, set(), {1: 0}, {0})[0], 0)

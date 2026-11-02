@@ -65,6 +65,9 @@ NOISE_GAIN = 2.0
 #: Filter 2's resonance at f2_res 100. The ladder starts to sing a little under 1.0.
 F2_RES_TOP = 1.05
 
+#: The graph's groups a voice leaves free when it takes its switch: the output's distortion.
+GROUPS_KEPT = 1
+
 #: Overall mix and VCA scale factors for headroom.
 MIX_SCALE = 1.0
 VCA_SCALE = 0.5
@@ -968,12 +971,17 @@ class PolyA6Voice(Module):
 
     # -- the graph --------------------------------------------------------------------------
     #
-    # The voice as audiograph nodes, all in the voice's own group: sixteen voices
-    # leave sixteen groups, too few for a switch per part, so a part the rack skips
-    # keeps running here with nothing listening to it. Where the rack stops a part's
-    # clock while it is skipped (the LFOs and the sample and hold's clock), the
-    # graph's runs at 0 Hz. The keyboard arrives as controls: a key, its gate,
-    # velocity, bend and wheel are one value a block, read here each block.
+    # The voice as audiograph nodes. Sixteen voices leave sixteen groups, too few for a
+    # switch per part, so a voice has one switch, "extras", for everything a plain patch
+    # leaves off: the VCOs' other wave nodes, LFO 2, the sample and hold, the subs, the
+    # pulse width mixers and Filter 1. With it off the voice costs less than half as much.
+    # The first wave node of each VCO stays on and draws the VCO's wave when it has only
+    # one, so a patch of one wave a VCO needs no other node. LFO 1 stays on as well, so
+    # that moving the wheel does not change what a voice costs while it plays. A part
+    # the rack skips that has to stay on (the ladder, ENV 1) runs with nothing listening.
+    # Where the rack stops a part's clock while it is skipped, the graph's runs at 0 Hz.
+    # The keyboard arrives as controls: a key, its gate, velocity, bend and wheel are
+    # one value a block, read here each block.
 
     #: The voice mix's level, and the master's scale when nothing stands between, which
     #: ``VoiceMix`` folds into this voice's last gain so its wire is rounded once.
@@ -1064,6 +1072,13 @@ class PolyA6Voice(Module):
         self._b = b
         f.keep(b["sh"])  # read back after each block
         add = f.add
+        # the last group stays free for the output stage's distortion, and a voice that
+        # finds none left runs its extras whenever it runs
+        extras = f.switch("extras", False) if f.spare_groups > GROUPS_KEPT else None
+        self._g_extras = extras
+        self._extras_on = extras is None
+        self._drifted = [False, False]
+        self._home = [False, False]
         self._n_glide = add(ag.LAG, (key,), b["slid"])
         self._n_unit = add(ag.CONST, (), b["unit"])
         f.set(self._n_unit, 0, UNIT)
@@ -1073,35 +1088,41 @@ class PolyA6Voice(Module):
         self._n_env3 = add(ag.ENV, (gate,), b["env3"])
         self._n_env2v = add(ag.VCA, (b["env2"], b["unit"], None), b["env2v"])
         self._n_lfo1 = add(ag.LFO, (), b["lfo1"])
-        self._n_lfo2 = add(ag.LFO, (), b["lfo2"])
-        self._n_clk = add(ag.LFO, (), b["clk"])
+        self._n_lfo2 = add(ag.LFO, (), b["lfo2"], group=extras)
+        self._n_clk = add(ag.LFO, (), b["clk"], group=extras)
         f.set(self._n_clk, ag.LFO_SHAPE, ag.LFO_SQUARE)
         f.set(self._n_clk, ag.LFO_AMPLITUDE, 0.5 * UNIT)
-        self._n_sh = add(ag.SAMPLE_HOLD, (white, b["clk"]), b["sh"])
+        self._n_sh = add(ag.SAMPLE_HOLD, (white, b["clk"]), b["sh"], group=extras)
         mods = (b["slid"], b["lfo1"], b["sh"], b["env1"])
         self._n_cv1 = add(ag.MIX, mods + (b["sum2"],), b["cv1"])
         self._n_cv2 = add(ag.MIX, mods, b["cv2"])
-        self._n_cvs1 = add(ag.MIX, mods + (b["sum2"],), b["cvs1"])
-        self._n_cvs2 = add(ag.MIX, mods, b["cvs2"])
-        self._n_pwa1 = add(ag.MIX, (b["lfo2"], b["sum2"]), b["pwa1"])
-        self._n_pw1 = add(ag.MIX, (b["pwa1"], b["lfo2"], b["sum2"]), b["pw1"])
-        self._n_pwa2 = add(ag.MIX, (b["lfo2"],), b["pwa2"])
-        self._n_pw2 = add(ag.MIX, (b["pwa2"], b["lfo2"]), b["pw2"])
+        self._n_cvs1 = add(ag.MIX, mods + (b["sum2"],), b["cvs1"], group=extras)
+        self._n_cvs2 = add(ag.MIX, mods, b["cvs2"], group=extras)
+        self._n_pwa1 = add(ag.MIX, (b["lfo2"], b["sum2"]), b["pwa1"], group=extras)
+        self._n_pw1 = add(ag.MIX, (b["pwa1"], b["lfo2"], b["sum2"]), b["pw1"], group=extras)
+        self._n_pwa2 = add(ag.MIX, (b["lfo2"],), b["pwa2"], group=extras)
+        self._n_pw2 = add(ag.MIX, (b["pwa2"], b["lfo2"]), b["pw2"], group=extras)
         self._n_osc1 = []
         for wave in ("saw1", "pulse1", "tri1", "sine1"):
-            self._n_osc1.append(add(ag.OSC, (b["cv1"], b["sum2"], b["pw1"], None), b[wave]))
+            group = None if wave == "saw1" else extras
+            self._n_osc1.append(
+                add(ag.OSC, (b["cv1"], b["sum2"], b["pw1"], None), b[wave], group=group)
+            )
         self._n_sync = add(ag.MIX, (b["saw1"],), b["sync"])
         self._n_osc2 = []
         for wave in ("saw2", "pulse2", "tri2", "sine2"):
-            self._n_osc2.append(add(ag.OSC, (b["cv2"], None, b["pw2"], b["sync"]), b[wave]))
+            group = None if wave == "saw2" else extras
+            self._n_osc2.append(
+                add(ag.OSC, (b["cv2"], None, b["pw2"], b["sync"]), b[wave], group=group)
+            )
         self._n_sum1 = add(
             ag.MIX, (b["saw1"], b["pulse1"], b["tri1"], b["sine1"], b["pw1"]), b["sum1"]
         )
         self._n_sum2 = add(
             ag.MIX, (b["saw2"], b["pulse2"], b["tri2"], b["sine2"], b["pw2"]), b["sum2"]
         )
-        self._n_sub1 = add(ag.OSC, (b["cvs1"], None, None, None), b["sub1"])
-        self._n_sub2 = add(ag.OSC, (b["cvs2"], None, None, None), b["sub2"])
+        self._n_sub1 = add(ag.OSC, (b["cvs1"], None, None, None), b["sub1"], group=extras)
+        self._n_sub2 = add(ag.OSC, (b["cvs2"], None, None, None), b["sub2"], group=extras)
         self._n_ring = add(ag.VCA, (b["sum1"], b["sum2"], None), b["ring"])
         f.set(self._n_ring, ag.VCA_GAIN, RING_SCALE)
         self._n_pre = add(
@@ -1117,7 +1138,7 @@ class PolyA6Voice(Module):
             (audiobiquad.HIGH_PASS, "hp"),
             (audiobiquad.BAND_PASS, "bp"),
         ):
-            node = add(ag.BIQUAD, (b["pre"],), b[name])
+            node = add(ag.BIQUAD, (b["pre"],), b[name], group=extras)
             f.set(node, ag.BIQUAD_MODE, mode)
             f.set(node, ag.BIQUAD_FREQUENCY, 1000.0)
             f.set(node, ag.BIQUAD_Q, 0.7071)
@@ -1151,6 +1172,13 @@ class PolyA6Voice(Module):
             b["post"],
         )
         self._n_vca = add(ag.VCA, (b["post"], b["env3"], None), f.output(self.audio_out))
+        if extras is not None:
+            # read at a gain of 0 while the extras are off, so sixteen voices share these
+            # buffers. Not the pulse widths: an oscillator reads those at no gain of ours.
+            for name in ("lfo2", "pulse1", "tri1", "sine1", "pulse2", "tri2", "sine2"):
+                f.gated(b[name])
+            for name in ("sub1", "sub2", "lp", "hp", "bp"):
+                f.gated(b[name])
         from ...core.bridge import OSC_LEVEL, PITCH_OCTAVES, PWM_DEPTH
 
         for node in self._n_osc1 + self._n_osc2 + [self._n_sub1, self._n_sub2]:
@@ -1195,6 +1223,7 @@ class PolyA6Voice(Module):
         # each): a VCO that grows restarts every node at phase zero, once
         self._grown = [0, 0]
         f.bind(tuple(self.params), self._graph_dirty)
+        f.bind(("mix_noise", "noise_type"), self._graph_pink)
         f.before_run(self._graph_block)
         f.after_run(self._graph_after)
         f.on_reset(self._graph_reset)
@@ -1229,6 +1258,15 @@ class PolyA6Voice(Module):
 
     def _graph_dirty(self):
         self._dirty = True
+
+    def _graph_pink(self):
+        """Tell the shared noise whether this voice reads its pink, as soon as that changes:
+        a parked voice works nothing out until its next note."""
+        src = self._fragment.source_module(self.pink_in)
+        tell = getattr(src, "graph_pink_read", None)
+        if tell is not None:
+            p = self.params
+            tell(self, p["mix_noise"] > 0.0 and p["noise_type"] == "pink")
 
     def _bend_diff(self):
         if self._has_pitch and self._has_note:
@@ -1316,6 +1354,9 @@ class PolyA6Voice(Module):
             self._graph_filter1(True)
         elif self._f1_moves:
             self._graph_filter1(False)
+        if not self._extras_on:
+            # this block the first wave node of each VCO runs on while its others stand still
+            self._drifted[0] = self._drifted[1] = True
 
     def _graph_grow(self):
         """A VCO asked for more waves than its nodes draw restarts at phase zero, as
@@ -1475,6 +1516,7 @@ class PolyA6Voice(Module):
         self._graph_lfo_shapes()
         self._graph_pitch()
         self._graph_osc()
+        self._graph_extras()
         self._graph_mix()
         self._graph_filter2()
         self._graph_post()
@@ -1632,19 +1674,73 @@ class PolyA6Voice(Module):
 
         # each sum: the saw up or down, the pulse at its level less its DC and its
         # width's, the triangle and the sine
-        for k, node, need_pulse, w, pw_on in (
-            (1, self._n_sum1, need_pulse1, w1, pw_on1),
-            (2, self._n_sum2, need_pulse2, w2, pw_on2),
+        sync_hard = p["sync"] == "hard"
+        direct = p["post_direct"] > 0.0
+        for k, node, nodes, need_pulse, w, pw_on in (
+            (1, self._n_sum1, self._n_osc1, need_pulse1, w1, pw_on1),
+            (2, self._n_sum2, self._n_osc2, need_pulse2, w2, pw_on2),
         ):
             o = "osc%d_" % k
             saw = {"up": 1.0, "down": -1.0}.get(p[o + "saw"], 0.0)
             level = p[o + "square_level"] / 100.0 if need_pulse else 0.0
-            f.set(node, 0, saw)
-            f.set(node, 1, level)
-            f.set(node, 2, 1.0 if p[o + "tri"] else 0.0)
-            f.set(node, 3, 1.0 if p[o + "sine"] else 0.0)
+            tri = 1.0 if p[o + "tri"] else 0.0
+            sine = 1.0 if p[o + "sine"] else 0.0
+            # one wave: the first node draws it, in the saw's place in the sum, and the sum
+            # is the same samples from one node as from that wave's own
+            wired = (saw != 0.0 or (k == 1 and sync_hard)) + (level > 0.0) + (tri > 0.0)
+            wired += sine > 0.0
+            home = wired > 1 or (bool(p["direct_sine%d" % k]) and direct)
+            self._home[k - 1] = home
+            wave = 1
+            first = saw
+            if not home:
+                if level > 0.0:
+                    wave, first = 2, level
+                elif tri > 0.0:
+                    wave, first = 4, tri
+                elif sine > 0.0:
+                    wave, first = 8, sine
+            f.set(nodes[0], ag.OSC_WAVEFORM, wave)
+            f.set(nodes[0], ag.OSC_PULSE_WIDTH, w if wave == 2 else 0.5)
+            f.set(node, 0, first)
+            f.set(node, 1, level if home else 0.0)
+            f.set(node, 2, tri if home else 0.0)
+            f.set(node, 3, sine if home else 0.0)
             f.set(node, 4, -PWM_PER_CV * level if pw_on else 0.0)
             f.set(node, ag.MIX_OFFSET, -(w - 0.5) * level * self._unit)
+
+    def _graph_extras(self):
+        """Whether anything of this patch needs the extras switched on."""
+        p = self.params
+        home = self._home
+        for k, nodes in ((0, self._n_osc1), (1, self._n_osc2)):
+            if home[k] and self._drifted[k]:
+                # back to a wave node each, whose phases have parted: they start together
+                self._drifted[k] = False
+                for node in nodes:
+                    self._fragment.reset(node)
+        if self._g_extras is None:
+            return
+        on = (
+            home[0]
+            or home[1]
+            or self._lfo_active()[1]
+            or self._sh_active()
+            or p["mix_sub1"] > 0.0
+            or p["mix_sub2"] > 0.0
+            or p["osc2_fm_pwm"] > 0.0
+            or (
+                not p["filter_bypass"]
+                and (
+                    p["post_f1_lp"] > 0.0
+                    or p["post_f1_hp"] > 0.0
+                    or p["post_f1_bp"] > 0.0
+                    or p["f2_input"] == "bp"
+                )
+            )
+        )
+        self._extras_on = on
+        self._fragment.enable("extras", on)
 
     def _graph_mix(self):
         """The mixer before the filters."""
@@ -1753,6 +1849,9 @@ class PolyA6Voice(Module):
         for i, g in enumerate(gains):
             f.set(self._n_post, i, g)
 
+    def _extras_bit(self):
+        return 0 if self._g_extras is None else 1 << self._g_extras
+
     def _graph_scatter(self, run):
         """As ``_scatter``: one block of both VCOs' saws and the subs' pulses at this
         voice's own frequencies, with nothing on their pitch."""
@@ -1774,7 +1873,7 @@ class PolyA6Voice(Module):
         f.set(self._n_sub1, ag.OSC_FREQUENCY, hz1 * 0.5)
         f.set(self._n_sub2, ag.OSC_FREQUENCY, hz2 * 0.5)
         oscs = tuple(self._n_osc1 + self._n_osc2) + (self._n_sub1, self._n_sub2)
-        run((1 << f.group) if f.group < 32 else 0, oscs)
+        run((1 << f.group if f.group < 32 else 0) | f.bits | self._extras_bit(), oscs)
         self._grown = [1, 1]  # the rack's scatter draws the saw on one node each
         for node in oscs:
             f.set(node, ag.OSC_FREQUENCY, BASE_FREQ_C4)

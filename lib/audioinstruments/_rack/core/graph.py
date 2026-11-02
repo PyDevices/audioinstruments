@@ -68,8 +68,9 @@ it must hold its value outside that span: one that Python touches (a feed, a
 read-back, a ``watch``, a control, anything the fragment ``keep``s), one read
 before it is written in node order (a ``late`` cable, a feedback), one written
 twice or never, one read from another group than the one that writes it (a
-parked group's output is zeroed once, and must stay zero), and one nothing
-reads. A node never writes a buffer it reads. ``REUSE`` turns sharing off.
+parked group's output is zeroed once, and must stay zero; a switch reading its own
+module's wire is the exception, as it runs only while the module does, and so is a
+wire the fragment declares ``gated``), and one nothing reads. A node never writes a buffer it reads. ``REUSE`` turns sharing off.
 
 A module with no ``fragment`` stays on the rack: its ``process()`` runs
 before the graph each block, the outputs the graph reads are written into
@@ -140,7 +141,7 @@ def _outputs(output):
     return output if type(output) is tuple else (output,)
 
 
-def plan_buffers(nodes, count, pinned):
+def plan_buffers(nodes, count, pinned, within=None, gated=()):
     """Which graph buffer each wire gets: ``(physical ids, buffers needed)``.
 
     ``nodes`` is the graph's nodes in run order as ``(group, inputs, output)``,
@@ -148,8 +149,13 @@ def plan_buffers(nodes, count, pinned):
     their own. A wire shares a buffer only with wires live at other times: from
     the node that writes it to the last node that reads it. See the module
     docstring for what is pinned. A node's output is allocated before its inputs
-    are released, so a node never writes a buffer it reads.
+    are released, so a node never writes a buffer it reads. ``within`` maps a switch's
+    group to its module's: the switch runs only while the module's does, so what it reads
+    of the module's own is written earlier in the same block and needs no pin. ``gated``
+    are wires a module has promised to read only while their writer runs (see ``gated``
+    on a fragment), which need none either.
     """
+    within = within or {}
     writer = [-1] * count  # the node that writes each wire
     wgroup = [0] * count
     last = [-1] * count  # the last node that reads it
@@ -161,7 +167,8 @@ def plan_buffers(nodes, count, pinned):
         for b in inputs:
             if b is None:
                 continue
-            if writer[b] < 0 or wgroup[b] != group or b in outs:
+            across = wgroup[b] != group and within.get(group) != wgroup[b] and b not in gated
+            if writer[b] < 0 or across or b in outs:
                 keep[b] = 1  # read before written, across groups, or its own output
             last[b] = i
         for out in outs:
@@ -280,6 +287,13 @@ class Fragment:
         (with ``read``) or relies on it holding its value between blocks."""
         self._c.kept.add(buf)
 
+    def gated(self, buf):
+        """Let wire ``buf``, written behind a switch, share a buffer: the module promises that
+        everything outside the switch reads it through a mixer's gain of 0 while the switch
+        is off, and moves that gain in the batch that turns the switch off (the node's
+        output is zeroed in that block, so a gain ramping down reads nothing)."""
+        self._c._gated.add(buf)
+
     def read(self, buf, dst):
         """Copy a block of wire ``buf`` (one the fragment ``keep``s) into ``dst``."""
         c = self._c
@@ -374,9 +388,15 @@ class Fragment:
 
     # -- groups ---------------------------------------------------------------------
 
+    @property
+    def spare_groups(self):
+        """How many more groups ``switch`` can hand out, for a module that can do without."""
+        return MAX_GROUPS - self._c._groups
+
     def switch(self, name, on=True):
         """A group of the module's own; ``enable(name, on)`` turns it on and off."""
         group = self._c.new_group()
+        self._c._within[group] = self.group
         self.switches[name] = [group, bool(on)]
         self._refresh_bits()
         return group
@@ -534,7 +554,9 @@ class CompiledRack:
             self.phys = None
             buffers = wires
             if REUSE:
-                self.phys, buffers = plan_buffers(sizer.log, wires, self._pinned())
+                self.phys, buffers = plan_buffers(
+                    sizer.log, wires, self._pinned(), self._within, self._gated
+                )
             self.wires = wires
             options = {
                 "sample_rate": rack.sample_rate,
@@ -648,6 +670,8 @@ class CompiledRack:
         self._watch_buffers = []  # (buffer id, fn, [last]) for a watch on a signal
         self._watch_jacks = []  # the input jack of each of those watches
         self._groups = 0
+        self._within = {}  # a switch's group: its module's
+        self._gated = set()  # wires only read while their writer runs
         group_of = {}
         for members in groups:
             group = self.new_group()

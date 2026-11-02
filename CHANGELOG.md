@@ -4,6 +4,9 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- A PolyA6 voice on a plain patch costs less than half as much on the graph: the parts
+  the patch leaves off stop running, and the pink noise stops while no voice reads it.
+
 ## 0.5.1.dev1
 
 - `audioinstruments.panel_view` lays out the control panel for an instrument
