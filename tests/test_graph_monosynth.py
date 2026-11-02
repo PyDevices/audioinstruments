@@ -891,6 +891,8 @@ def test_a_filter_that_is_never_seen_to_be_silent_fails(monkeypatch):
 
 def test_a_midi_module_that_never_sends_the_trig_fails(monkeypatch):
     class Dead:
+        value = 0.0
+
         def set(self, value):
             pass
 

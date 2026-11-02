@@ -563,6 +563,8 @@ def test_a_foot_pedal_that_never_arrives_fails(monkeypatch):
 
 def test_a_midi_module_that_never_sends_expr_or_foot_fails(monkeypatch):
     class Dead:
+        value = 0.0
+
         def set(self, value):
             pass
 
