@@ -87,8 +87,8 @@ The caller may hand modules out in groups (``VoicePool``'s voices): a group
 is masked out of the run while none of its modules is ``enabled``, and its
 nodes then cost nothing. Everything else is in the always-on group.
 
-A graph has 32 groups. When the groups handed in, with the modules'
-``switch`` groups, need more, neighbouring groups share one: two to a group
+A graph has 32 groups. When more groups are handed in than that, and with
+the modules' ``switch`` groups they don't fit, neighbouring groups share one: two to a group
 (49 keys in 25), then three, until they fit. ``shared`` says how many, and
 ``group_count`` how many groups the graph uses. A shared group runs while any
 of its modules is enabled, so a parked voice whose partner still plays runs
@@ -571,7 +571,9 @@ class CompiledRack:
                 return groups
             except TooManyGroups:
                 share += 1
-                if share > len(given):
+                # only a pool with more voices than a graph has groups shares them; a
+                # smaller pool that runs out because of its switches stays on the rack
+                if len(given) <= MAX_GROUPS or share > len(given):
                     raise
                 groups = [
                     [module for members in given[i : i + share] for module in members]
