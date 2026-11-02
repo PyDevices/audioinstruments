@@ -55,14 +55,14 @@ the rack joins them along its cables, and one call renders a block. That is
 what holds real time on an ESP32-P4, where the rack's Python between the
 modules does not. `inst.engine` says which you got, `"graph"` or `"rack"`;
 `engine="rack"` asks for the rack on any build, `engine="graph"` asks for the
-graph and raises where the build has no `audiograph`. The Poly5
-([below](#the-graph-form-1)), the Poly6 ([below](#the-graph-form-2)), the
-PolyA6, the Poly8 ([below](#the-graph-form-3)), the PolyXa ([below](#the-graph-form-4)), the DuoSynth ([below](#the-graph-form-5)), the Mono101 ([below](#the-graph-form-6)), the MonoSynth ([below](#the-graph-form-7)), the
-Duo20 and the HybridMono compile too. The other instruments still
-render as racks until their modules have fragments, and their `engine` says
-`"rack"`. The StringEnsemble and the Vocoder330 can't compile yet, even with
-`engine="graph"`: the first has more voices than a graph has groups, and the
-second mixes through buses ([ROADMAP.md](../ROADMAP.md)).
+graph and raises where the build has no `audiograph`. Every instrument on the rack compiles: `create(name, 48000).engine` is
+`"graph"` for each of them. The SoundFont players are not racks and have no
+`engine`. The sections below describe the graph form of the instruments where
+it differs audibly from the rack's. A pool of more than 32 voices shares
+graph groups, two or three voices to a group, as long as its voices need no
+groups of their own ([polyphony.md](polyphony.md#how-many-voices-a-graph-holds));
+a voice patch with switches, like the Poly106's, still raises
+`TooManyGroups` under `engine="graph"` past what fits.
 
 The graph renders the same samples on a desktop as on the board, so a patch
 you tune in CPython sounds the same on the ESP32-P4.
@@ -1727,8 +1727,7 @@ the bass's release; low-note priority; the bass going around the ensemble; the
 ensemble's rates, depths, centre delay and stereo spread; the tune range; the
 bend reaching every key; and velocity.
 
-**Not built.** There is no graph form: a compiled graph has 32 groups and 49
-voices do not fit. The tone of each register is a waveform, not a filter per
+**Not built.** The tone of each register is a waveform, not a filter per
 register (the keys are added into one bus, so a filter per register would have
 to sit in every key). The SE-III's stereo outputs, the System Interface trigger and gate jacks, the
 expression pedal input, external audio and the reissue's phaser are not built.
@@ -1835,8 +1834,7 @@ the 4' hard-synced to the 8' so the two stay locked in phase. They are written
 to five mono buses (`strings`, `choir_a`, `choir_b`, `choir_c`, `carrier`) that
 the shared section filters once for the whole keyboard, which is why a chord
 costs the filters once and not once a key. [polyphony.md](polyphony.md#buses)
-has the buses; the engine is the rack, since a pool with buses has no graph
-form. A voice writes a tone at `BUS_LEVEL` (0.5) so twelve keys that start
+has the buses, which the graph compiles to `MIX` chains. A voice writes a tone at `BUS_LEVEL` (0.5) so twelve keys that start
 together stay inside the 16-bit wire.
 
 ### Strings
@@ -1912,7 +1910,9 @@ the rack's instruments have no audio input, so the mic is built in, and
   sample is lost to the bridge that pulls it, and a finished sample gives
   silence. `attach_mic(inst, None)` detaches it, and with none attached
   `"input"` reads the mic module's `mic_in` jack, so a rack patched by hand can
-  feed it. The live input is proven with files only; a board's microphone is not
+  feed it. On the graph the mic is a `Fragment.fed` module: it renders in
+  Python each block and feeds the graph, so a Vocoder330 plays under `step()`
+  and `create(output="graph")` refuses it. The live input is proven with files only; a board's microphone is not
   tried.
 - `"off"`: silence, and so a silent vocoder.
 
@@ -2030,7 +2030,7 @@ have no source; every patch.
 
 **Not built.** The external synthesizer input (the carrier is always the
 keyboard), the EXT CONT pitch shift and the hold pedal, a live board microphone,
-the mono output, the output level switch and the phones; there is no graph form.
+the mono output, the output level switch and the phones.
 
 ### Routing table
 

@@ -2,6 +2,21 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## Unreleased
+
+- Every instrument on the rack now compiles to one `audiograph` graph:
+  `create(name, 48000).engine` is `"graph"` for all of them. The drum
+  machines, the pianos and organs, the Poly80, the StringEnsemble, the
+  Vocoder330 and the rest join the synths that already did. The SoundFont
+  players are not racks.
+- A pool of more than 32 voices shares graph groups, two or three voices to a
+  group, so the StringEnsemble's 49 keys fit.
+- A pool's buses compile to `MIX` chains.
+- `Fragment.fed(jack)`: a module can render an output in Python each block and
+  feed it into the graph, as the Vocoder330's mic does. An attached graph
+  refuses such a module.
+- `docs/performance.md` has block times for five instruments on an ESP32-P4.
+
 ## 0.5.1.dev0
 
 - `audioinstruments.panel`: wrap an instrument in the adapter a control panel
