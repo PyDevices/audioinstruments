@@ -11,6 +11,8 @@ square), ``cutoff_hz``, ``resonance``, ``env_mod``, ``decay``, ``accent``,
 
 import math
 
+from ..core.bridge import OSC_LEVEL, PITCH_OCTAVES
+from ..core.graph import UNIT
 from ..core.jack import SignalType
 from ..core.module import Module
 from ..core.signal import copy_into, mul
@@ -100,6 +102,8 @@ class Acid303(Module):
         self.step_gates = [1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0]
         self.step_accents = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]
         self.step_slides = [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
+        self._accent = 0.0
+        self._slid = 0.0
         for name in ("_saw", "_pulse", "_env", "_filt", "_gate", "_clk", "_pitch", "_gain"):
             self.add_scratch(name)
 
@@ -229,3 +233,102 @@ class Acid303(Module):
         out = self.audio_out.buffer
         copy_into(out, self._filt)
         mul(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """The voice as nodes: OSC, ENV, ACID and VCA. The sequencer, the slide and the panel
+        stay Python and move once a block (``before_run``): the steps' accent and slide flags,
+        the slid pitch, the envelope's decay and the VCA's gain.
+
+        A module with no gate cabled plays its sequencer's gates inside the block, which a node
+        cannot; so does an external clock. Those stay on the rack."""
+        import audiograph as ag
+
+        if not hasattr(ag, "ACID") or self.gate_in.cable is None or self.clock_in.cable is not None:
+            return False
+        self._ag = ag
+        self._fragment = f
+        b_gate = f.input(self.gate_in)
+
+        b_env = f.buffer()
+        b_pitch = f.buffer()
+        b_saw = f.buffer()
+        b_acc = f.output(self.accent_out) if self.accent_out.cables else f.buffer()
+        b_filt = f.buffer()
+
+        self._n_env = f.add(ag.ENV, (b_gate,), b_env)
+        f.set(self._n_env, ag.ENV_ATTACK, 0.003)
+        f.set(self._n_env, ag.ENV_SUSTAIN, 0.0)
+        f.set(self._n_env, ag.ENV_RELEASE, 0.05)
+        self._n_pitch = f.add(ag.CONST, (), b_pitch)
+        self._n_osc = f.add(ag.OSC, (b_pitch, None, None, None), b_saw)
+        f.set(self._n_osc, ag.OSC_LEVEL, OSC_LEVEL)
+        f.set(self._n_osc, ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+        self._n_acc = f.add(ag.CONST, (), b_acc)
+        self._n_acid = f.add(ag.ACID, (b_saw, b_env, b_acc), b_filt)
+        self._n_vca = f.add(ag.VCA, (b_filt, b_env, None), f.output(self.audio_out))
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        f.set(self._n_vca, ag.VCA_CURVE, ag.VCA_LINEAR)
+
+        # what the panel jacks hand over when something is plugged in
+        self._k_pitch = self._k_accent = self._k_slide = None
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.watch(self.accent_in, self._graph_accent)
+        f.watch(self.slide_in, self._graph_slide)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_block()
+
+    def _graph_pitch(self, value):
+        self._k_pitch = value
+
+    def _graph_accent(self, value):
+        self._k_accent = value
+
+    def _graph_slide(self, value):
+        self._k_slide = value
+
+    def _graph_block(self):
+        f = self._fragment
+        ag = self._ag
+        # the sequencer's clock runs a step a tick, for every block that has passed, and
+        # stands still while the voice is parked, as the rack's does
+        for _ in range(f.blocks if self.enabled else 0):
+            self.clock.render(self._clk, self.bpm / 60.0 * 4.0)
+            edge, _ = self.clock_edges.scan(self._clk)
+            if edge >= 0:
+                self.seq_idx = (self.seq_idx + 1) % 16
+            s = max(0, self.seq_idx)
+            accent = float(self.step_accents[s]) * self.accent
+            slide = bool(self.step_slides[s])
+            target = self.step_pitches[s]
+            if self._k_pitch is not None:
+                target = self._k_pitch
+            if self._k_accent is not None:
+                accent = self._k_accent * self.accent
+            if self._k_slide is not None:
+                slide = self._k_slide > 0.5
+            self._accent = accent
+            self._slid = self.filter.slide(target, slide)
+        accent = self._accent
+        f.set(self._n_pitch, 0, self._slid * UNIT)
+        f.set(self._n_acc, 0, accent * UNIT)
+        f.set(self._n_env, ag.ENV_DECAY, self.decay * (0.6 if accent > 0.2 else 1.0))
+        f.set(self._n_osc, ag.OSC_FREQUENCY, self.tuning)
+        f.set(self._n_osc, ag.OSC_WAVEFORM, 2 if self.waveform == 1 else 1)
+        f.set(self._n_acid, ag.ACID_CUTOFF_HZ, self.cutoff_hz)
+        f.set(self._n_acid, ag.ACID_RESONANCE, self.resonance)
+        f.set(self._n_acid, ag.ACID_ENVMOD, self.env_mod)
+        f.set(self._n_vca, ag.VCA_GAIN, (1.0 + accent * 0.8) * self.volume)
+
+    def _graph_reset(self):
+        f = self._fragment
+        for node in (self._n_osc, self._n_acid, self._n_env):
+            f.reset(node)
+        self.filter.reset()
+        self.clock.reset()
+        self.seq_idx = -1
+        self.clock_edges.high = False
+        self._accent = 0.0
+        self._slid = 0.0

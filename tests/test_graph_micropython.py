@@ -34,6 +34,7 @@ CASES = [
     ("rhythm909", 0),
     ("rhythm606", 0),
     ("rhythm78", 0),
+    ("acid303", 0),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 
