@@ -22,6 +22,10 @@ What matches to how many counts, and why:
   octaves per unit), the envelope's one-count rounding between the rack's
   closed-form segment and the graph's running product integrates into phase
   over the decay, within 80 counts at the worst and 9 counts rms.
+* These figures are for a note whose VCA holds at ``amp_sustain`` 0.5, 30 dB
+  down, as most of the comparisons here do. The Init patch holds at 1.0, where
+  nothing hides the difference: it matches to 8 counts and 1.5 counts rms
+  itself, and the settings most sensitive to it are held in ``FULL_LEVEL``.
 * Over a phrase with voice steals the held chord matches to 32 counts and
   1.5 counts rms.
 * The glide's pitch matches the rack's to a count. The rack's glide is a
@@ -102,6 +106,7 @@ EXACT = {
     "filter_res": 0.375,
     "filter_env_amt": 0.75,
     "filter_sustain": 0.25,
+    "amp_sustain": 0.5,
 }
 
 
@@ -249,6 +254,25 @@ def test_filter_envelope_to_vco_a_frequency_matches_within_envelope_phase_drift(
     top, rms, level, tail, last = compare(controls)
     assert level > 50.0
     assert top <= 80.0 and rms <= 9.0, (top, rms)
+    assert tail <= QUIET and last == 0.0, (tail, last)
+
+
+#: Held at full level: the controls, then the worst and rms bounds in counts.
+FULL_LEVEL = (
+    ({}, MATCH, RMS),
+    ({"filter_cutoff": 0.75, "filter_res": 0.875}, 16.0, RMS),
+    ({"polymod_filtenv": 0.5, "polymod_dest_pw_a": 1.0, "vco_a_pulse": 1.0}, 32.0, RMS),
+    ({"polymod_filtenv": 0.5, "polymod_dest_freq_a": 1.0}, 800.0, 200.0),
+)
+
+
+@pytest.mark.parametrize(
+    "controls, worst, rms_bound", FULL_LEVEL, ids=lambda c: _ids(c) if isinstance(c, dict) else ""
+)
+def test_a_note_held_at_full_level_on_the_graph_is_the_note_on_the_rack(controls, worst, rms_bound):
+    top, rms, level, tail, last = compare(dict(controls, amp_sustain=1.0))
+    assert level > 50.0
+    assert top <= worst and rms <= rms_bound, (top, rms)
     assert tail <= QUIET and last == 0.0, (tail, last)
 
 

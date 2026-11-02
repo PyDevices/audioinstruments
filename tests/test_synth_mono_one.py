@@ -4,6 +4,8 @@
 
 import math
 
+import audioinstruments._rack.adapter as adapter
+import pytest
 from audioinstruments._rack.core import Rack, np
 from audioinstruments._rack.modules.midi_cv import MidiCVModule
 from audioinstruments._rack.modules.mono_one import MonoOne
@@ -73,3 +75,51 @@ def test_mono_one_in_rack():
 
     rms_decay = math.sqrt(sum(s * s for s in rack.output_buffer_left) / 64)
     assert rms_decay < rms * 0.15
+
+
+# -- how the Init patch holds a note ----------------------------------------------------
+
+BUFFER = 256
+WINDOW = 960  # 20 ms at 48 kHz
+HOLD_BUFFERS = 280  # about 1.5 s, long past the 0.25 s decays
+ENGINES = ("rack",) + (("graph",) if adapter.graph_available() else ())
+#: A held note stays within this many dB of its attack.
+MOST_DROP = 6.0
+#: And its level never falls below this, in dB of full scale.
+LEAST_SUSTAIN = -30.0
+
+
+def held_note(engine, **controls):
+    """(loudest 20 ms, level the note settles at), in dB of full scale, on a fresh voice."""
+    inst = adapter.create(
+        48000, voice="mono_one", engine=engine, output="pull", buffer_frames=BUFFER
+    )
+    try:
+        for name, value in controls.items():
+            inst._pool.set_param("synth", name, value)
+        inst.note_on(60, 100)
+        out = np.concatenate(
+            [np.frombuffer(inst._pull(), dtype=np.int16).copy() for _ in range(HOLD_BUFFERS)]
+        )
+    finally:
+        inst.deinit()
+    left = out[::2].astype(np.float64) / 32768.0
+    count = len(left) // WINDOW
+    windows = left[: count * WINDOW].reshape(count, WINDOW)
+    levels = 10.0 * np.log10(np.maximum(np.mean(windows**2, axis=1), 1e-12))
+    return float(levels.max()), float(np.median(levels[-count // 3 :]))
+
+
+@pytest.mark.parametrize("engine", ENGINES)
+def test_the_init_patch_holds_a_note_near_its_attack(engine):
+    peak, sustain = held_note(engine)
+    assert peak - sustain <= MOST_DROP
+    assert sustain >= LEAST_SUSTAIN
+
+
+@pytest.mark.parametrize("engine", ENGINES)
+def test_the_sustain_knob_keeps_the_vca_curve(engine):
+    """The Init patch moved, the VCA did not: 0.5 is still 30 dB under 1.0 on the same note."""
+    _, full = held_note(engine, amp_sustain=1.0)
+    _, half = held_note(engine, amp_sustain=0.5)
+    assert abs((full - half) - 30.0) <= 1.0

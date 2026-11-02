@@ -66,6 +66,10 @@ class Keys(Module):
         fill(self.gate.buffer, 1.0 if 10 <= self.n < 200 else 0.0)
 
 
+#: The sustain these bounds were measured at, unless a comparison sets its own.
+MEASURED_AT = {"adsr_sustain": 0.7}
+
+
 def build(tap, params, wires, pitch):
     rack = Rack(block_size=BLOCK)
     keys = rack.add_module(Keys("keys"))
@@ -76,7 +80,7 @@ def build(tap, params, wires, pitch):
     for out, inp in wires:
         rack.connect(getattr(patch, out), getattr(patch, inp))
     rack.connect(getattr(patch, tap), rack.master_left_in)
-    for name, value in params.items():
+    for name, value in dict(MEASURED_AT, **params).items():
         patch.set_param(name, value)
     return rack, keys
 
@@ -208,6 +212,7 @@ CASES = {
         1.0,
     ),
     "vca": ("vca_out", {}, [], 0.0, 5.0, 0.8),
+    "vca at the Init sustain": ("vca_out", {"adsr_sustain": 114 / 127}, [], 0.0, 16.0, 0.8),
     "vca slider and initial gain": (
         "vca_out",
         {"vca_init_gain": 0.2, "vca_audio_lvl": 0.6, "vca_exp_lvl": 0.5},

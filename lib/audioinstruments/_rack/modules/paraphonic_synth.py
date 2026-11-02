@@ -169,7 +169,9 @@ class ParaphonicSynth(Module):
         self.add_param("delay_time", "Delay Time (s)", default=0.22, min_val=0.02, max_val=0.65)
         self.add_param("delay_repeats", "Delay Repeats", default=0.40, min_val=0.0, max_val=1.05)
         self.add_param("delay_mix", "Delay Mix", default=0.30, min_val=0.0, max_val=1.0)
-        for e, d in (("env1", (0.01, 0.20, 0.75, 0.25)), ("env2", (0.01, 0.25, 0.40, 0.30))):
+        # The VCA is exponential, 60 dB across the envelope's 0..1: this default sits
+        # 6 dB down, where a held note stays near its attack.
+        for e, d in (("env1", (0.01, 0.20, 0.90, 0.25)), ("env2", (0.01, 0.25, 0.40, 0.30))):
             self.add_param(e + "_attack", "Attack (s)", default=d[0], min_val=0.001, max_val=3.0)
             self.add_param(e + "_decay", "Decay (s)", default=d[1], min_val=0.01, max_val=3.0)
             self.add_param(e + "_sustain", "Sustain", default=d[2], min_val=0.0, max_val=1.0)

@@ -114,7 +114,10 @@ class MonoOne(Module):
         self.add_param(
             "polymod_dest_filter", "Poly-Mod Dest: Filter", default=0.0, min_val=0.0, max_val=1.0
         )
-        for e, d in (("filter", (0.005, 0.25, 0.30, 0.20)), ("amp", (0.005, 0.25, 0.50, 0.20))):
+        # The VCA is exponential, 60 dB across the envelope's 0..1, so a sustain of
+        # 0.5 sits 30 dB down. The Init patch holds its note at full level and
+        # leaves the decaying to the filter envelope.
+        for e, d in (("filter", (0.005, 0.25, 0.30, 0.20)), ("amp", (0.005, 0.25, 1.0, 0.20))):
             self.add_param(e + "_attack", "Attack (s)", default=d[0], min_val=0.001, max_val=4.0)
             self.add_param(e + "_decay", "Decay (s)", default=d[1], min_val=0.01, max_val=5.0)
             self.add_param(e + "_sustain", "Sustain", default=d[2], min_val=0.0, max_val=1.0)

@@ -94,6 +94,7 @@ SMOOTH = {
             "filter_cutoff": 0.5,
             "filter_env_amt": 0.0,
             "filter_res": 0.0,
+            "amp_sustain": 0.5,
             "volume": 1.1,
         }
     },

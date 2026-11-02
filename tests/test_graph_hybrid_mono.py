@@ -60,7 +60,13 @@ QUIET = 27.0
 VOICES = 4
 
 #: Filter knobs a float32 holds exactly, and no detune (the other controls' defaults).
-EXACT = {"filter_freq": 0.5, "filter_res": 0.5, "drive": 1.25, "filter_env_depth": 0.75}
+EXACT = {
+    "filter_freq": 0.5,
+    "filter_res": 0.5,
+    "drive": 1.25,
+    "filter_env_depth": 0.75,
+    "env_sustain": 44 / 127,
+}
 
 
 def one_note(key=60):
@@ -195,6 +201,14 @@ def test_a_note_on_the_graph_is_the_note_on_the_rack(controls):
     top, rms, level, _over, tail, last = compare(controls)
     assert level > 50.0  # it sounds
     assert top <= MATCH and rms <= RMS, (top, rms)
+    assert tail <= QUIET and last == 0.0, (tail, last)
+
+
+@pytest.mark.parametrize("controls", ({}, {"volume": 0.75}), ids=_ids)
+def test_the_init_sustain_on_the_graph_is_the_note_on_the_rack(controls):
+    top, rms, level, _over, tail, last = compare(dict(controls, env_sustain=102 / 127))
+    assert level > 50.0
+    assert top <= 16.0 and rms <= RMS, (top, rms)  # the VCA is 12 dB down here, not 28
     assert tail <= QUIET and last == 0.0, (tail, last)
 
 

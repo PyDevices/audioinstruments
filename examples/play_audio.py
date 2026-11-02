@@ -268,6 +268,7 @@ def movement_03():
         delay_time=0.16,
         delay_repeats=0.55,
         delay_mix=0.40,
+        env1_sustain=0.75,
     )
     pattern = [50, 50, 53, 55, 50, 60, 57, 55, 53, 50]
     return rack, note_events(midi, pattern, 85, 0.70, 120), pattern_seconds(pattern, 85, 0.8)
@@ -387,6 +388,7 @@ def movement_09():
         polymod_filtenv=0.30,
         polymod_dest_freq_a=0.25,
         vco_a_sync=1.0,
+        amp_sustain=0.5,
     )
     pattern = [36, 36, 48, 39, 41, 36, 46, 48]
     return rack, note_events(midi, pattern, 75, 0.70, 120), pattern_seconds(pattern, 75, 0.6)
@@ -397,7 +399,9 @@ def movement_10():
     rack, midi, voice = keyboard_rack(HybridMono, "hybrid_mono")
     rack.connect(voice.vca_out, rack.master_left_in, color="#f39c12")
     rack.connect(voice.vca_out, rack.master_right_in, color="#f39c12")
-    set_params(voice, filter_freq=0.45, filter_res=0.55, drive=1.8, env_decay=0.20)
+    set_params(
+        voice, filter_freq=0.45, filter_res=0.55, drive=1.8, env_decay=0.20, env_sustain=0.35
+    )
     pattern = [50, 53, 57, 62, 57, 53, 50, 48]
     return rack, note_events(midi, pattern, 75, 0.65, 115), pattern_seconds(pattern, 75, 0.6)
 

@@ -210,6 +210,14 @@ def _ids(c):
     return ",".join("%s=%s" % kv for kv in c.items()) or "defaults"
 
 
+@pytest.mark.parametrize("controls", ({}, {"volume": 0.75}), ids=_ids)
+def test_the_init_sustain_on_the_graph_is_the_note_on_the_rack(controls):
+    top, rms, level, tail, last = compare(dict(controls, env2_sustain=0.9))
+    assert level > 50.0
+    assert top <= MATCH and rms <= RMS, (top, rms)
+    assert tail <= QUIET and last == 0.0, (tail, last)
+
+
 @pytest.mark.parametrize("controls", CLEAN, ids=_ids)
 def test_a_note_on_the_graph_is_the_note_on_the_rack(controls):
     top, rms, level, tail, last = compare(controls)

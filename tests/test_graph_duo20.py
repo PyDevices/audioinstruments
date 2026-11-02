@@ -87,6 +87,8 @@ RMS = 1.5
 #: The voice mix's quiet level (2 mV) at the instrument's output: 2e-3 * 0.5 * 27000.
 QUIET = 27.0
 VOICES = 4
+#: The sustain these bounds were measured at, unless a comparison sets its own.
+MEASURED_AT = {"eg2_sustain": 64 / 127}
 
 
 def one_note(key=75):
@@ -113,7 +115,7 @@ def render(engine, controls, phrase, voices=VOICES):
     )
     try:
         assert inst.engine == engine
-        for name, value in controls.items():
+        for name, value in dict(MEASURED_AT, **controls).items():
             inst._pool.set_param("synth", name, value)
         events, buffers = phrase[:2]
         out = []
@@ -232,6 +234,14 @@ CLEAN = [
 
 def _ids(c):
     return ",".join("%s=%s" % kv for kv in c.items()) or "defaults"
+
+
+@pytest.mark.parametrize("controls", ({}, {"volume": 0.75}), ids=_ids)
+def test_the_init_sustain_on_the_graph_is_the_note_on_the_rack(controls):
+    top, rms, level, tail, last = compare(dict(controls, eg2_sustain=114 / 127))
+    assert level > 50.0
+    assert top <= MATCH and rms <= RMS, (top, rms)
+    assert tail <= QUIET and last == 0.0, (tail, last)
 
 
 @pytest.mark.parametrize("controls", CLEAN, ids=_ids)
@@ -417,7 +427,7 @@ def patched(compiled, cables=(), right=None, params=None, blocks=300, gate=(2, 1
         rack.connect(out, getattr(voice, in_name))
     if right is not None:
         rack.connect(getattr(voice, right), rack.master_right_in)
-    for name, value in (params or {}).items():
+    for name, value in dict({"eg2_sustain": 0.5}, **(params or {})).items():
         voice.set_param(name, value)
     engine = compile_rack(rack, scale=1.0) if compiled else None
     if engine is not None:

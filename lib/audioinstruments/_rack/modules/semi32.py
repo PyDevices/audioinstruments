@@ -132,9 +132,7 @@ class Semi32(Module):
         )
         self.noise.white(self._white)
         self.lfo.render(p["lfo_rate"], tri=self.lfo_tri_out.buffer, square=self.lfo_sq_out.buffer)
-        self.env.set_times(
-            p["attack"], p["decay"], 0.70 if p["sustain"] >= 0.5 else 0.0, p["decay"]
-        )
+        self.env.set_times(p["attack"], p["decay"], 0.9 if p["sustain"] >= 0.5 else 0.0, p["decay"])
         self.env.render(self.gate_in.get_buffer(), self.env_out.buffer)
 
         self.vco.render(

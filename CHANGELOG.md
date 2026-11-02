@@ -22,6 +22,18 @@ All notable changes to `audioinstruments` are recorded here.
 - `audioinstruments.panel`: wrap an instrument in the adapter a control panel
   edits through, with macros, patches, bypass, reload and MIDI changes that
   reach the panel. See [docs/panel.md](docs/panel.md).
+- `Semi32`: the sustain switch now holds at 0.9 instead of 0.70, which the
+  exponential VCA put 15 dB under the attack. With the switch off nothing changes.
+- `mono_one`: the Init patch now holds a note at full level. Its amplifier
+  sustain was 0.5, which the exponential VCA puts 30 dB under the attack, so a
+  held note all but vanished. A patch that sets `amp_sustain` itself sounds as
+  before.
+- `duo20`, `hybrid_mono`, `state_variable_mono`, `patch2600` and the rack's
+  `ParaphonicSynth` had the same fault at 14 to 29 dB: their amplifier
+  envelope's sustain now defaults to 0.9 (0.8 on `hybrid_mono`), so a held note
+  stays close to its attack. On `hybrid_mono` the same envelope drives the
+  filter, so a held note is brighter too. A patch that sets its sustain sounds
+  as before.
 
 ## 0.5.0
 

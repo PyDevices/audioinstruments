@@ -164,7 +164,9 @@ class Duo20(Module):
         self.add_param("eg1_release", "EG 1 Release (s)", default=0.30, min_val=0.002, max_val=5.0)
         self.add_param("eg2_attack", "EG 2 Attack (s)", default=0.008, min_val=0.002, max_val=5.0)
         self.add_param("eg2_decay", "EG 2 Decay (s)", default=0.28, min_val=0.01, max_val=5.0)
-        self.add_param("eg2_sustain", "EG 2 Sustain", default=0.50, min_val=0.0, max_val=1.0)
+        # The VCA is exponential, 60 dB across the envelope's 0..1: this default sits
+        # 6 dB down, where a held note stays near its attack.
+        self.add_param("eg2_sustain", "EG 2 Sustain", default=0.90, min_val=0.0, max_val=1.0)
         self.add_param("eg2_release", "EG 2 Release (s)", default=0.25, min_val=0.01, max_val=5.0)
         self.add_param("mg_rate", "MG Frequency (Hz)", default=4.5, min_val=0.1, max_val=25.0)
         self.add_param("vca_init_gain", "VCA Initial Gain", default=0.0, min_val=0.0, max_val=1.0)
