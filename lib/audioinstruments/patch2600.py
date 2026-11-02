@@ -6,7 +6,7 @@
 NAME = "patch2600"
 DISPLAY_NAME = "Patch2600"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.1.dev2"
+VERSION = "0.5.1.dev3"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
