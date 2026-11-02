@@ -27,6 +27,9 @@ VOICES = (
     "mono101",
     "poly8",
     "polya6",
+    "west_coast_synth",
+    "state_variable_mono",
+    "poly80",
 )
 
 
@@ -98,6 +101,76 @@ def test_a_gate_the_rack_wrote_still_reaches_the_graph():
         assert midi._c_gate[midi._v_gate.index(True)].value == 1.0
     finally:
         inst.deinit()
+
+
+def _module(inst, name):
+    return next(f.module for f in inst._compiled.fragments if type(f.module).__name__ == name)
+
+
+def test_a_polya6_value_moved_alone_makes_the_voice_look_again():
+    inst = _played("polya6")
+    voice = _module(inst, "PolyA6Voice")
+    voice._graph_block()
+    voice._has_pitch = voice._has_note = voice._has_bend = True
+    for watcher, x in (
+        (voice._graph_k_vel, 0.3),
+        (voice._graph_k_mod, 0.4),
+        (voice._graph_k_pitch, voice._k_note + 0.05),
+        (voice._graph_k_note, voice._k_pitch + 0.08),
+    ):
+        watcher(x)
+        voice._graph_block()
+        assert voice._seen == (voice._k_vel, voice._k_mod, voice._bend_diff())
+    voice._has_pitch = False  # a voice told its bend on the bend's own wire
+    voice._graph_k_bend(0.2)
+    voice._graph_block()
+    assert voice._seen[2] == 0.2
+    inst.deinit()
+
+
+def test_a_drift_steps_each_at_its_own_rate():
+    inst = _played("polya6")
+    voice = _module(inst, "PolyA6Voice")
+    dt = voice.block_size / float(voice.sample_rate)
+    voice._drift_1_phase = voice._drift_2_phase = 0.25
+    voice._graph_block()
+    assert voice._drift_1_phase == pytest.approx(0.25 + voice._drift_1_hz * dt)
+    assert voice._drift_2_phase == pytest.approx(0.25 + voice._drift_2_hz * dt)
+    inst.deinit()
+
+
+def test_a_polya6_filter_1_follows_the_key_and_the_sample_and_hold_on_held_blocks():
+    inst = _played("polya6")
+    voice = _module(inst, "PolyA6Voice")
+    voice.set_param("f1_keytrack", 50.0)
+    voice._graph_block()
+    hz = voice._f1_hz
+    voice._k_note += 0.1
+    voice._k_pitch += 0.1
+    voice._graph_block()
+    assert voice._f1_hz != hz
+    voice.set_param("f1_keytrack", 0.0)
+    voice.set_param("f1_sh", 50.0)
+    voice._graph_block()
+    hz = voice._f1_hz
+    voice._sh_last += 0.25
+    voice._graph_block()
+    assert voice._f1_hz != hz
+    inst.deinit()
+
+
+def test_a_poly8_drift_steps_as_many_blocks_as_ran():
+    inst = _played("poly8")
+    voice = _module(inst, "Poly8Voice")
+    voice._graph_block()
+    start = voice._drift_1_phase
+    voice._graph_block()
+    one = voice._drift_1_phase - start
+    voice._fragment._c.elapsed = 3
+    start = voice._drift_1_phase
+    voice._graph_block()
+    assert voice._drift_1_phase - start == pytest.approx(3 * one)
+    inst.deinit()
 
 
 def test_a_parked_flag_moved_alone_reaches_the_mix():
