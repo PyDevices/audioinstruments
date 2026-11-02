@@ -326,8 +326,11 @@ def tail(x, n=4096):
 
 
 def level_table():
-    """Each patch plays notes 48, 52, 55 and 60 for 2.5 s; returns (table, median)."""
-    inst = adapter.create(RATE, voice="poly80", output="pull")
+    """Each patch plays notes 48, 52, 55 and 60 for 2.5 s; returns (table, median).
+
+    On the rack: the levels follow the order the patches are played in, to a dB or so
+    (the compiled form's are in ``test_graph_poly80.py``)."""
+    inst = adapter.create(RATE, voice="poly80", output="pull", engine="rack")
     levels = []
     w = int(RATE * 0.1)
     n_pulls = int(2.5 * RATE / 256)

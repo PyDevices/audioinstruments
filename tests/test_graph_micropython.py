@@ -17,6 +17,15 @@ import pytest
 
 from tools import graph_phrase, traits
 
+#: The voice's slop and the detune go through float pow and sin, which differ in the last
+#: bit between interpreters and move a pitch count; off, the two renders are the same bytes.
+POLY80_EXACT = {"slop": 0.0, "detune": 0.0}
+
+#: Voices whose filter cutoff goes through Python's pow every block: the most a sample may
+#: differ between interpreters, and how many may (of 198144 a channel). The Poly80's moving
+#: filters measure 3 counts on 5436 samples at the worst of its four phrases.
+FLOAT_POW = {"state_variable_mono": (1.0, 16), "poly80": (4.0, 8000)}
+
 CASES = [
     ("hybrid_mono", 0),
     ("duo20", 0),
@@ -36,11 +45,17 @@ CASES = [
     ("rhythm78", 0),
     ("acid303", 0),
     ("patch2600", 0),
+    ("poly80", 0, POLY80_EXACT),
+    ("poly80", 1, POLY80_EXACT),
+    ("poly80", 4, POLY80_EXACT),
+    ("poly80", 6, POLY80_EXACT),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 
-@pytest.mark.parametrize("voice,patch", CASES)
-def test_micropython_renders_the_compiled_voice_to_the_same_samples(voice, patch):
+@pytest.mark.parametrize("case", CASES, ids=lambda c: "%s-%d" % c[:2])
+def test_micropython_renders_the_compiled_voice_to_the_same_samples(case):
+    voice, patch = case[:2]
+    controls = case[2] if len(case) > 2 else {}
     interpreter = traits.render_interpreter("graph")
     if interpreter is None:
         pytest.skip("needs a MicroPython with audiograph (set VRACK_MICROPYTHON)")
@@ -50,18 +65,19 @@ def test_micropython_renders_the_compiled_voice_to_the_same_samples(voice, patch
         there = os.path.join(folder, "mp.pcm")
         here = os.path.join(folder, "cp.pcm")
         ran = subprocess.run(
-            [interpreter, "-X", "heapsize=32M", script, voice, str(patch), "graph", there],
+            [interpreter, "-X", "heapsize=32M", script, voice, str(patch), "graph", there]
+            + ["%s=%s" % pair for pair in controls.items()],
             capture_output=True,
             text=True,
             timeout=300,
             cwd=root,
         )
         assert ran.returncode == 0, ran.stdout + ran.stderr
-        graph_phrase.render(voice, patch, "graph", here)
+        graph_phrase.render(voice, patch, "graph", here, controls)
         with open(there, "rb") as a, open(here, "rb") as b:
             mp, cp = a.read(), b.read()
     assert len(mp) == len(cp) > 500_000
-    if voice == "state_variable_mono":
+    if voice in FLOAT_POW:
         import numpy as np
 
         # Python-side float pow in knob_hz/pitch_to_frequency has a 1-ULP difference on MicroPython, shifting BIQUAD_FREQUENCY by ~1e-5 Hz.
@@ -69,6 +85,7 @@ def test_micropython_renders_the_compiled_voice_to_the_same_samples(voice, patch
             np.frombuffer(mp, dtype=np.int16).astype(np.float64)
             - np.frombuffer(cp, dtype=np.int16).astype(np.float64)
         )
-        assert diff.max() <= 1.0 and np.count_nonzero(diff) <= 16
+        worst, count = FLOAT_POW[voice]
+        assert diff.max() <= worst and np.count_nonzero(diff) <= count
     else:
         assert mp == cp, "%s patch %d: the renders differ" % (voice, patch)

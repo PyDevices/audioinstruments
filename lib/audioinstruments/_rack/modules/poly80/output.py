@@ -14,6 +14,7 @@ After the voices are mixed:
 import audiobiquad
 
 from ...core.bridge import NodeBridge, biquad_kwargs
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import add_scaled, copy_into
@@ -261,3 +262,135 @@ class Poly80Output(Module):
         self.bridge_r.process(ch_out_r, self._lp_r)
         copy_into(out_r, ch_out_r)
         add_scaled(out_r, self._lp_r, -1.0, tmp)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """The ring modulator, the tremolo, the chorus lines (as in the Poly106) and the DC
+        block as nodes. The ring modulator's speed envelope stays the rack's own core,
+        stepped once a block from the key gate: it sets the carrier's rate."""
+        import audiograph as ag
+
+        from ...dsp.chorus import MAX_DELAY_MS, triangle_table
+
+        if not hasattr(ag, "ADSR2"):
+            return False
+        self._ag = ag
+        self._fragment = f
+        self._anykey = 0.0
+        f.watch(self.anykey_in, self._graph_anykey)
+
+        b_carrier = f.buffer()
+        self._n_carrier = f.add(ag.LFO, (), b_carrier)
+        f.set(self._n_carrier, ag.LFO_SHAPE, ag.LFO_SINE)
+        f.set(self._n_carrier, ag.LFO_AMPLITUDE, 1.0 * UNIT)
+        b_trem = f.buffer()
+        self._n_trem_lfo = f.add(ag.LFO, (), b_trem)
+        f.set(self._n_trem_lfo, ag.LFO_SHAPE, ag.LFO_SINE)
+        f.set(self._n_trem_lfo, ag.LFO_AMPLITUDE, 0.5 * UNIT)
+
+        shapes = (triangle_table(1), triangle_table(-1))
+        ins = (self.left_in, self.right_in)
+        outs = (self.left_out, self.right_out)
+        self._n_ring = []
+        self._n_ring_mix = []
+        self._n_gain = []
+        self._n_cho = []
+        self._n_lp = []
+        self._n_dc = []
+        for side in range(2):
+            dry = f.input(ins[side])
+            b_wet = f.buffer()
+            b_ring = f.buffer()
+            b_gain = f.buffer()
+            b_trem_out = f.buffer()
+            b_cho = f.buffer()
+            b_lp = f.buffer()
+            ring = f.add(ag.VCA, (dry, b_carrier, None), b_wet)
+            f.set(ring, ag.VCA_SELECT, 0.0)
+            f.set(ring, ag.VCA_CURVE, ag.VCA_LINEAR)
+            mix = f.add(ag.MIX, (dry, b_wet), b_ring)
+            # left gain 1 - TREM_AM * depth * (0.5 + s), right 1 - TREM_AM * depth * (0.5 - s)
+            gain = f.add(ag.MIX, (b_trem,), b_gain)
+            trem = f.add(ag.VCA, (b_ring, b_gain, None), b_trem_out)
+            f.set(trem, ag.VCA_SELECT, 0.0)
+            f.set(trem, ag.VCA_CURVE, ag.VCA_LINEAR)
+            cho = f.add(ag.FBDELAY, (b_trem_out,), b_cho, MAX_DELAY_MS)
+            f.set(cho, ag.DELAY_FEEDBACK, 0.0)
+            f.set(cho, ag.DELAY_WOW_DEPTH_MS, 0.0)
+            f.table(cho, shapes[side])
+            lp = f.add(ag.PHASER, (b_cho,), b_lp, 1.0)
+            f.set(lp, ag.PHASER_FREQUENCY, DC_HZ)
+            f.set(lp, ag.PHASER_FEEDBACK, 0.0)
+            f.set(lp, ag.PHASER_MIX, 0.5)
+            dc = f.add(ag.MIX, (b_cho, b_lp), f.output(outs[side]))
+            f.set(dc, 0, 1.0)
+            f.set(dc, 1, -1.0)
+            self._n_ring.append(ring)
+            self._n_ring_mix.append(mix)
+            self._n_gain.append(gain)
+            self._n_cho.append(cho)
+            self._n_lp.append(lp)
+            self._n_dc.append(dc)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        self._graph_knobs()
+
+    def _graph_anykey(self, value):
+        self._anykey = value
+
+    def _graph_knobs(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        r_mod = p.get("ring_mod", 0.0)
+        for i in range(2):
+            f.set(self._n_ring[i], ag.VCA_GAIN, r_mod * RING_GAIN)
+            f.set(self._n_ring_mix[i], 0, 1.0 - r_mod)
+            f.set(self._n_ring_mix[i], 1, 1.0)
+        mode = p.get("trem", "off")
+        depth = p.get("trem_depth", 0.5)
+        if mode in ("chorus", "tremolo"):
+            span = CHORUS_HZ if mode == "chorus" else TREMOLO_HZ
+            speed = slider_time(p.get("trem_speed", 0.5), span)
+            low, high, wet = 1.5, 1.5 + 3.0 * depth, 0.5 * depth
+            amount = TREM_AM * depth
+        else:
+            speed, low, high, wet, amount = 1.0, 1.5, 1.5, 0.0, 0.0
+        f.set(self._n_trem_lfo, ag.LFO_RATE, speed)
+        # left: 1 - amount * (0.5 + s); right: 1 - amount * (0.5 - s)
+        f.set(self._n_gain[0], 0, -amount)
+        f.set(self._n_gain[0], ag.MIX_OFFSET, (1.0 - amount * 0.5) * UNIT)
+        f.set(self._n_gain[1], 0, amount)
+        f.set(self._n_gain[1], ag.MIX_OFFSET, (1.0 - amount * 0.5) * UNIT)
+        for node in self._n_cho:
+            f.set(node, ag.DELAY_MS, 0.5 * (low + high))
+            f.set(node, ag.DELAY_WOW_HZ, speed)
+            f.set(node, ag.DELAY_WOW_DEPTH_MS, 0.5 * (high - low))
+            f.set(node, ag.DELAY_MIX, wet)
+            f.set(node, ag.DELAY_DAMPING_HZ, 9000.0)
+
+    def _graph_block(self):
+        # set_param here does not tell the fragment, so the knobs are read every block
+        self._graph_knobs()
+        f = self._fragment
+        p = self.params
+        att_sec = slider_time(p.get("ring_attack", 0.0), RING_ATTACK_RANGE)
+        dec_sec = slider_time(p.get("ring_decay", 0.4), RING_DECAY_RANGE)
+        self.ring_env.set_times(att_sec, dec_sec, 0.0, dec_sec)
+        gate = self._tmp
+        gate[:] = self._anykey
+        for _ in range(f.blocks):
+            self.ring_env.render(gate, self._env_buf)
+        env_val = self.ring_env.val
+        carrier_hz = slider_time(p.get("ring_speed", 0.5), RING_HZ)
+        carrier_hz *= 2.0 ** (p.get("ring_depth", 0.0) * env_val * RING_ENV_OCT)
+        f.set(self._n_carrier, self._ag.LFO_RATE, min(carrier_hz, 0.45 * self.sample_rate))
+
+    def _graph_reset(self):
+        f = self._fragment
+        self.ring_env.reset()
+        for node in (self._n_carrier, self._n_trem_lfo):
+            f.reset(node)
+        for node in self._n_cho + self._n_lp:
+            f.reset(node)

@@ -19,7 +19,9 @@ import math
 
 import audiobiquad
 
-from ...core.bridge import NodeBridge, biquad_kwargs
+from ...core.bridge import OSC_LEVEL, PITCH_OCTAVES, NodeBridge, biquad_kwargs
+from ...core.bridge import PWM_DEPTH as OSC_PWM_DEPTH
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import (
@@ -803,3 +805,394 @@ class Poly80Voice(Module):
         ramp += prev
         src *= ramp
         out += src
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """Two channels of OSC, a series HPF and LPF (BIQUADs set once a block), an ADSR2
+        filter envelope and an ENV for the VCA, with LAG and GLISS for the two glides. The
+        scalars that shape them (touch, drift, slop, the levers, the ribbon) are worked out
+        in Python once a block, as ``process`` works them out.
+
+        The filter envelope's level reaches the cutoff one block late, and so do the
+        sub-oscillator's: they are read from the graph's wires after the block that made them."""
+        import array
+
+        import audiograph as ag
+
+        if not hasattr(ag, "ADSR2") or not hasattr(ag, "GLISS"):
+            return False
+        self._ag = ag
+        self._fragment = f
+        n = self.block_size
+        gate = f.input(self.gate_in)
+        note_jack = self.note_in if self.note_in.cable is not None else self.pitch_in
+        b_note = f.input(note_jack)
+        b_sub = f.input(self.sub_in)
+        self._has_sub = b_sub is not None
+        if self._has_sub:
+            f.keep(b_sub)
+        self._b_sub = b_sub
+
+        g_noise = f.switch("noise", False)
+        g_sine = f.switch("sine", False)
+
+        # the glide: a linear slide for portamento, the same slide on a semitone grid for glissando
+        b_porta = f.buffer()
+        b_gliss = f.buffer()
+        b_glided = f.buffer()
+        self._n_porta = f.add(ag.LAG, (b_note, None, None), b_porta)
+        f.set(self._n_porta, ag.LAG_SHAPE, ag.LAG_LINEAR)
+        self._n_gliss = f.add(ag.GLISS, (b_note, None, None), b_gliss)
+        f.set(self._n_gliss, ag.GLISS_STEP, 0.1)
+        self._n_glided = f.add(ag.MIX, (b_porta, b_gliss), b_glided)
+
+        self._ch = []
+        b_outs = []
+        for prefix, pwm_in in (("ch1_", self.pwm1_in), ("ch2_", self.pwm2_in)):
+            b_pcv = f.buffer()
+            b_pwcv = f.buffer()
+            b_saw = f.buffer()
+            b_pulse = f.buffer()
+            b_noise = f.buffer()
+            b_src = f.buffer()
+            b_hp = f.buffer()
+            b_filt = f.buffer()
+            b_sine = f.buffer()
+            b_vin = f.buffer()
+            b_fenv = f.buffer()
+            b_aenv = f.buffer()
+            b_out = f.buffer()
+            f.keep(b_fenv)
+            c = {"prefix": prefix, "b_fenv": b_fenv}
+            c["pcv"] = f.add(ag.MIX, (b_glided, b_sub), b_pcv)
+            f.set(c["pcv"], 0, 1.0)
+            c["pwcv"] = f.add(ag.MIX, (f.input(pwm_in),), b_pwcv)
+            c["saw"] = f.add(ag.OSC, (b_pcv, None, b_pwcv, None), b_saw)
+            c["pulse"] = f.add(ag.OSC, (b_pcv, None, b_pwcv, None), b_pulse)
+            for node, wave in ((c["saw"], 1), (c["pulse"], 2)):
+                f.set(node, ag.OSC_WAVEFORM, wave)
+                f.set(node, ag.OSC_FREQUENCY, BASE_FREQ_C4)
+                f.set(node, ag.OSC_LEVEL, OSC_LEVEL)
+                f.set(node, ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+                f.set(node, ag.OSC_PWM_DEPTH, OSC_PWM_DEPTH)
+            c["noise"] = f.add(ag.NOISE, (), b_noise, group=g_noise)
+            f.set(c["noise"], 0, 0.5 * UNIT)
+            c["src"] = f.add(ag.MIX, (b_saw, b_pulse, b_noise, b_pwcv), b_src)
+            c["hp"] = f.add(ag.BIQUAD, (b_src,), b_hp)
+            c["lp"] = f.add(ag.BIQUAD, (b_hp,), b_filt)
+            for node, mode in ((c["hp"], audiobiquad.HIGH_PASS), (c["lp"], audiobiquad.LOW_PASS)):
+                f.set(node, ag.BIQUAD_MODE, mode)
+                f.set(node, ag.BIQUAD_GAIN_DB, 0.0)
+                f.set(node, ag.BIQUAD_MIX, 1.0)
+            c["sine"] = f.add(ag.OSC, (b_pcv, None, None, None), b_sine, group=g_sine)
+            f.set(c["sine"], ag.OSC_WAVEFORM, 8)
+            f.set(c["sine"], ag.OSC_FREQUENCY, BASE_FREQ_C4)
+            f.set(c["sine"], ag.OSC_LEVEL, OSC_LEVEL)
+            f.set(c["sine"], ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+            c["vin"] = f.add(ag.MIX, (b_filt, b_sine), b_vin)
+            c["fenv"] = f.add(ag.ADSR2, (gate,), b_fenv)
+            c["aenv"] = f.add(ag.ENV, (gate,), b_aenv)
+            c["vca"] = f.add(ag.VCA, (b_vin, b_aenv, None), b_out)
+            f.set(c["vca"], ag.VCA_SELECT, 0.0)
+            f.set(c["vca"], ag.VCA_CURVE, ag.VCA_LINEAR)
+            self._ch.append(c)
+            b_outs.append(b_out)
+        self._n_mix = f.add(ag.MIX, tuple(b_outs), f.output(self.audio_out))
+
+        # what the voice's control inputs hand over, in the rack's units
+        self._k = {
+            "gate": 0.0,
+            "newkey": 0.0,
+            "vel": 1.0,
+            "press": 0.0,
+            "mod": 0.0,
+            "bend": 0.0,
+            "note": 0.0,
+        }
+        for key, jack in (
+            ("gate", self.gate_in),
+            ("newkey", self.newkey_in),
+            ("vel", self.vel_in),
+            ("press", self.press_in),
+            ("mod", self.mod_in),
+            ("bend", self.bend_in),
+            ("note", note_jack),
+        ):
+            f.watch(jack, self._watch(key))
+        self._rd = array.array("h", bytes(2 * n))
+        self._fenv_last = [0.0, 0.0]
+        self._sub_last = 0.0
+        self._gain_set = False
+        self._pulse_gate = self._tmp
+        f.before_run(self._graph_block)
+        f.prime(self._graph_scatter)
+        f.on_reset(self._graph_reset)
+
+    def _graph_scatter(self, run):
+        """As ``_scatter``: each channel's oscillator runs one block at a frequency of this
+        voice's own, with no pitch CV, so the two channels start out of step."""
+        f = self._fragment
+        ag = self._ag
+        s = _seed(self.id)
+        keep = []
+        for c, hz in zip(self._ch, (50.0 + (s % 997), 50.0 + ((s >> 4) % 997))):
+            f.set(c["pcv"], 0, 0.0)
+            f.set(c["pcv"], 1, 0.0)
+            f.set(c["pcv"], ag.MIX_OFFSET, 0.0)
+            for key in ("saw", "pulse"):
+                f.set(c[key], ag.OSC_FREQUENCY, hz)
+                keep.append(c[key])
+        run(1 << f.group if f.group < 32 else 0, keep)
+        for c in self._ch:
+            for key in ("saw", "pulse"):
+                f.set(c[key], ag.OSC_FREQUENCY, BASE_FREQ_C4)
+            f.set(c["pcv"], 0, 1.0)
+
+    def _watch(self, key):
+        def put(value):
+            self._k[key] = value
+
+        return put
+
+    def _graph_last(self, buf):
+        """The last sample of wire ``buf`` as the last block left it, in the rack's units."""
+        self._fragment.read(buf, self._rd)
+        return self._rd[-1] / UNIT
+
+    def _graph_block(self):
+        if not self.enabled:
+            return
+        f = self._fragment
+        ag = self._ag
+        p = self.params
+        n = self.block_size
+        sr = self.sample_rate
+        steps = f.blocks
+        k = self._k
+
+        gate_high = k["gate"] > 0.5
+        newkey_high = k["newkey"] > 0.5
+        velocity = k["vel"]
+        pressure = k["press"]
+        mod_val = k["mod"]
+        bend_val = k["bend"]
+        note_num = k["note"] * 120.0 + 60.0
+        sub_val = self._graph_last(self._b_sub) if self._has_sub and self._needs_sub() else 0.0
+
+        # the glide
+        porta = p.get("portamento", 0.0)
+        glissando = p.get("glide_mode", "portamento") == "glissando"
+        if porta > 0.0:
+            time = slider_time(porta, GLIDE_RANGE)
+            mode = ag.LAG_ON
+        else:
+            time = 0.0
+            mode = ag.LAG_OFF
+        f.set(self._n_porta, ag.LAG_TIME, time)
+        f.set(self._n_porta, ag.LAG_MODE, mode)
+        f.set(self._n_gliss, ag.GLISS_TIME, time)
+        f.set(self._n_gliss, ag.GLISS_MODE, mode)
+        f.set(self._n_glided, 0, 0.0 if glissando else 1.0)
+        f.set(self._n_glided, 1, 1.0 if glissando else 0.0)
+
+        # ribbon offset
+        if bend_val >= 0.0:
+            ribbon_semi = (bend_val / 0.5) * RIBBON_UP_SEMITONES
+        else:
+            ribbon_semi = (bend_val / 0.5) * RIBBON_DOWN_SEMITONES
+        sustain_mode = str(p.get("sustain_mode", "I"))
+        if gate_high or sustain_mode == "II":
+            self._ribbon_offset = ribbon_semi
+        if gate_high:
+            self._sustain_ended = False
+        elif sustain_mode == "II" and newkey_high:
+            self._sustain_ended = True
+
+        # touch pulse: the rack's envelope core, stepped with the gate
+        pulse_gate = self._pulse_gate
+        pulse_gate[:] = 1.0 if gate_high else 0.0
+        for _ in range(steps):
+            self.pulse_env.render(pulse_gate, self._pulse_buf)
+        pulse_val = self.pulse_env.val
+        touch_bend_semi = p.get("touch_bend", 0.0) * velocity * pulse_val * TOUCH_BEND_SEMITONES
+
+        sub_vco_knob = p.get("sub_vco", 0.0)
+        touch_vco_knob = p.get("touch_vco", 0.0)
+        eff_sub_vco = min(1.0, sub_vco_knob + touch_vco_knob * pressure)
+        sub_pitch_k = (eff_sub_vco**2) * SUB_VCO_SEMITONES * 2.0 / 120.0
+
+        pitch_common = (
+            (p.get("coarse", 0.0) / 12000.0)
+            + (p.get("fine", 0.0) / 12000.0)
+            + (self._ribbon_offset / 120.0)
+            - (touch_bend_semi / 120.0)
+        )
+
+        slop_knob = p.get("slop", 0.2)
+        self._drift_phase1 = (self._drift_phase1 + self._drift_rate1 * n * steps / sr) % 1.0
+        self._drift_phase2 = (self._drift_phase2 + self._drift_rate2 * n * steps / sr) % 1.0
+        drift1 = math.sin(self._drift_phase1 * TWO_PI)
+        drift2 = math.sin(self._drift_phase2 * TWO_PI)
+        drift_pitch1 = slop_knob * (self._ch1_pitch_slop + drift1 * (2.0 / 12000.0))
+        drift_pitch2 = slop_knob * (self._ch2_pitch_slop + drift2 * (2.0 / 12000.0)) + (
+            p.get("detune", 0.08) / 120.0
+        )
+        drift_vcf1 = slop_knob * (self._ch1_vcf_slop + drift1 * 0.05)
+        drift_vcf2 = slop_knob * (self._ch2_vcf_slop + drift2 * 0.05)
+
+        brilliance_oct = p.get("brilliance", 0.0) * 5.0 * BRILLIANCE_OCT
+        key_track_oct = KEY_TRACK * ((note_num - 60.0) / 12.0)
+        semis_from_c4 = note_num - 60.0
+        if semis_from_c4 < 0.0:
+            d = min(1.0, (-semis_from_c4) / KBD_SPAN)
+            kbd_bril_oct = p.get("kbd_bril_low", 0.0) * 5.0 * KBD_BRIL_OCT * (d * d)
+            kbd_level_db = p.get("kbd_level_low", 0.0) * 5.0 * KBD_LEVEL_DB * (d * d)
+        elif semis_from_c4 > 0.0:
+            d = min(1.0, semis_from_c4 / KBD_SPAN)
+            kbd_bril_oct = p.get("kbd_bril_high", 0.0) * 5.0 * KBD_BRIL_OCT * (d * d)
+            kbd_level_db = p.get("kbd_level_high", 0.0) * 5.0 * KBD_LEVEL_DB * (d * d)
+        else:
+            kbd_bril_oct = 0.0
+            kbd_level_db = 0.0
+        eff_sub_vcf = min(1.0, p.get("sub_vcf", 0.0) + p.get("touch_vcf", 0.0) * pressure)
+        sub_vcf_oct = eff_sub_vcf * (sub_val * 2.0) * SUB_VCF_OCT
+        wah_oct = p.get("wheel_wah", 0.0) * mod_val * WAH_OCT
+        vcf_common_oct = brilliance_oct + key_track_oct + kbd_bril_oct + sub_vcf_oct + wah_oct
+
+        kbd_gain = 10.0 ** (kbd_level_db / 20.0)
+        sub_vca = p.get("sub_vca", 0.0)
+        tremolo_gain = max(0.0, 1.0 - SUB_VCA_DEPTH * sub_vca * (0.5 + sub_val))
+        vca_common_gain = kbd_gain * tremolo_gain
+
+        sustain_param = p.get("sustain", 0.0)
+        sustain_time = slider_time(sustain_param, SUSTAIN_RANGE) if sustain_param > 0.0 else 0.0
+        mix_val = p.get("mix", 0.5)
+        sine_on = False
+        noise_on = False
+        gains = [0.0, 0.0]
+        for index, (c, drift_pitch, drift_vcf) in enumerate(
+            ((self._ch[0], drift_pitch1, drift_vcf1), (self._ch[1], drift_pitch2, drift_vcf2))
+        ):
+            pfx = c["prefix"]
+            saw_on = bool(p.get(pfx + "saw", False))
+            square_on = bool(p.get(pfx + "square", False))
+            noise_level = p.get(pfx + "noise", 0.0)
+            sine_level = p.get(pfx + "sine", 0.0)
+            sine_on = sine_on or sine_level > 0.0
+            noise_on = noise_on or noise_level > 0.0
+
+            feet_semi = FEET_SEMITONES.get(str(p.get(pfx + "feet", "8")), 0.0)
+            f.set(c["pcv"], 1, sub_pitch_k)
+            f.set(c["pcv"], ag.MIX_OFFSET, (feet_semi / 120.0 + pitch_common + drift_pitch) * UNIT)
+
+            pw_manual = 0.5 + PW_SPAN * p.get(pfx + "pw", 0.0)
+            pwm_depth = PWM_DEPTH * p.get(pfx + "pwm", 0.0)
+            swing = 0.0
+            if square_on and pwm_depth > 0.0:
+                room_up = PW_LIMITS[1] - pw_manual
+                room_down = pw_manual - PW_LIMITS[0]
+                swing = min(pwm_depth, max(0.0, room_up), max(0.0, room_down))
+            pwm_scale = swing / PWM_PER_CV if swing > 0.0 else 0.0
+            f.set(c["pwcv"], 0, pwm_scale)
+            f.set(c["pulse"], ag.OSC_PULSE_WIDTH, pw_manual)
+            f.set(c["saw"], ag.OSC_PULSE_WIDTH, pw_manual)
+
+            f.set(c["src"], 0, SOURCE_SCALE if saw_on else 0.0)
+            f.set(c["src"], 1, SOURCE_SCALE if square_on else 0.0)
+            f.set(c["src"], 2, noise_level * SOURCE_SCALE)
+            f.set(
+                c["src"], 3, -PWM_PER_CV * SOURCE_SCALE if (square_on and pwm_scale > 0.0) else 0.0
+            )
+            f.set(
+                c["src"],
+                ag.MIX_OFFSET,
+                -SOURCE_SCALE * (pw_manual - 0.5) * UNIT if square_on else 0.0,
+            )
+
+            # the filter envelope: IL and AL, its times, and where the sustain lands
+            il = p.get(pfx + "il", 0.0)
+            al = p.get(pfx + "al", 0.0)
+            f_att = slider_time(p.get(pfx + "fenv_attack", 0.0), ATTACK_RANGE) / ATTACK_TO_PEAK
+            f_dec = slider_time(p.get(pfx + "fenv_decay", 0.4), DECAY_RANGE)
+            f_rel = slider_time(p.get(pfx + "fenv_release", 0.4), RELEASE_RANGE)
+            eff_f_rel = max(f_rel, sustain_time) if sustain_param > 0.0 else f_rel
+            if self._sustain_ended:
+                eff_f_rel = f_rel
+            span = al - il
+            sustain_level = 0.0 if abs(span) < 1e-6 else max(0.0, min(1.0, -il / span))
+            f.set(c["fenv"], ag.ADSR2_ATTACK, f_att)
+            f.set(c["fenv"], ag.ADSR2_DECAY, f_dec)
+            f.set(c["fenv"], ag.ADSR2_SUSTAIN, sustain_level)
+            f.set(c["fenv"], ag.ADSR2_RELEASE, eff_f_rel)
+            f.set(c["fenv"], ag.ADSR2_INITIAL, il)
+            f.set(c["fenv"], ag.ADSR2_ATTACK_LEVEL, al)
+
+            e_out = self._graph_last(c["b_fenv"])
+            fenv_oct = e_out * 5.0 * FENV_OCT_PER_UNIT
+            init_bril_oct = p.get(pfx + "init_bril", 0.2) * velocity * pulse_val * INIT_BRIL_OCT
+            after_bril_oct = p.get(pfx + "after_bril", 0.3) * pressure * AFTER_BRIL_OCT
+            cutoff_oct = fenv_oct + init_bril_oct + after_bril_oct + vcf_common_oct + drift_vcf
+            hpf_base = slider_time(p.get(pfx + "hpf", 0.1), HPF_RANGE)
+            lpf_base = slider_time(p.get(pfx + "lpf", 0.6), LPF_RANGE)
+            hp_hz = min(0.45 * sr, max(MIN_HZ, hpf_base * (2.0**cutoff_oct)))
+            lp_hz = min(0.45 * sr, max(MIN_HZ, lpf_base * (2.0**cutoff_oct)))
+            res_lever = p.get("resonance", 0.0) * RESONANCE_SPAN
+            wah_res = p.get("wheel_wah", 0.0) * mod_val * WAH_RES
+            hp_travel = max(0.0, min(1.0, p.get(pfx + "res_h", 0.0) + res_lever + wah_res))
+            lp_travel = max(0.0, min(1.0, p.get(pfx + "res_l", 0.2) + res_lever + wah_res))
+            f.set(c["hp"], ag.BIQUAD_FREQUENCY, hp_hz)
+            f.set(c["hp"], ag.BIQUAD_Q, slider_time(hp_travel, Q_RANGE))
+            f.set(c["lp"], ag.BIQUAD_FREQUENCY, lp_hz)
+            f.set(c["lp"], ag.BIQUAD_Q, slider_time(lp_travel, Q_RANGE))
+
+            f.set(c["vin"], 0, p.get(pfx + "vcf_level", 0.8))
+            f.set(c["vin"], 1, sine_level)
+
+            a_att = slider_time(p.get(pfx + "attack", 0.0), ATTACK_RANGE) / ATTACK_TO_PEAK
+            a_dec = slider_time(p.get(pfx + "decay", 0.4), DECAY_RANGE)
+            a_sus = p.get(pfx + "sustain", 0.8)
+            a_rel = slider_time(p.get(pfx + "release", 0.4), RELEASE_RANGE)
+            eff_a_rel = max(a_rel, sustain_time) if sustain_param > 0.0 else a_rel
+            if self._sustain_ended:
+                eff_a_rel = a_rel
+            f.set(c["aenv"], ag.ENV_ATTACK, a_att)
+            f.set(c["aenv"], ag.ENV_DECAY, a_dec)
+            f.set(c["aenv"], ag.ENV_SUSTAIN, a_sus)
+            f.set(c["aenv"], ag.ENV_RELEASE, eff_a_rel)
+
+            touch_level = (
+                1.0
+                + INIT_LEVEL_GAIN * p.get(pfx + "init_level", 0.0) * velocity * pulse_val
+                + AFTER_LEVEL_GAIN * p.get(pfx + "after_level", 0.0) * pressure
+            )
+            gain = p.get(pfx + "level", 0.7) * touch_level * vca_common_gain * VCA_GAIN
+            gain *= (1.0 - mix_val) if index == 0 else mix_val
+            gains[index] = gain
+            f.set(self._n_mix, index, gain)
+        if not self._gain_set:
+            # the rack's first gains have nothing to ramp from: the node takes them as they stand
+            f.reset(self._n_mix)
+            for index in range(2):
+                f.set(self._n_mix, index, gains[index])
+            self._gain_set = True
+        f.enable("noise", noise_on)
+        f.enable("sine", sine_on)
+
+    def _needs_sub(self):
+        p = self.params
+        return (
+            p.get("sub_vcf", 0.0) > 0.0
+            or p.get("touch_vcf", 0.0) > 0.0
+            or p.get("sub_vca", 0.0) > 0.0
+        )
+
+    def _graph_reset(self):
+        f = self._fragment
+        for c in self._ch:
+            for key in ("fenv", "aenv", "hp", "lp", "noise"):
+                f.reset(c[key])
+        self.noise.reset()
+        self.pulse_env.reset()
+        self._last_gate = False
+        self._sustain_ended = False
