@@ -457,6 +457,10 @@ class PolyMidiCV(MidiCVModule):
         # the second line, for a voice with two oscillators on two keys (``"duo"``)
         self._c_pitch_hi = f.control(self.pitch_hi_out, 0.0)
         self._c_note_hi = f.control(self.note_hi_out, 0.0)
+        # the line itself (the lowest or last key, gliding), for a module that follows
+        # one key whatever the voices do (StringEnsembleBass)
+        self._c_line_pitch = f.control(self.pitch_out, 0.0)
+        self._c_line_note = f.control(self.note_out, 0.0)
         f.before_run(self._graph_block)
         f.on_reset(self.reset)
 
@@ -465,9 +469,12 @@ class PolyMidiCV(MidiCVModule):
         if self._mono:
             self._graph_mono_block(bend)
         else:
+            self._graph_glide()
             self._poly_block()
             for i in range(self.max_voices):
                 self._graph_write(i, bend)
+        self._c_line_note.set(self._current_pitch)
+        self._c_line_pitch.set(self._current_pitch + bend)
         # the second line never glides: the high key's pitch, or the line's
         self._c_note_hi.set(self._target_hi)
         self._c_pitch_hi.set(self._target_hi + bend)
@@ -521,6 +528,17 @@ class PolyMidiCV(MidiCVModule):
             self.press_outs[i].buffer[:] = pr
             self._w_press[i] = pr
 
+    def _graph_glide(self):
+        """The line's glide, a block at a time: where the rack's ends the block."""
+        glide = self.params["glide"]
+        if glide > 0.001 and self._current_pitch != self._target_pitch:
+            coeff = math.exp(-1.0 / (glide * self.sample_rate * 0.1))
+            target = self._target_pitch
+            now = target + (self._current_pitch - target) * coeff**self.block_size
+            self._current_pitch = target if abs(now - target) < 1e-7 else now
+        else:
+            self._current_pitch = self._target_pitch
+
     def _graph_mono_block(self, bend):
         """``_mono_block`` with the line's value in controls, not copied into jacks."""
         alloc = self.alloc
@@ -530,14 +548,7 @@ class PolyMidiCV(MidiCVModule):
             for i in range(k, self._line):
                 self._leave_line(i)
         self._line = k
-        glide = self.params["glide"]
-        if glide > 0.001 and self._current_pitch != self._target_pitch:
-            coeff = math.exp(-1.0 / (glide * self.sample_rate * 0.1))
-            target = self._target_pitch
-            now = target + (self._current_pitch - target) * coeff**self.block_size
-            self._current_pitch = target if abs(now - target) < 1e-7 else now
-        else:
-            self._current_pitch = self._target_pitch
+        self._graph_glide()
         phase = self._phase
         gate = self._gate_active
         detune = alloc.detune / 120.0

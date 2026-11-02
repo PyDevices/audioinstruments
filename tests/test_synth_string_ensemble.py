@@ -26,6 +26,9 @@ C4 = 261.6255653005986
 
 def make(patch=0, **options):
     options.setdefault("output", "pull")
+    options.setdefault(
+        "engine", "rack"
+    )  # the rack's behaviour; test_graph_string_ensemble holds the graph to it
     inst = adapter.create(RATE, voice="string_ensemble", **options)
     inst.program_change(patch)
     return inst

@@ -1428,15 +1428,13 @@ def test_the_patch_list_is_valid():
             assert seconds <= 1.2, (name, control, seconds)
 
 
-def test_the_patch_is_refused_unison_and_too_many_voices_and_is_rack_only():
+def test_the_patch_is_refused_unison_and_too_many_voices():
     with pytest.raises(ValueError):
         adapter.create(RATE, voice="vocoder330", unison=2)
     with pytest.raises(ValueError):
         adapter.create(RATE, voice="vocoder330", voices=50)
-    with pytest.raises(ValueError):
-        adapter.create(RATE, voice="vocoder330", engine="graph")
     inst = adapter.create(RATE, voice="vocoder330", voices=49)
-    assert inst.voices == 49 and inst.engine == "rack"
+    assert inst.voices == 49
     inst.deinit()
     assert "vocoder330" in adapter.ALL
 

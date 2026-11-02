@@ -465,7 +465,8 @@ class VoicePool:
     A bus fades, parks and is scaled by the mix's ``level`` exactly as the
     main jack is, so the main jack, which alone decides when a voice has gone
     quiet, must carry everything the voice sounds. Buses are mono: a unison
-    spread's pan does not reach them, and a pool with buses renders on the rack.
+    spread's pan does not reach them. Compiled to a graph, each bus is a chain of
+    ``MIX`` nodes (see ``VoiceMix``).
 
     ``voice_count`` is how many voices may sound (an Instrument's ``voices``).
     It can change while notes play, down to 1 and up to ``max_voice_count``,

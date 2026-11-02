@@ -1,6 +1,15 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""CompactOrgan output section: voice tab filters, Multi-Tone booster, bass section, swell."""
+"""CompactOrgan output section: voice tab filters, Multi-Tone booster, bass section, swell.
+
+Compiled to a graph, every filter is a ``BIQUAD`` node and every sum a
+``MIX``: the tabs into the treble sum (a tab that is off at gain 0), the
+booster's shelf, the bass pair into its low-pass, and the swell pedal as the
+pedal's gains on the sum and on its own low-pass. The filters all run while
+the organ plays, where the rack skips a tab that is off; the rack's skipping
+of blocks that have gone silent has no graph form and needs none, as every
+filter settles to zero.
+"""
 
 import audiobiquad
 
@@ -15,7 +24,7 @@ from ...core.signal import (
     scale,
     scaled_into,
 )
-from ...dsp.organ import SwellPedalCore
+from ...dsp.organ import SWELL_BASS_CUT, SWELL_BASS_HZ, SwellPedalCore
 from .._util import jack_signal
 
 #: Multi-Tone booster corner frequency in Hz.
@@ -227,6 +236,12 @@ class CompactOrganOutput(Module):
         multi = p["multi_tone"]
         gain_db = (multi / 10.0) * 12.0
         if gain_db != self._booster_gain:
+            if self._booster_gain < 0.0:
+                # The first setting after a build or reset is where the shelf
+                # starts, not a move: the node would otherwise walk to it from
+                # flat over its 20 ms, because the bridge's priming pull ran it
+                # at the 0 dB it was built with.
+                self._booster_node.clear()
             self._booster_gain = gain_db
             self._booster_node.gain_db = gain_db
 
@@ -261,3 +276,105 @@ class CompactOrganOutput(Module):
         left = self.left_out.buffer
         scaled_into(left, expressed, vol)
         copy_into(self.right_out.buffer, left)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    #: Each tab's filter, as ``(input, mode, hz, Q, stages)``; ``_build_filters`` has the rack's.
+    GRAPH_TABS = (
+        ("flute_16", "b16", audiobiquad.LOW_PASS, 450.0, 0.7071, 2),
+        ("flute_8", "b8", audiobiquad.LOW_PASS, 800.0, 0.7071, 2),
+        ("oboe_8", "b8", audiobiquad.BAND_PASS, 1200.0, 2.8, 1),
+        ("trumpet_8", "b8", audiobiquad.BAND_PASS, 1600.0, 1.1, 1),
+        ("strings_8", "b8", audiobiquad.HIGH_PASS, 3000.0, 2.5, 1),
+        ("flute_4", "b4", audiobiquad.LOW_PASS, 1500.0, 0.7071, 2),
+        ("strings_4", "b4", audiobiquad.HIGH_PASS, 3200.0, 2.5, 1),
+    )
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+
+        def biquad(src, mode, hz, q):
+            out = f.buffer()
+            node = f.add(ag.BIQUAD, (src,), out)
+            f.set(node, ag.BIQUAD_MODE, mode)
+            f.set(node, ag.BIQUAD_FREQUENCY, hz)
+            f.set(node, ag.BIQUAD_Q, q)
+            f.set(node, ag.BIQUAD_GAIN_DB, 0.0)
+            f.set(node, ag.BIQUAD_MIX, 1.0)
+            return node, out
+
+        ins = {
+            "b16": f.input(self.bus_16_in),
+            "b8": f.input(self.bus_8_in),
+            "b4": f.input(self.bus_4_in),
+        }
+        tabs = []
+        self._g_tabs = []  # the tabs that have a bus to filter, in the treble sum's order
+        for name, bus, mode, hz, q, stages in self.GRAPH_TABS:
+            src = ins[bus]
+            if src is None:
+                continue
+            for _ in range(stages):
+                _, src = biquad(src, mode, hz, q)
+            tabs.append(src)
+            self._g_tabs.append(name)
+        b_treble = f.buffer()
+        self._n_treble = f.add(ag.MIX, tuple(tabs), b_treble)
+        self._n_boost, b_boost = biquad(b_treble, audiobiquad.HIGH_SHELF, BOOSTER_HZ, 0.7071)
+        bass = (f.input(self.bass_16_in), f.input(self.bass_8_in))
+        b_sum = f.buffer()
+        self._n_bass = f.add(ag.MIX, bass, b_sum)
+        _, b_bass = biquad(b_sum, audiobiquad.LOW_PASS, 200.0, 0.7071)
+        _, b_bass = biquad(b_bass, audiobiquad.LOW_PASS, 200.0, 0.7071)
+        b_sum = f.buffer()
+        self._n_sum = f.add(ag.MIX, (b_boost, b_bass), b_sum)
+        _, b_low = biquad(b_sum, audiobiquad.LOW_PASS, SWELL_BASS_HZ, 0.7071)
+        b_left = f.output(self.left_out)
+        self._n_left = f.add(ag.MIX, (b_sum, b_low), b_left)
+        self._n_right = f.add(ag.MIX, (b_left,), f.output(self.right_out))
+        f.set(self._n_right, 0, 1.0)
+        scale = f.take_master_scale((self.left_out, self.right_out))
+        self._g_scale = 1.0 if scale is None else scale
+        f.bind(tuple(self._g_tabs), self._graph_tabs)
+        f.bind(("multi_tone",), self._graph_boost)
+        f.bind(("bass_16", "bass_8", "bass_volume", "multi_tone"), self._graph_sum)
+        f.bind(("expression", "volume"), self._graph_level)
+
+    def _graph_tabs(self):
+        p = self.params
+        f = self._fragment
+        for i, name in enumerate(self._g_tabs):
+            f.set(self._n_treble, i, self._levels[name] if p[name] >= 0.5 else 0.0)
+
+    def _graph_boost(self):
+        gain_db = (self.params["multi_tone"] / 10.0) * 12.0
+        self._fragment.set(self._n_boost, self._ag.BIQUAD_GAIN_DB, gain_db)
+
+    def _graph_sum(self):
+        p = self.params
+        f = self._fragment
+        on16 = p["bass_16"] >= 0.5
+        on8 = p["bass_8"] >= 0.5
+        f.set(self._n_bass, 0, 1.0 if on16 else 0.0)
+        f.set(self._n_bass, 1, 1.0 if on8 else 0.0)
+        bass = (p["bass_volume"] / 10.0) * 1.5 * TAB_HEADROOM if on16 or on8 else 0.0
+        f.set(self._n_sum, 0, 1.0 + (p["multi_tone"] / 10.0) * 0.4)
+        f.set(self._n_sum, 1, bass)
+
+    def _graph_level(self):
+        """The swell pedal and the volume: the sum less a share of its low end, at the pedal
+        squared, then the volume and the master's scale, in the last two gains."""
+        p = self.params
+        pedal = p["expression"] / 10.0
+        pedal = 0.0 if pedal < 0.0 else (1.0 if pedal > 1.0 else pedal)
+        vol = (p["volume"] / 10.0) * MASTER_GAIN_SCALE * self._g_scale
+        f = self._fragment
+        if pedal >= 1.0:
+            f.set(self._n_left, 0, vol)
+            f.set(self._n_left, 1, 0.0)
+        else:
+            level = pedal * pedal * vol
+            f.set(self._n_left, 0, level)
+            f.set(self._n_left, 1, -SWELL_BASS_CUT * (1.0 - pedal) * level)

@@ -1,16 +1,31 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""StringEnsemble monophonic bass section."""
+"""StringEnsemble monophonic bass section.
+
+Compiled to a graph, the bass is a group of its own that runs while a bass key
+is down or its envelope is still falling: two ``OSC`` nodes on a pitch wire
+that holds the last bass key, their ``MIX``, a one-stage ``PHASER`` for the
+tone filter, an ``ENV`` and a ``VCA`` for the volume and velocity. While the
+group is off the oscillators stand still, as the rack leaves them. The rack
+renders nothing in the block its envelope runs out in, so the group stops a
+block early: Python follows the release in floats and works out whether it
+ends in the next block.
+"""
+
+import math
+from array import array
 
 import audiobiquad
 
 from ...core.bridge import NodeBridge, biquad_kwargs
 from ...core.jack import SignalType
 from ...core.module import Module
-from ...core.signal import BASE_FREQ_C4, add, copy_into, scaled_into
-from ...dsp.envelope import EnvelopeCore
+from ...core.signal import BASE_FREQ_C4, BRIDGE_SCALE, add, copy_into, scaled_into
+from ...dsp.blocks import steps_to_reach
+from ...dsp.envelope import RELEASE_TOLERANCE, EnvelopeCore
 from ...dsp.oscillator import OscillatorCore
 from .._util import jack_signal
+from ..compact_organ.voice import PITCH_OCTAVES
 from .envelope import ATTACK_TO_PEAK, CRESCENDO_RANGE, slider_time
 
 #: The bottom 20 keys of a 49-key keyboard starting at MIDI 36 (C2 to G3).
@@ -169,3 +184,130 @@ class StringEnsembleBass(Module):
         vel_factor = 1.0 - vel_vca * VEL_DEPTH * (1.0 - self._velocity)
         gain = p["bass_volume"] * BASS_SCALE * vel_factor
         scaled_into(self.audio_out.buffer, self._filtered, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        self._g_on = f.switch("bass", False)
+        g = self._g_on
+        b_pcv = f.buffer()
+        self._n_pcv = f.add(ag.MIX, (), b_pcv, group=g)
+        b_gate = f.buffer()
+        self._n_gate = f.add(ag.CONST, (), b_gate, group=g)
+        wires = []
+        self._n_osc = []
+        for wave, ratio in ((1, 0.5), (2, 1.0)):
+            b = f.buffer()
+            node = f.add(ag.OSC, (b_pcv, None, None, None), b, group=g)
+            f.set(node, ag.OSC_WAVEFORM, wave)
+            f.set(node, ag.OSC_PULSE_WIDTH, CELLO_WIDTH)
+            f.set(node, ag.OSC_LEVEL, 0.25)  # the node's +-0.5, as OscillatorCore's
+            f.set(node, ag.OSC_FREQUENCY, BASE_FREQ_C4 * ratio)
+            f.set(node, ag.OSC_PITCH_OCTAVES, PITCH_OCTAVES)
+            self._n_osc.append(node)
+            wires.append(b)
+        b_mix = f.buffer()
+        self._n_mix = f.add(ag.MIX, tuple(wires), b_mix, group=g)
+        b_tone = f.buffer()
+        self._n_tone = f.add(ag.PHASER, (b_mix,), b_tone, arg=1.0, group=g)
+        f.set(self._n_tone, ag.PHASER_FREQUENCY, BASS_TONE_HZ)
+        f.set(self._n_tone, ag.PHASER_FEEDBACK, 0.0)
+        f.set(self._n_tone, ag.PHASER_MIX, 0.5)
+        b_env = f.buffer()
+        f.keep(b_env)  # its last sample says when the group may stop
+        self._g_env_buf = b_env
+        self._n_env = f.add(ag.ENV, (b_gate,), b_env, group=g)
+        f.set(self._n_env, ag.ENV_DECAY, 0.01)
+        f.set(self._n_env, ag.ENV_SUSTAIN, 1.0)
+        f.set(self._n_env, ag.ENV_RELEASE, BASS_RELEASE_S)
+        self._n_vca = f.add(ag.VCA, (b_tone, b_env, None), f.output(self.audio_out), group=g)
+        f.set(self._n_vca, ag.VCA_SELECT, 0.0)
+        self._g_last = array("h", bytes(2 * self.block_size))
+        self._g = {"gate": 0.0, "note": 0.0, "pitch": 0.0, "vel": 1.0}
+        for jack, key in (
+            (self.gate_in, "gate"),
+            (self.note_in, "note"),
+            (self.pitch_in, "pitch"),
+            (self.vel_in, "vel"),
+        ):
+            f.watch(jack, lambda v, key=key: self._g.__setitem__(key, v))
+        self._g_sounding = False  # the envelope still above 0 after the last block
+        self._g_level = 0.0
+        self._g_coeff = math.exp(-1.0 / max(1.0, BASS_RELEASE_S * self.sample_rate * 0.25))
+        self._g_high = False
+        f.bind(
+            ("contrabass", "cello", "bass_volume", "crescendo", "tune", "vel_vca"),
+            self._graph_params,
+        )
+        f.before_run(self._graph_block)
+        f.after_run(self._graph_after)
+        f.on_reset(self._graph_reset)
+
+    def _graph_params(self):
+        p = self.params
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_mix, 0, 1.0 if p["contrabass"] >= 0.5 else 0.0)
+        f.set(self._n_mix, 1, 1.0 if p["cello"] >= 0.5 else 0.0)
+        attack = slider_time(p["crescendo"], CRESCENDO_RANGE) / ATTACK_TO_PEAK
+        f.set(self._n_env, ag.ENV_ATTACK, attack)
+        self._graph_gain()
+
+    def _graph_gain(self):
+        p = self.params
+        vel = 1.0 - p["vel_vca"] * VEL_DEPTH * (1.0 - self._velocity)
+        self._fragment.set(self._n_vca, self._ag.VCA_GAIN, p["bass_volume"] * BASS_SCALE * vel)
+
+    def _graph_block(self):
+        """process(), once a block: the bass key, held pitch and gate, and whether the group
+        runs."""
+        f = self._fragment
+        g = self._g
+        key = 60.0 + g["note"] * 120.0
+        high = g["gate"] > 0.5 and (BASS_LOW - 0.5) <= key <= (BASS_HIGH + 0.5)
+        if high:
+            if self._velocity != g["vel"]:
+                self._velocity = g["vel"]
+                self._graph_gain()
+            pitch = g["pitch"] + self.params["tune"] / 12000.0
+            f.set(self._n_pcv, self._ag.MIX_OFFSET, pitch * BRIDGE_SCALE)
+        if high != self._g_high:
+            self._g_high = high
+            f.set(self._n_gate, 0, BRIDGE_SCALE if high else 0.0)
+        if not high and self._g_sounding and self._g_ends():
+            # the rack's envelope runs out in this block, and the rack renders none of it
+            self._g_sounding = False
+            f.reset(self._n_env)
+        p = self.params
+        on = (high or self._g_sounding) and (p["contrabass"] >= 0.5 or p["cello"] >= 0.5)
+        f.enable("bass", on)
+        if high:
+            self._g_sounding = True
+
+    def _g_ends(self):
+        """Whether the release ends in the next block, from the level the last ended on."""
+        return (
+            steps_to_reach(self._g_level, 0.0, self._g_coeff, RELEASE_TOLERANCE) < self.block_size
+        )
+
+    def _graph_after(self, sounding):
+        f = self._fragment
+        if not self._g_sounding or f.rendered < 1:
+            return
+        if self._g_high:
+            # the level a release would start from, read off the wire
+            f.read(self._g_env_buf, self._g_last)
+            self._g_level = self._g_last[self.block_size - 1] / BRIDGE_SCALE
+        else:
+            # falling: followed in floats, as the rack's is, since the last few counts of
+            # the wire are too coarse to say in which block it ends
+            self._g_level *= self._g_coeff ** (self.block_size * f.rendered)
+
+    def _graph_reset(self):
+        f = self._fragment
+        f.reset(self._n_env)
+        f.reset(self._n_tone)
+        self._g_sounding = False

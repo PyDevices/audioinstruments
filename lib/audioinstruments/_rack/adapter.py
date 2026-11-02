@@ -512,10 +512,6 @@ class Instrument:
 
     def _compile(self, engine):
         """The rack as one graph, when the build and the patch allow it."""
-        if self._pool.buses and engine == "graph":
-            raise ValueError(
-                "engine='graph' cannot render a patch with buses: they need the rack engine"
-            )
         if not graph_available():
             if engine == "graph":
                 raise ImportError("engine='graph' needs audiograph, which this build does not have")
