@@ -37,7 +37,9 @@ def big_bank(path, presets=190, instruments=450, zones=30, samples=900):
     held by the zones, not the audio."""
     b = sf2_builder.Bank("Big")
     ids = [
-        b.sample("s%d" % i, [(i * 37 + j) % 2000 - 1000 for j in range(100)], 10, 90, pitch=36 + i % 60)
+        b.sample(
+            "s%d" % i, [(i * 37 + j) % 2000 - 1000 for j in range(100)], 10, 90, pitch=36 + i % 60
+        )
         for i in range(samples)
     ]
     insts = []
@@ -57,7 +59,10 @@ def big_bank(path, presets=190, instruments=450, zones=30, samples=900):
     for p in range(presets):
         bank, program = (128, (p - 128) * 8) if p >= 128 else (0, p)
         zs = [
-            [(sf2.GEN_KEY_RANGE, (k * 16, k * 16 + 15)), (sf2.GEN_INSTRUMENT, insts[(p * 3 + k) % instruments])]
+            [
+                (sf2.GEN_KEY_RANGE, (k * 16, k * 16 + 15)),
+                (sf2.GEN_INSTRUMENT, insts[(p * 3 + k) % instruments]),
+            ]
             for k in range(8)
         ]
         b.preset("p%d" % p, bank, program, zs)
@@ -106,7 +111,8 @@ print("second instrument ok", gc.mem_alloc())
 
 
 @unittest.skipUnless(
-    os.environ.get("VRACK_MICROPYTHON") or shutil.which("micropython"), "needs a MicroPython (set VRACK_MICROPYTHON)"
+    os.environ.get("VRACK_MICROPYTHON") or shutil.which("micropython"),
+    "needs a MicroPython (set VRACK_MICROPYTHON)",
 )
 class BigBankOnMicroPythonTest(unittest.TestCase):
     def test_instruments_find_room_after_a_big_bank(self):
@@ -122,7 +128,10 @@ class BigBankOnMicroPythonTest(unittest.TestCase):
         with open(script, "w") as f:
             f.write(SCRIPT % {"lib": str(ROOT / "lib"), "bank": bank})
         ran = subprocess.run(
-            [interpreter, "-X", "heapsize=" + HEAP, script], capture_output=True, text=True, timeout=240
+            [interpreter, "-X", "heapsize=" + HEAP, script],
+            capture_output=True,
+            text=True,
+            timeout=240,
         )
         self.assertEqual(ran.returncode, 0, ran.stdout + ran.stderr)
         self.assertIn("second instrument ok", ran.stdout)
