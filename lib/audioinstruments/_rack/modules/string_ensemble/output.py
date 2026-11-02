@@ -1,6 +1,17 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
 # SPDX-License-Identifier: MIT
-"""StringEnsemble output section: bus low-pass, VCA, ensemble, master volume and DC block."""
+"""StringEnsemble output section: bus low-pass, VCA, ensemble, master volume and DC block.
+
+Compiled to a graph, the tone filter and the DC block are one-stage
+``PHASER`` nodes (the DC block subtracts its low-pass in a ``MIX``), the
+envelope a ``VCA``, and the ensemble three ``FBDELAY`` lines, each swept by
+its own wow table, the one the rack's lines play. Each side is a ``MIX`` of
+its lines, the dry signal and the bass at the volume, its gains moving block
+by block as the rack cross-fades between the dry signal and the lines. The
+graph has no bridges, so it sounds 256 frames sooner than the rack. The
+rack's lines hear the bridge's 256 frames of silence first, which moves their
+sweeps on that far: the graph's lines are primed with the same silence.
+"""
 
 import audiobiquad
 
@@ -8,8 +19,21 @@ from ...core.bridge import NodeBridge, biquad_kwargs
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import add, add_scaled, copy_into
-from ...dsp.ensemble import LATENCY_FRAMES, EnsembleCore
+from ...dsp.ensemble import (
+    CENTRE_MS,
+    FAST_DEPTH_MS,
+    LATENCY_FRAMES,
+    MAX_DELAY_MS,
+    RAMP_CHUNKS,
+    SLOW_DEPTH_MS,
+    STRING_LINES,
+    TONE_HZ,
+    EnsembleCore,
+    _Sweep,
+    sweep_table,
+)
 from .._util import jack_signal
+from .voice import GRAPH_VOICE_SCALE
 
 #: Bus tone filter frequency in Hz.
 UPPER_TONE_HZ = 7000.0
@@ -141,3 +165,115 @@ class StringEnsembleOutput(Module):
         self.dc_r_bridge.process(self._ens_r, self._dc_lp_r)
         copy_into(self.right_out.buffer, self._ens_r)
         add_scaled(self.right_out.buffer, self._dc_lp_r, -1.0, tmp)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        self._ag = ag
+        left = f.input(self.left_in)
+        right = f.input(self.right_in)
+        ins = tuple(b for b in (left, right) if b is not None)
+        b_upper = f.buffer()
+        self._n_upper = f.add(ag.MIX, ins, b_upper)
+        for i in range(len(ins)):
+            f.set(self._n_upper, i, 1.0 / len(ins) / GRAPH_VOICE_SCALE)
+        b_tone = f.buffer()
+        self._n_tone = f.add(ag.PHASER, (b_upper,), b_tone, arg=1.0)
+        f.set(self._n_tone, ag.PHASER_FREQUENCY, UPPER_TONE_HZ)
+        f.set(self._n_tone, ag.PHASER_FEEDBACK, 0.0)
+        f.set(self._n_tone, ag.PHASER_MIX, 0.5)
+        env = f.input(self.env_in)
+        b_dry = f.buffer()
+        self._n_env = f.add(ag.VCA, (b_tone, env, None), b_dry)
+        f.set(self._n_env, ag.VCA_SELECT, 0.0)
+        f.set(self._n_env, ag.VCA_GAIN, 1.0 if env is not None else 0.0)
+        # the ensemble's lines, each with the rack's sweep table
+        # a group of their own, so the voices' primes leave them alone
+        self._g_lines = f.switch("lines")
+        self._g_tables = []
+        self._n_lines = []
+        lines = []
+        for spec in STRING_LINES:
+            table, peak = sweep_table(_Sweep(spec, SLOW_DEPTH_MS, FAST_DEPTH_MS, "sine"))
+            self._g_tables.append(table)
+            b = f.buffer()
+            node = f.add(ag.FBDELAY, (b_dry,), b, arg=MAX_DELAY_MS, group=self._g_lines)
+            f.set(node, ag.DELAY_MS, CENTRE_MS)
+            f.set(node, ag.DELAY_FEEDBACK, 0.0)
+            f.set(node, ag.DELAY_MIX, spec.mix)
+            f.set(node, ag.DELAY_WOW_HZ, spec.slow_hz)
+            f.set(node, ag.DELAY_WOW_DEPTH_MS, peak)
+            f.set(node, ag.DELAY_DAMPING_HZ, TONE_HZ)
+            f.table(node, table)
+            self._n_lines.append(node)
+            lines.append(b)
+        bass = f.input(self.bass_in)
+        scale = f.take_master_scale((self.left_out, self.right_out))
+        self._g_scale = 1.0 if scale is None else scale
+        self._n_sides = []
+        self._n_dc = []
+        self._n_out = []
+        for jack, side in ((self.left_out, "left"), (self.right_out, "right")):
+            used = [i for i, spec in enumerate(STRING_LINES) if getattr(spec, side) != 0.0]
+            b_side = f.buffer()
+            node = f.add(ag.MIX, tuple(lines[i] for i in used) + (b_dry, bass), b_side)
+            self._n_sides.append((node, [getattr(STRING_LINES[i], side) for i in used]))
+            b_lp = f.buffer()
+            dc = f.add(ag.PHASER, (b_side,), b_lp, arg=1.0)
+            f.set(dc, ag.PHASER_FREQUENCY, DC_HZ)
+            f.set(dc, ag.PHASER_FEEDBACK, 0.0)
+            f.set(dc, ag.PHASER_MIX, 0.5)
+            self._n_dc.append(dc)
+            out = f.add(ag.MIX, (b_side, b_lp), f.output(jack))
+            f.set(out, 0, self._g_scale)
+            f.set(out, 1, -self._g_scale)
+            self._n_out.append(out)
+        # the rack's cross-fade: blocks into it, 0 off and _g_length on
+        self._g_length = RAMP_CHUNKS * LATENCY_FRAMES // self.block_size
+        self._g_pos = 0
+        self._g_ahead = 0
+        f.bind(("ensemble", "volume"), self._graph_gains)
+        f.before_run(self._graph_block)
+        f.on_reset(self._graph_reset)
+        f.prime(self._graph_prime)
+
+    def _graph_prime(self, run):
+        """The rack's lines first hear a bridge's worth of silence, which moves their sweeps
+        on by 256 frames: so do the nodes, so the sweeps line up with the rack's."""
+        mask = 1 << self._g_lines
+        for _ in range(max(1, LATENCY_FRAMES // self.block_size)):
+            run(mask, tuple(self._n_lines))
+
+    def _graph_gains(self):
+        """Each side's gains at the volume and the cross-fade's place, ``_g_ahead``."""
+        f = self._fragment
+        fade = self._g_ahead / self._g_length
+        vol = self.params["volume"] * VOLUME_SCALE
+        for node, levels in self._n_sides:
+            for i, level in enumerate(levels):
+                f.set(node, i, vol * fade * level)
+            f.set(node, len(levels), vol * (1.0 - fade) * sum(levels))
+            f.set(node, len(levels) + 1, vol)
+
+    def _graph_block(self):
+        """The rack's cross-fade, a block at a time. The rack fades what its bridges hand
+        it, 256 frames late, so the graph, which is not late, takes the fade that far
+        ahead: where the rack will be at the end of the block 256 frames on."""
+        target = self._g_length if self.params["ensemble"] >= 0.5 else 0
+        pos = self._g_pos
+        if pos == target and self._g_ahead == target:
+            return
+        step = 1 if target > pos else -1
+        lead = LATENCY_FRAMES // self.block_size + 1
+        ahead = pos + step * lead
+        self._g_ahead = min(ahead, target) if step > 0 else max(ahead, target)
+        moved = pos + step * max(1, self._fragment.blocks)
+        self._g_pos = min(moved, target) if step > 0 else max(moved, target)
+        self._graph_gains()
+
+    def _graph_reset(self):
+        f = self._fragment
+        for node in [self._n_tone] + self._n_lines + self._n_dc:
+            f.reset(node)
