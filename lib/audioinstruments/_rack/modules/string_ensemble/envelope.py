@@ -6,14 +6,13 @@ Compiled to a graph, it is one ``ENV`` node on the mono gate. The voices
 holding a released key (latched) close in the block the envelope comes back
 to 0, which they learn on the rack from the jack's last sample. A graph's
 voices decide before the block renders, so an ``EnvelopeCore`` in Python
-follows the node a block ahead, in floats, and says whether this block ends
-at 0. (The node's own wire is a step behind and rounded to int16, which moves
+follows the node a block ahead, in floats, into the jack's buffer, and says
+whether this block ends at 0. (The node's own wire is a step behind and rounded to int16, which moves
 the close a block and the voice's oscillators with it.)
 """
 
 from ...core.jack import SignalType
 from ...core.module import Module
-from ...core.signal import create_buffer
 from ...dsp.envelope import EnvelopeCore
 from .._util import jack_signal
 
@@ -75,7 +74,6 @@ class StringEnsembleEnvelope(Module):
         self._n_env = f.add(ag.ENV, (f.input(self.gate_in),), f.output(self.env_out))
         # the node, followed in floats a block ahead
         self._g_core = EnvelopeCore(self.sample_rate, self.block_size)
-        self._g_scratch = create_buffer(self.block_size)
         self._g_gate = False
         self._g_high = False  # the gate the follower last saw
         #: True when the envelope ends the coming block at 0: the voices read it, as they
@@ -107,7 +105,7 @@ class StringEnsembleEnvelope(Module):
         if blocks < 1:
             return
         core = self._g_core
-        dst = self._g_scratch
+        dst = self.env_out.buffer  # the jack keeps the envelope, as it does on the rack
         for _ in range(blocks - 1):  # the blocks already rendered, at the gate they had
             core.render(None, dst)
         if self._g_gate != self._g_high:
