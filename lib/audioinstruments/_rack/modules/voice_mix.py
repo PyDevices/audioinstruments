@@ -308,6 +308,7 @@ class VoiceMix(Module):
             if wire is not None:
                 f.keep(wire)  # peaked after each block, for the park rule
         self._pushed = [None] * n
+        self._seen_level = None  # the block's inputs when they were last pushed
         self._pan_index = getattr(ag, "PAN_PAN", 0)
         f.bind(("level",), self._graph_block)
         f.before_run(self._graph_block)
@@ -352,6 +353,16 @@ class VoiceMix(Module):
         The rack gives such a voice its gain in one step (``open_channel``), so when
         nothing else is ramping the nodes are reset and take every gain as it stands."""
         level = self.params["level"]
+        # Pushed gains are all that's left to do and these say what they were pushed from, so
+        # a block with nothing moved stops here, at a few list comparisons done in C.
+        if (
+            level == self._seen_level
+            and self.parked == self._seen_parked
+            and self.target == self._seen_target
+            and self.pan == self._seen_pan
+            and self.gain == self._seen_gain
+        ):
+            return
         f = self._fragment
         unit = level  # what the mix's own gains carry of the level
         if self._fold is not None:
@@ -408,6 +419,11 @@ class VoiceMix(Module):
             for node in bus_snap:
                 if bus_ramp is None or node not in bus_ramp:
                     f.reset(node)
+        self._seen_level = level
+        self._seen_parked = list(self.parked)
+        self._seen_target = list(self.target)
+        self._seen_pan = list(self.pan)
+        self._seen_gain = list(self.gain)
 
     def _graph_fold(self, level):
         """The level (and the master's scale) to the voices, when it moved; the share of the
