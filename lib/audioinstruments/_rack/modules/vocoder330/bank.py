@@ -299,9 +299,11 @@ class Vocoder330Bank(Module):
         m_late = line(mic)
         synth = [chain(c_late, audiobiquad.BAND_PASS, hz, BAND_Q, BAND_STAGES) for hz in BAND_HZ]
         cons = chain(m_late, audiobiquad.HIGH_PASS, CONSONANT_HZ, 0.707, CONSONANT_STAGES)
-        b_lo, b_hi = f.buffer(), f.buffer()
+        b_lo = f.buffer()
         self._n_lo = f.add(ag.MIX, tuple(synth[:8]), b_lo, group=grp)
-        self._n_out = f.add(ag.MIX, (b_lo,) + tuple(synth[8:]) + (cons,), f.output(self.out_jack), group=grp)
+        self._n_out = f.add(
+            ag.MIX, (b_lo,) + tuple(synth[8:]) + (cons,), f.output(self.out_jack), group=grp
+        )
         f.set(self._n_out, 0, 1.0)
         self._g_i16 = array("h", bytes(2 * n))
         self._g_unit = self._band  # float scratch

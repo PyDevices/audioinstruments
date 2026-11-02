@@ -42,8 +42,8 @@ from ...dsp.ensemble import (
     EnsembleCore,
     EnsembleLine,
     VibratoCore,
-    _Sweep,
     _sine_table,
+    _Sweep,
     sweep_table,
 )
 from .filters import DCTracker, clear_filter
@@ -87,6 +87,11 @@ ENSEMBLE_FAST_MS = 0.12
 ENSEMBLE_TONE_HZ = 8000.0
 ENSEMBLE_TABLE_LEN = 4096
 ENSEMBLE_LEVEL = 1.0 / 3.0
+
+#: Frames the graph's vibrato sweep starts ahead of its rest state to line up with the rack's
+#: at 128-frame blocks. Found by scanning the offset against the rack: the error has one
+#: minimum, at 174 frames.
+VIB_AHEAD_FRAMES = 174
 
 #: Corner frequency of the DC block that ends the chain, Hz: what the tone filters
 #: and the ensemble leave of an offset is taken out here.
@@ -475,8 +480,16 @@ class Vocoder330Output(Module):
         self._g_ens = [0.0, 0.0]  # the shares of the choir and the vocoder the ensemble takes
         f.watch(self.vib_in, self._graph_vib)
         f.bind(
-            ("strings_tone", "strings_level", "voice_level", "direct_mic", "voice_ensemble",
-             "vocoder_ensemble", "vib_depth", "vib_rate"),
+            (
+                "strings_tone",
+                "strings_level",
+                "voice_level",
+                "direct_mic",
+                "voice_ensemble",
+                "vocoder_ensemble",
+                "vib_depth",
+                "vib_rate",
+            ),
             self._graph_params,
         )
         f.on_reset(self._graph_reset)
@@ -517,17 +530,25 @@ class Vocoder330Output(Module):
             f.set(nd, last, direct)
 
     def _graph_prime(self, run):
-        """The rack's sweeps run on the bridges' time: the vibrato's line hears a bridge's
-        256 frames of silence first, and the ensemble's lines a second bridge's, less the
-        block the bank adds. The graph is that much sooner, so the nodes run that far ahead."""
+        """Put the sweeps where the rack's are. The graph is sooner than the rack, so a line's
+        sweep starts that much ahead: the ensemble's lines run ``2 * LATENCY_FRAMES - block``
+        frames before the first block, and the vibrato's ``VIB_AHEAD_FRAMES``, which the
+        sweep's block rate fixes (see its constant). The vibrato runs its frames in one
+        block at a wow rate scaled to cover them."""
         n = self.block_size
+        f = self._fragment
+        ag = self._ag
         vib = tuple(nd for nd, _ in self._n_vib)
         ens = tuple(self._n_lines)
         ahead = max(0, 2 * LATENCY_FRAMES - n) // n
-        for _ in range(max(0, ahead - LATENCY_FRAMES // n)):
+        for _ in range(max(0, ahead - 1)):
             run(1 << self._g_lines, ens)
-        for _ in range(LATENCY_FRAMES // n):
-            run((1 << self._g_lines) | (1 << self._g_vibrato), ens + vib)
+        rates = [f.get(nd, ag.DELAY_WOW_HZ) for nd in vib]
+        for nd, hz in zip(vib, rates):
+            f.set(nd, ag.DELAY_WOW_HZ, hz * VIB_AHEAD_FRAMES / n)
+        run((1 << self._g_lines) | (1 << self._g_vibrato), ens + vib)
+        for nd, hz in zip(vib, rates):
+            f.set(nd, ag.DELAY_WOW_HZ, hz)
 
     def _graph_reset(self):
         f = self._fragment
