@@ -102,7 +102,7 @@ def driven_rack(block_size=64):
 
 def test_eight_voices_latency_and_twelve_patches():
     inst = adapter.create(48000, voice="poly80")
-    assert inst.voices == 8 and inst.latency_samples == 256
+    assert inst.voices == 8 and inst.latency_samples == (0 if inst.engine == "graph" else 256)
     assert len(inst.patches) == 12 and len(inst.macro_labels) == 10
     inst.deinit()
 

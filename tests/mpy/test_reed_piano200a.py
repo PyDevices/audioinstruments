@@ -48,7 +48,7 @@ def correlation(x):
 
 def test_ten_voices_and_the_latency():
     inst = adapter.create(48000, voice="reed_piano200a")
-    assert inst.voices == 10 and inst.latency_samples == 256
+    assert inst.voices == 10 and inst.latency_samples == (0 if inst.engine == "graph" else 256)
     assert len(inst.patches) == 8
     inst.deinit()
 

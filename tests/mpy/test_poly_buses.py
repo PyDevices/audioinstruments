@@ -167,13 +167,12 @@ class BusPatch(adapter.VoicePatch):
         return left, right
 
 
-def test_a_patch_with_buses_is_the_rack_engine():
+def test_a_patch_with_buses_compiles_when_asked():
+    # its test voice has no fragment, so "auto" leaves it on the rack; the buses don't stop it
     inst = adapter.create(48000, voice=BusPatch(), block_size=BLOCK, buffer_frames=BLOCK)
     assert inst.engine == "rack"
     inst.deinit()
-    try:
-        adapter.create(48000, voice=BusPatch(), engine="graph")
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("engine='graph' took a patch with buses")
+    if adapter.graph_available():
+        inst = adapter.create(48000, voice=BusPatch(), engine="graph")
+        assert inst.engine == "graph"
+        inst.deinit()
