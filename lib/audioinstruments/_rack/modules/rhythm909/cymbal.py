@@ -16,6 +16,7 @@ from ...dsp.biquad import BiquadFilter
 from ...dsp.drums import BitDepthRateCore, MetallicBankCore, OneShotEnvelopeCore
 from ...dsp.noise import NoiseGenerator
 from ...dsp.oscillator import OscillatorCore
+from .._drums_graph import Cymbal909Graph
 
 
 class Rhythm909Crash(Module):
@@ -153,6 +154,41 @@ class Rhythm909Crash(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s two bands and a high-passed noise under three envelopes, then the crusher."""
+        self._fragment = f
+        self._cym = Cymbal909Graph(
+            f,
+            f.input(self.gate_in),
+            f.output(self.audio_out),
+            sample_rate=self.sample_rate,
+            kind="crash",
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "tune", "accent", "bits", "crush"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._cym.reset(self._fragment)
+
+    def _graph_params(self):
+        self._cym.apply(
+            tune=self.tune,
+            bits=self.bits,
+            crush=bool(self.crush),
+            accent=self.accent / 10.0,
+            velocity=self._velocity,
+            level=self.level,
+        )
 
 
 class Rhythm909Ride(Module):
@@ -295,3 +331,38 @@ class Rhythm909Ride(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s two bands and an 820 Hz pulse bell under three envelopes, then the crusher."""
+        self._fragment = f
+        self._cym = Cymbal909Graph(
+            f,
+            f.input(self.gate_in),
+            f.output(self.audio_out),
+            sample_rate=self.sample_rate,
+            kind="ride",
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "tune", "accent", "bits", "crush"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._cym.reset(self._fragment)
+
+    def _graph_params(self):
+        self._cym.apply(
+            tune=self.tune,
+            bits=self.bits,
+            crush=bool(self.crush),
+            accent=self.accent / 10.0,
+            velocity=self._velocity,
+            level=self.level,
+        )

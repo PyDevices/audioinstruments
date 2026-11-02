@@ -13,6 +13,7 @@ from ...core.signal import (
     scale,
 )
 from ...dsp.drums import MetallicBankCore, OneShotEnvelopeCore
+from .._drums_graph import MetallicBankGraph
 
 
 class Rhythm808Cymbal(Module):
@@ -105,3 +106,39 @@ class Rhythm808Cymbal(Module):
         scale(self._high_buf, gain_high)
         copy_into(out, self._low_buf)
         add(out, self._high_buf)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s six pulse OSCs in two bands under two DECAY envelopes."""
+        self._fragment = f
+        self._bank = MetallicBankGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), kind="cymbal"
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "tone", "decay", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bank.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        d = self.decay / 10.0
+        decay_sec = 0.30 * ((3.0 / 0.30) ** d)
+        t = self.tone / 10.0
+        base = (self.level / 10.0) * accent_gain * 2.5
+        self._bank.apply(
+            decay_sec=decay_sec,
+            gain_low=(1.2 - 0.5 * t) * base,
+            gain_high=(0.5 + 0.7 * t) * base,
+            velocity=v,
+        )

@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import DEFAULT_BLOCK_SIZE, DEFAULT_SAMPLE_RATE, scale
 from ...dsp.drums import SweptOscillatorDrumCore
+from .._drums_graph import SweptOscGraph
 
 TOM_SPECS = {
     "low": {"freq_range": (80.0, 120.0), "decay_base": 0.35},
@@ -97,3 +98,61 @@ class Rhythm909Tom(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.8
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``SweptOscillatorDrumCore``'s shaped sine, click and a small noise mix."""
+        import audiobiquad
+
+        self._fragment = f
+        self._so = SweptOscGraph(
+            f,
+            f.input(self.gate_in),
+            f.output(self.audio_out),
+            sample_rate=self.sample_rate,
+            noise=True,
+            noise_filter_mode="HP",
+        )
+        self._so.set_noise_filter(audiobiquad.HIGH_PASS, 2000.0, 1.0)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "tune", "decay", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.prime(self._graph_prime)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_prime(self, run):
+        """Start the sine a quarter-cycle behind, where the rack's shaped triangle starts."""
+        self._so.prime_frequency(self.block_size)
+        run(self._fragment.bits, (self._so.n_osc,))
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._so.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        spec = TOM_SPECS.get(getattr(self, "which", "low"), TOM_SPECS["low"])
+        lo, hi = spec["freq_range"]
+        t = self.tune / 10.0
+        self._so.apply(
+            frequency=lo + t * (hi - lo),
+            decay_sec=0.150 + (self.decay / 10.0) * 0.650,
+            drop_cents=2800.0,
+            bend_time_sec=0.035,
+            click_level=0.20,
+            click_tone_hz=2500.0,
+            gain=(self.level / 10.0) * accent_gain * 2.8,
+            velocity=v,
+            noise_mix=0.08,
+            noise_decay_sec=0.08,
+            noise_cutoff_hz=2000.0,
+            accent=0.5,
+        )

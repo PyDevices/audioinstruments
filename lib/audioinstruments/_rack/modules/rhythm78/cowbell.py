@@ -16,6 +16,7 @@ from ...core.signal import (
 from ...dsp.biquad import BiquadFilter
 from ...dsp.blocks import EdgeDetector, Ramp, exp_segment
 from ...dsp.oscillator import OscillatorCore
+from .._drums_graph import Cowbell78Graph
 
 
 class Rhythm78Cowbell(Module):
@@ -140,3 +141,28 @@ class Rhythm78Cowbell(Module):
         if (idx + bs) >= fast_end and level < 2e-4:
             self._env_level = 0.0
             self.ringing = False
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """Two pulse OSCs under a two-stage DECAY, then the 2400 Hz band-pass."""
+        self._fragment = f
+        self._g = Cowbell78Graph(f, f.input(self.gate_in), f.output(self.audio_out))
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._g.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._g.apply(gain=(self.level / 10.0) * accent_gain, velocity=v)

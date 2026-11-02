@@ -11,6 +11,7 @@ from ...core.signal import (
     scale,
 )
 from ...dsp.drums import MetallicBankCore, OneShotEnvelopeCore
+from .._drums_graph import MetallicBankGraph
 
 
 class Rhythm606ClosedHat(Module):
@@ -91,6 +92,41 @@ class Rhythm606ClosedHat(Module):
         mul(out, self._env_buf)
         scale(out, gain)
 
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s hats bank, 8000 Hz band-pass and 7800 Hz high-pass, under a 38 ms envelope."""
+        import audiograph as ag
+
+        self._fragment = f
+        self._bank = MetallicBankGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), kind="hats"
+        )
+        f.set(self._bank.n_filts[0], ag.BIQUAD_FREQUENCY, 8000.0)
+        f.set(self._bank.n_filts[1], ag.BIQUAD_FREQUENCY, 7800.0)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent", "tune", "decay"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bank.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._bank.apply(
+            decay_sec=0.038 * 2.0 ** ((self.decay - 5.0) / 5.0),
+            gain_low=(self.level / 10.0) * accent_gain * 2.8,
+            velocity=v,
+        )
+
 
 class Rhythm606OpenHat(Module):
     NAME = "Rhythm606OpenHat"
@@ -169,3 +205,38 @@ class Rhythm606OpenHat(Module):
         gain = (self.level / 10.0) * accent_gain * 2.8
         mul(out, self._env_buf)
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s hats bank, 8000 Hz band-pass and 7800 Hz high-pass, under a 250 ms envelope."""
+        import audiograph as ag
+
+        self._fragment = f
+        self._bank = MetallicBankGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), kind="hats"
+        )
+        f.set(self._bank.n_filts[0], ag.BIQUAD_FREQUENCY, 8000.0)
+        f.set(self._bank.n_filts[1], ag.BIQUAD_FREQUENCY, 7800.0)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent", "tune", "decay"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bank.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._bank.apply(
+            decay_sec=0.25 * 2.0 ** ((self.decay - 5.0) / 5.0),
+            gain_low=(self.level / 10.0) * accent_gain * 2.8,
+            velocity=v,
+        )
