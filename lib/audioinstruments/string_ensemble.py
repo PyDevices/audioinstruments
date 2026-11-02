@@ -6,7 +6,7 @@
 NAME = "string_ensemble"
 DISPLAY_NAME = "String Ensemble"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.1.dev0"
+VERSION = "0.5.1.dev1"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

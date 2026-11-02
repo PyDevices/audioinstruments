@@ -75,23 +75,29 @@ predate.
 
 Each instrument below is compiled to one `audiograph` graph
 ([architecture.md](architecture.md#a-graph-fragment)) and rendered by one call
-a block. Measured on an ESP32-P4 DEV-KIT with audiodsp 0.6.13.dev6 at 48 kHz
+a block. Measured on an ESP32-P4 DEV-KIT with audiodsp 0.6.13.dev7 at 48 kHz
 and 128-frame blocks, so the budget is 2667 µs a block, with the voice governor
 off. The figures are the median µs per block with 1, 6 and 10 notes held, and
 the share of the budget in brackets.
 
 | Instrument | 1 note | 6 notes | 10 notes |
 | --- | ---: | ---: | ---: |
-| `combo_organ` | 1065 (40%) | 1774 (67%) | 2494 (94%) |
-| `electric_grand70` | 763 (29%) | 2086 (78%) | 3206 (120%) |
-| `tonewheel3` | 1545 (58%) | 3030 (114%) | 4370 (164%) |
-| `compact_organ` | 2394 (90%) | 3915 (147%) | 5489 (206%) |
-| `string_ensemble` | 2510 (94%) | 4030 (151%) | 5400 (202%) |
+| `combo_organ` | 1116 (42%) | 1858 (70%) | 2545 (95%) |
+| `electric_grand70` | 737 (28%) | 2036 (76%) | 3143 (118%) |
+| `tonewheel3` | 1481 (56%) | 2970 (111%) | 4269 (160%) |
+| `compact_organ` | 2411 (90%) | 3907 (146%) | 5508 (207%) |
+| `string_ensemble` | 2999 (112%) | 4497 (169%) | 5949 (223%) |
+| `polya6` | 3721 (140%) | 12675 (475%) | 19714 (739%) |
 
 Over 100% a block takes longer than the audio it makes. The voice governor
 caps the voices there; it was off for these runs. At ten notes only
 `combo_organ` is inside the budget, and at six `combo_organ` and
-`electric_grand70` are.
+`electric_grand70` are. The `poly80` takes about 2300 µs with one note and 8600
+with six.
+
+These figures are the compiled graph alone, which renders on its own core. The
+Python around it runs on the other core, so it doesn't count here, but it decides
+how quickly the app answers while notes are held.
 
 The other instruments are not timed here. `examples/poly_bench.py` times one
 on yours.
