@@ -37,6 +37,7 @@ from ...dsp.ensemble import (
     LATENCY_FRAMES,
     MAX_DELAY_MS,
     VIB_CENTRE_MS,
+    VIB_START_HZ,
     VIB_TABLE_LEN,
     AlignCore,
     EnsembleCore,
@@ -87,11 +88,6 @@ ENSEMBLE_FAST_MS = 0.12
 ENSEMBLE_TONE_HZ = 8000.0
 ENSEMBLE_TABLE_LEN = 4096
 ENSEMBLE_LEVEL = 1.0 / 3.0
-
-#: Frames the graph's vibrato sweep starts ahead of its rest state to line up with the rack's
-#: at 128-frame blocks. Found by scanning the offset against the rack: the error has one
-#: minimum, at 174 frames.
-VIB_AHEAD_FRAMES = 174
 
 #: Corner frequency of the DC block that ends the chain, Hz: what the tone filters
 #: and the ensemble leave of an offset is taken out here.
@@ -532,9 +528,16 @@ class Vocoder330Output(Module):
     def _graph_prime(self, run):
         """Put the sweeps where the rack's are. The graph is sooner than the rack, so a line's
         sweep starts that much ahead: the ensemble's lines run ``2 * LATENCY_FRAMES - block``
-        frames before the first block, and the vibrato's ``VIB_AHEAD_FRAMES``, which the
-        sweep's block rate fixes (see its constant). The vibrato runs its frames in one
-        block at a wow rate scaled to cover them."""
+        frames before the first block.
+
+        The vibrato's sweep is set by its line's history instead. The rack's line ran one
+        chunk of silence at ``VIB_START_HZ`` when its bridge was built, so its sweep is
+        ``VIB_START_HZ * LATENCY_FRAMES / sample_rate`` of a turn along when the first block
+        arrives; and the graph's choir comes one block later than the rack's line hears it,
+        so the graph's sweep starts ``rate * block / sample_rate`` of a turn behind that. The
+        vibrato runs the difference in one block at a wow rate scaled to cover it. The rate
+        is the one set now: a ``vib_rate`` moved before the first block leaves the sweep
+        ``(new - old) * block / sample_rate`` of a turn from the rack's."""
         n = self.block_size
         f = self._fragment
         ag = self._ag
@@ -543,9 +546,12 @@ class Vocoder330Output(Module):
         ahead = max(0, 2 * LATENCY_FRAMES - n) // n
         for _ in range(max(0, ahead - 1)):
             run(1 << self._g_lines, ens)
+        sr = self.sample_rate
         rates = [f.get(nd, ag.DELAY_WOW_HZ) for nd in vib]
         for nd, hz in zip(vib, rates):
-            f.set(nd, ag.DELAY_WOW_HZ, hz * VIB_AHEAD_FRAMES / n)
+            turns = (VIB_START_HZ * LATENCY_FRAMES - hz * n) / sr
+            turns -= math.floor(turns)
+            f.set(nd, ag.DELAY_WOW_HZ, (turns or 1.0) * sr / n)
         run((1 << self._g_lines) | (1 << self._g_vibrato), ens + vib)
         for nd, hz in zip(vib, rates):
             f.set(nd, ag.DELAY_WOW_HZ, hz)

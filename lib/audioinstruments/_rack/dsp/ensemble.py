@@ -321,6 +321,11 @@ VIB_CENTRE_MS = 3.0
 #: Entries in the vibrato's sine table.
 VIB_TABLE_LEN = 1024
 
+#: The vibrato's sweep rate until the first ``set()``, Hz. The bridge runs the line one
+#: chunk of silence when it is built, so the first block meets a sweep already
+#: ``VIB_START_HZ * LATENCY_FRAMES / sample_rate`` of a turn along.
+VIB_START_HZ = 5.0
+
 
 def _sine_table(table_len):
     """One period of a sine in Q15."""
@@ -353,12 +358,12 @@ class VibratoCore:
             delay_ms=VIB_CENTRE_MS,
             feedback=0.0,
             mix=WET,
-            wow_hz=5.0,
+            wow_hz=VIB_START_HZ,
             wow_depth_ms=0.0,
             wow_shape=self._table,
         )
         self._bridge = ChunkedBridge(block_size, sample_rate).chain(self._line)
-        self._rate = 5.0
+        self._rate = VIB_START_HZ
         self._depth = 0.0
 
     def set(self, rate_hz, depth_ms):
