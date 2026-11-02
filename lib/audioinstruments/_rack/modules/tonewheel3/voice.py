@@ -200,7 +200,9 @@ class Tonewheel3Voice(Module):
         self._dirty = True
         f.watch(self.pitch_in, self._graph_pitch)
         f.watch(self.note_in, self._graph_note)
-        f.bind(DRAWBARS + ("click", "percussion", "perc_volume", "perc_harmonic"), self._graph_dirty)
+        f.bind(
+            DRAWBARS + ("click", "percussion", "perc_volume", "perc_harmonic"), self._graph_dirty
+        )
         f.before_run(self._graph_block)
         f.on_reset(self._graph_reset)
         f.prime(self._graph_prime)
@@ -275,7 +277,11 @@ class Tonewheel3Voice(Module):
             f.table(self._n_tone, self.tone_core._table_i16)
 
         f0 = pitch_hz * self.tone_core.base_ratio
-        f.set(self._n_tone, ag.WAVETABLE_FREQUENCY, 10.0 if f0 < 10.0 else (16000.0 if f0 > 16000.0 else f0))
+        f.set(
+            self._n_tone,
+            ag.WAVETABLE_FREQUENCY,
+            10.0 if f0 < 10.0 else (16000.0 if f0 > 16000.0 else f0),
+        )
         h = harmonics[PERC_FOOTAGE[1 if params["perc_harmonic"] >= 0.5 else 0]]
         f.set(self._n_osc, ag.OSC_FREQUENCY, pitch_hz * 0.5 * h)
         f.set(self._n_perc, ag.VCA_GAIN, PERC_OSC_SCALE * PERC_LEVEL if perc_on else 0.0)

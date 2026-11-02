@@ -49,6 +49,8 @@ CASES = [
     ("poly80", 1, POLY80_EXACT),
     ("poly80", 4, POLY80_EXACT),
     ("poly80", 6, POLY80_EXACT),
+    ("tonewheel3", 0),
+    ("tonewheel3", 6),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 
