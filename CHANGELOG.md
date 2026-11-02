@@ -4,6 +4,8 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.1.dev2
+
 - A PolyA6 voice on a plain patch costs less than half as much on the graph: the parts
   the patch leaves off stop running, and the pink noise stops while no voice reads it.
 - On `output="graph"` an instrument's pool stops at 24 voices unless you ask for
