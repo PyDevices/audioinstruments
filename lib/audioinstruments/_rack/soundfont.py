@@ -163,6 +163,13 @@ SHARED_VOICES = 64
 #: RAM is counted in tens of megabytes, 64 MB on a desktop.
 CACHE_BYTES = (64 if sys.implementation.name == "cpython" else 8) * 1048576
 
+#: Whether a bank resolves every preset's zones when it opens. On MicroPython
+#: it doesn't: the zones of a 300-preset bank are tens of thousands of small
+#: objects that, built together with the temporaries beside them, leave the
+#: heap in pieces too small for the next instrument's voice table. A preset
+#: resolves on its first note instead.
+INDEX_AT_OPEN = sys.implementation.name == "cpython"
+
 #: The size of each of the arena's buffers, or the bank's largest sample
 #: when that is bigger: a sample never straddles two. Small enough to find
 #: room for in a heap that has been running a while.
@@ -564,7 +571,7 @@ def open_bank(bank=None, cache_bytes=None):
         path = find_bank(bank)
         loaded = _OPEN.get(path)
         if loaded is None:
-            loaded = _Bank(_SoundFont(path))
+            loaded = _Bank(_SoundFont(path, index=INDEX_AT_OPEN))
             _OPEN[path] = loaded
     if cache_bytes is not None:
         loaded.cache_bytes = cache_bytes

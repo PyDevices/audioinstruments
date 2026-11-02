@@ -43,6 +43,14 @@ kit = adapter.create(48000, voice="soundfont_drums", bank=path, voice_pool=pool)
 audio_out.play(pool.output)       # one output for both
 ```
 
+On MicroPython a bank resolves a preset's zones on its first note, not when
+it opens. Resolving all of a General MIDI bank's presets at once leaves the
+heap in pieces too small for a second instrument's voice table, so a second
+`create()` after a large bank raised `MemoryError` with megabytes free. Now
+the first note on a preset takes a moment more, and the bank leaves its room
+whole. On a desktop the presets are still resolved at open;
+`soundfont.INDEX_AT_OPEN` says which.
+
 The ceiling is `audiosampler.MAX_VOICES`, 128 with audiodsp 0.6.8 or later. A
 pool's sampler has only the voices it was asked for, because a voice costs
 memory whether or not it sounds. A new note with every voice busy steals the
