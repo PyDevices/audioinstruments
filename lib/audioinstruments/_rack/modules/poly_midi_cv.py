@@ -441,6 +441,7 @@ class PolyMidiCV(MidiCVModule):
         n = self.max_voices
         # new controls and, from a rack that ran, jacks of unknown value: write them all
         self._forget_written()
+        self._forget_jacks()
         self._g_bend = None
         self._c_pitch = [f.control(self.pitch_outs[i], 0.0) for i in range(n)]
         self._c_note = [f.control(self.note_outs[i], 0.0) for i in range(n)]
@@ -477,30 +478,87 @@ class PolyMidiCV(MidiCVModule):
             self._graph_glide()
             self._poly_block()
             self._graph_voices(bend)
-        self._c_line_note.set(self._current_pitch)
-        self._c_line_pitch.set(self._current_pitch + bend)
+        # Everything below holds one value a block for as long as a note lasts, so each is
+        # compared here, without a call or a new float, and set when it moved.
+        cur = self._current_pitch
+        c = self._c_line_note
+        if cur != c.value:
+            c.set(cur)
+        v = cur if bend == 0.0 else cur + bend
+        c = self._c_line_pitch
+        if v != c.value:
+            c.set(v)
         # the second line never glides: the high key's pitch, or the line's
-        self._c_note_hi.set(self._target_hi)
-        self._c_pitch_hi.set(self._target_hi + bend)
-        self._c_any_gate.set(1.0 if self._gate_active else 0.0)
-        self._c_any_vel.set(self._velocity)
-        self._c_any_press.set(self._pressure())
-        self.press_out.buffer[:] = self._pressure()
-        self._c_legato.set(1.0 if self._legato else 0.0)
-        self._c_bend.set(self._pitch_bend * 0.5)
-        self._c_mod.set(self._mod_wheel)
-        self.mod_out.buffer[:] = self._mod_wheel
-        self._c_pedal.set(1.0 if self._sustain_pedal else 0.0)
-        self._c_expr.set(self._expr)
-        self.expr_out.buffer[:] = self._expr
-        self._c_foot.set(self._foot)
-        self.foot_out.buffer[:] = self._foot
+        hi = self._target_hi
+        c = self._c_note_hi
+        if hi != c.value:
+            c.set(hi)
+        v = hi if bend == 0.0 else hi + bend
+        c = self._c_pitch_hi
+        if v != c.value:
+            c.set(v)
+        v = 1.0 if self._gate_active else 0.0
+        c = self._c_any_gate
+        if v != c.value:
+            c.set(v)
+        v = self._velocity
+        c = self._c_any_vel
+        if v != c.value:
+            c.set(v)
+        # four jacks a voice's Python may read, kept as ``process()`` keeps them
+        w = self._w
+        v = self._pressure()
+        c = self._c_any_press
+        if v != c.value:
+            c.set(v)
+        if v != w[7]:
+            self.press_out.buffer[:] = v
+            w[7] = v
+        v = 1.0 if self._legato else 0.0
+        c = self._c_legato
+        if v != c.value:
+            c.set(v)
+        v = 0.0 if pb == 0.0 else pb * 0.5
+        c = self._c_bend
+        if v != c.value:
+            c.set(v)
+        v = self._mod_wheel
+        c = self._c_mod
+        if v != c.value:
+            c.set(v)
+        if v != w[4]:
+            self.mod_out.buffer[:] = v
+            w[4] = v
+        v = 1.0 if self._sustain_pedal else 0.0
+        c = self._c_pedal
+        if v != c.value:
+            c.set(v)
+        v = self._expr
+        c = self._c_expr
+        if v != c.value:
+            c.set(v)
+        if v != w[8]:
+            self.expr_out.buffer[:] = v
+            w[8] = v
+        v = self._foot
+        c = self._c_foot
+        if v != c.value:
+            c.set(v)
+        if v != w[9]:
+            self.foot_out.buffer[:] = v
+            w[9] = v
         # the trig pulse, as a level for the blocks it covers: a voice that wants the pulse
         # itself starts one on the control's rise (see Mono101Voice)
         pulse = self._trig_pulse
-        n = self.block_size
-        self._c_trig.set(min(pulse.left, n) / float(n) if pulse.left > 0 else 0.0)
-        pulse.left = max(0, pulse.left - n * self._fragment.blocks)
+        left = pulse.left
+        v = 0.0
+        if left > 0:
+            n = self.block_size
+            v = min(left, n) / float(n)
+            pulse.left = max(0, left - n * self._fragment.blocks)
+        c = self._c_trig
+        if v != c.value:
+            c.set(v)
 
     def _graph_voices(self, bend):
         """Every voice's controls from its note. A list comparison runs in C, so when no voice
