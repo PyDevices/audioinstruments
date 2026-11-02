@@ -111,7 +111,7 @@ class Rhythm78Snare(Module):
         scaled_into(out, self._buf_tone, 1.0)
         add_scaled(out, self._filtered_noise, 0.75, self._tmp)
 
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 4.425
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -168,7 +168,7 @@ class Rhythm78Snare(Module):
         v = max(0.0, min(1.0, self._velocity))
         a = self.accent / 10.0
         accent_gain = (1.0 - a) + a * (v**1.85)
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 4.425
         self._bt.apply(
             frequency=200.0,
             decay_sec=0.16,

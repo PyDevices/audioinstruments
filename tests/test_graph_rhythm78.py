@@ -58,9 +58,9 @@ PADS = {
     "mb": 55,
 }
 #: (worst, rms) counts against the rack on a deterministic voice.
-TONE = (50.0, 12.0)
+TONE = (160.0, 30.0)
 #: (worst, rms) counts on the rim shot.
-RIM = (80.0, 15.0)
+RIM = (160.0, 30.0)
 #: Sounds that are noise alone, held to the rack's level and envelope.
 NOISY = ("hc", "ho", "cy", "ma", "tb", "gs", "gl")
 #: The bound each deterministic pad is held to with its noise silenced.

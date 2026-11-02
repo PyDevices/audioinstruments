@@ -153,7 +153,7 @@ class Rhythm606Cymbal(Module):
             mul(self._filtered_noise, self._env_noise_buf)
             add_scaled(out, self._filtered_noise, 0.4 * accent_bright, self._white)
 
-        gain = (self.level / 10.0) * accent_gain * 2.2
+        gain = (self.level / 10.0) * accent_gain * 1.1
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -213,7 +213,7 @@ class Rhythm606Cymbal(Module):
         accent_bright = (1.0 - a) + a * v
         tune_ratio = 2.0 ** ((self.tune - 5.0) / 15.0)
         decay_sec = 0.80 * 2.0 ** ((self.decay - 5.0) / 5.0)
-        gain = (self.level / 10.0) * accent_gain * 2.2
+        gain = (self.level / 10.0) * accent_gain * 1.1
         self._bank.set_tune(1.0, 3600.0 * tune_ratio, 7500.0 * tune_ratio)
         self._bank.apply(
             decay_sec=decay_sec,

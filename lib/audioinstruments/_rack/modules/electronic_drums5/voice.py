@@ -19,7 +19,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.85,
         "click_tone_hz": 2800.0,
         "filter_mode": "LP",
-        "gain": 3.2,
+        "gain": 1.6,
     },
     "sd": {
         "pitch_range": (150.0, 270.0),
@@ -31,7 +31,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.65,
         "click_tone_hz": 3400.0,
         "filter_mode": "LP",
-        "gain": 2.8,
+        "gain": 1.4,
     },
     "t1": {
         "pitch_range": (160.0, 280.0),
@@ -43,7 +43,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.55,
         "click_tone_hz": 3000.0,
         "filter_mode": "LP",
-        "gain": 2.8,
+        "gain": 1.4,
     },
     "t2": {
         "pitch_range": (115.0, 205.0),
@@ -55,7 +55,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.55,
         "click_tone_hz": 2800.0,
         "filter_mode": "LP",
-        "gain": 2.8,
+        "gain": 1.4,
     },
     "t3": {
         "pitch_range": (78.0, 142.0),
@@ -67,7 +67,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.55,
         "click_tone_hz": 2500.0,
         "filter_mode": "LP",
-        "gain": 2.8,
+        "gain": 1.4,
     },
     # The hi-hats and cymbal: noise through a high-pass, the tone and click down by default.
     "ch": {
@@ -80,7 +80,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.5,
         "click_tone_hz": 7000.0,
         "filter_mode": "HP",
-        "gain": 1.7,
+        "gain": 0.85,
     },
     "oh": {
         "pitch_range": (320.0, 800.0),
@@ -92,7 +92,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.5,
         "click_tone_hz": 7000.0,
         "filter_mode": "HP",
-        "gain": 1.8,
+        "gain": 0.9,
     },
     "cy": {
         "pitch_range": (320.0, 800.0),
@@ -104,7 +104,7 @@ CHANNEL_SPECS = {
         "click_scale": 0.5,
         "click_tone_hz": 6000.0,
         "filter_mode": "HP",
-        "gain": 2.3,
+        "gain": 1.15,
     },
 }
 

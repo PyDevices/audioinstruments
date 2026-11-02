@@ -89,7 +89,7 @@ class Rhythm808Conga(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 1.5
+        gain = (self.level / 10.0) * accent_gain * 5.95
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -127,6 +127,6 @@ class Rhythm808Conga(Module):
             bend_time_sec=0.020,
             click_level=0.2,
             click_tone_hz=2500.0,
-            gain=(self.level / 10.0) * accent_gain * 1.5,
+            gain=(self.level / 10.0) * accent_gain * 5.95,
             velocity=v,
         )

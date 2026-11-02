@@ -95,7 +95,7 @@ class Rhythm909ClosedHat(Module):
         out = self.audio_out.buffer
         self.crusher.process(self._hat_buf, out)
 
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 1.98
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -137,7 +137,7 @@ class Rhythm909ClosedHat(Module):
             bits=self.bits,
             rate=32000.0,
             crush=bool(self.crush),
-            gain=(self.level / 10.0) * accent_gain * 2.8,
+            gain=(self.level / 10.0) * accent_gain * 1.98,
         )
 
 
@@ -222,7 +222,7 @@ class Rhythm909OpenHat(Module):
         out = self.audio_out.buffer
         self.crusher.process(self._hat_buf, out)
 
-        gain = (self.level / 10.0) * accent_gain * 2.8
+        gain = (self.level / 10.0) * accent_gain * 1.98
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -259,5 +259,5 @@ class Rhythm909OpenHat(Module):
             bits=self.bits,
             rate=32000.0,
             crush=bool(self.crush),
-            gain=(self.level / 10.0) * accent_gain * 2.8,
+            gain=(self.level / 10.0) * accent_gain * 1.98,
         )

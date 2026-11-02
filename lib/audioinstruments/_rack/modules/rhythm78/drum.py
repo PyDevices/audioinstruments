@@ -17,7 +17,7 @@ DRUM_SPECS = {
         "click": 0.06,
         "click_tone": 900.0,
         "hpf": 30.0,
-        "gain": 3.6,
+        "gain": 18,
     },
     "rs": {
         "freq": 500.0,
@@ -27,7 +27,7 @@ DRUM_SPECS = {
         "click": 0.25,
         "click_tone": 2500.0,
         "hpf": 350.0,
-        "gain": 2.5,
+        "gain": 4.435,
     },
     "cl": {
         "freq": 2200.0,
@@ -37,7 +37,7 @@ DRUM_SPECS = {
         "click": 0.12,
         "click_tone": 3500.0,
         "hpf": 200.0,
-        "gain": 2.0,
+        "gain": 5.6,
     },
     "hb": {
         "freq": 400.0,
@@ -47,7 +47,7 @@ DRUM_SPECS = {
         "click": 0.15,
         "click_tone": 2000.0,
         "hpf": 80.0,
-        "gain": 2.2,
+        "gain": 6.95,
     },
     "lb": {
         "freq": 300.0,
@@ -57,7 +57,7 @@ DRUM_SPECS = {
         "click": 0.15,
         "click_tone": 1800.0,
         "hpf": 60.0,
-        "gain": 2.4,
+        "gain": 7.55,
     },
     "lc": {
         "freq": 200.0,
@@ -67,7 +67,7 @@ DRUM_SPECS = {
         "click": 0.15,
         "click_tone": 1500.0,
         "hpf": 50.0,
-        "gain": 2.8,
+        "gain": 7.85,
     },
 }
 

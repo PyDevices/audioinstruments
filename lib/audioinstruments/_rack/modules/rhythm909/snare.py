@@ -156,7 +156,7 @@ class Rhythm909Snare(Module):
             snappy_gain = (self.snappy / 10.0) * 1.8
             add_scaled(out, self._filtered_noise, snappy_gain, self._white)
 
-        gain = (self.level / 10.0) * accent_gain * 2.5
+        gain = (self.level / 10.0) * accent_gain * 1.25
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -230,7 +230,7 @@ class Rhythm909Snare(Module):
         v = max(0.0, min(1.0, self._velocity))
         a = self.accent / 10.0
         accent_gain = (1.0 - a) + a * (v**1.85)
-        gain = (self.level / 10.0) * accent_gain * 2.5
+        gain = (self.level / 10.0) * accent_gain * 1.25
         tune_factor = 2.0 ** ((self.tune - 5.0) / 15.0)
         cutoff = 1400.0 + (self.tone / 10.0) * 4600.0
         self._so1.apply(

@@ -51,7 +51,7 @@ class Rhythm808Maracas(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 1.5
+        gain = (self.level / 10.0) * accent_gain * 0.75
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -77,4 +77,4 @@ class Rhythm808Maracas(Module):
         v = max(0.0, min(1.0, self._velocity))
         a = self.accent / 10.0
         accent_gain = (1.0 - a) + a * (v**1.85)
-        self._ma.apply(gain=(self.level / 10.0) * accent_gain * 1.5, velocity=v)
+        self._ma.apply(gain=(self.level / 10.0) * accent_gain * 0.75, velocity=v)

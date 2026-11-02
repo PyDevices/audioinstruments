@@ -792,7 +792,7 @@ class Cymbal909Graph:
             f.set(node, ag.VCA_GAIN, g)
         for i in range(len(gains)):
             f.set(self.n_mix, i, 1.0)
-        self.crush.apply(bits=bits, rate=rate, crush=crush, gain=level / 10.0 * accent_gain * 2.5)
+        self.crush.apply(bits=bits, rate=rate, crush=crush, gain=level / 10.0 * accent_gain * 1.25)
 
     def reset(self, f):
         nodes = [self.n_sum, self.n_lowf, self.n_highf, self.n_mix]
@@ -989,7 +989,7 @@ class MetalBeat78Graph:
     RISE_SEC = 0.001
     CUTOFF = 4000.0
     Q = 1.5
-    GAIN = 3.8
+    GAIN = 1.9
 
     def __init__(self, f, gate, out):
         import audiobiquad

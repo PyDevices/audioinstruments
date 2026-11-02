@@ -90,7 +90,7 @@ class Rhythm606Tom(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 2.25
+        gain = (self.level / 10.0) * accent_gain * 7.1
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -132,6 +132,6 @@ class Rhythm606Tom(Module):
             click_tone_hz=1800.0,
             noise_mix=0.09,
             noise_decay_sec=0.025,
-            gain=(self.level / 10.0) * accent_gain * 2.25,
+            gain=(self.level / 10.0) * accent_gain * 7.1,
             velocity=v,
         )

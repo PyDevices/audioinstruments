@@ -53,7 +53,7 @@ class Rhythm78Tambourine(Module):
         out = self.audio_out.buffer
         self.core.render(gate, out, velocity=v)
 
-        gain = (self.level / 10.0) * accent_gain * 2.2
+        gain = (self.level / 10.0) * accent_gain * 1.385
         scale(out, gain)
 
     # -- as a graph fragment ------------------------------------------------------------
@@ -94,4 +94,4 @@ class Rhythm78Tambourine(Module):
         v = max(0.0, min(1.0, self._velocity))
         a = self.accent / 10.0
         accent_gain = (1.0 - a) + a * (v**1.85)
-        self._g.apply(gain=(self.level / 10.0) * accent_gain * 2.2, velocity=v)
+        self._g.apply(gain=(self.level / 10.0) * accent_gain * 1.385, velocity=v)
