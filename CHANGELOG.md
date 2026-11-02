@@ -4,6 +4,10 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.1.dev3
+
+- The drum kits play at one level: Rhythm808, Rhythm909, Rhythm606 and Rhythm78 come up to
+  where ElectronicDrums5 already was, a hard kick about 6 dB under full scale at velocity 100.
 - ElectronicDrums5 has a closed hi-hat, an open hi-hat and a cymbal on keys 42, 46 and 49,
   which brings it to eight voices. The two hats cut each other. The five drum channels
   sound as they did.
