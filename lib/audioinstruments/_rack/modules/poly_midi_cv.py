@@ -427,6 +427,7 @@ class PolyMidiCV(MidiCVModule):
 
     def process(self, block_size):
         super().process(block_size)
+        self._rack_ran = True  # the ``_w_`` lists now hold the jacks, not the controls
         bend = self._pitch_bend * (self.params["bend_range"] / 12.0) * 0.1
         if self._mono:
             self._mono_block(bend)
@@ -443,6 +444,7 @@ class PolyMidiCV(MidiCVModule):
         self._forget_written()
         self._forget_jacks()
         self._g_bend = None
+        self._rack_ran = False
         self._c_pitch = [f.control(self.pitch_outs[i], 0.0) for i in range(n)]
         self._c_note = [f.control(self.note_outs[i], 0.0) for i in range(n)]
         self._c_gate = [f.control(self.gate_outs[i], 0.0) for i in range(n)]
@@ -469,6 +471,11 @@ class PolyMidiCV(MidiCVModule):
         f.on_reset(self.reset)
 
     def _graph_block(self):
+        if self._rack_ran:
+            self._rack_ran = False
+            self._forget_written()
+            self._forget_jacks()
+            self._g_bend = None
         pb = self._pitch_bend
         bend = 0.0 if pb == 0.0 else pb * (self.params["bend_range"] / 12.0) * 0.1
         if self._mono:

@@ -85,6 +85,21 @@ def test_a_voice_value_moved_alone_reaches_its_control():
     inst.deinit()
 
 
+def test_a_gate_the_rack_wrote_still_reaches_the_graph():
+    # stepping the rack writes the jacks and leaves the controls behind; a graph block after
+    # it must not take the one for the other
+    inst = adapter.create(48000, voice="polyxa", output="pull")
+    try:
+        midi = next(m for m in inst.rack.modules if hasattr(m, "_c_gate"))
+        inst.note_on(60, 100)
+        inst.rack.step()
+        assert midi._w_gate[midi._v_gate.index(True)] == 1.0
+        inst._pull()
+        assert midi._c_gate[midi._v_gate.index(True)].value == 1.0
+    finally:
+        inst.deinit()
+
+
 def test_a_parked_flag_moved_alone_reaches_the_mix():
     inst = _played("poly106")
     mix = inst._pool.mix
