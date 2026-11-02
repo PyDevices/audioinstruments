@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import scale
 from ...dsp.drums import BridgedTDrumCore
+from .._drums_graph import BridgedTGraph
 
 
 class Rhythm606BassDrum(Module):
@@ -74,3 +75,40 @@ class Rhythm606BassDrum(Module):
 
         gain = (self.level / 10.0) * accent_gain * 3.0
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``BridgedTDrumCore``'s sine, amp-minus-rise, click and no noise as nodes."""
+        self._fragment = f
+        self._bt = BridgedTGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), sample_rate=self.sample_rate
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent", "tune", "decay"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bt.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        accent_bright = (1.0 - a) + a * v
+        self._bt.apply(
+            frequency=56.0 * 2.0 ** ((self.tune - 5.0) / 15.0),
+            decay_sec=0.20 * 2.0 ** ((self.decay - 5.0) / 5.0),
+            drop_cents=140.0,
+            bend_time_sec=0.025,
+            click_level=0.35 * (0.8 + 0.4 * accent_bright),
+            click_tone_hz=2800.0 * (0.8 + 0.4 * accent_bright),
+            gain=(self.level / 10.0) * accent_gain * 3.0,
+            velocity=v,
+        )

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Cymbal module for Rhythm606, inspired by the TR-606 cymbal."""
 
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import (
@@ -16,6 +17,7 @@ from ...core.signal import (
 from ...dsp.biquad import BiquadFilter
 from ...dsp.drums import MetallicBankCore, OneShotEnvelopeCore
 from ...dsp.noise import NoiseGenerator
+from .._drums_graph import MetallicBankGraph
 
 
 class Rhythm606Cymbal(Module):
@@ -153,3 +155,74 @@ class Rhythm606Cymbal(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.2
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s two bands and a high-passed noise under three envelopes.
+
+        The module pre-scans ``env_high``'s edges, so that envelope stays at the
+        strike velocity; ``env_low`` and ``env_noise`` first scan the gate inside
+        their own ``render`` and force 1.0, so their DECAY velocities are open.
+        """
+        import audiobiquad
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_bank, b_white, b_filt = f.buffer(), f.buffer(), f.buffer()
+        b_vel, b_env, b_noise = f.buffer(), f.buffer(), f.buffer()
+        self._bank = MetallicBankGraph(f, gate, b_bank, kind="cymbal")
+        self._n_white = f.add(ag.NOISE, (), b_white)
+        f.set(self._n_white, 0, 0.5 * UNIT)
+        self._n_filt = f.add(ag.BIQUAD, (b_white,), b_filt)
+        f.set(self._n_filt, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
+        f.set(self._n_filt, ag.BIQUAD_FREQUENCY, 6500.0)
+        f.set(self._n_filt, ag.BIQUAD_Q, 1.0)
+        self._n_noise_vel = f.add(ag.CONST, (), b_vel)
+        f.set(self._n_noise_vel, 0, UNIT)
+        self._n_noise_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        self._n_noise_vca = f.add(ag.VCA, (b_filt, b_env, None), b_noise)
+        f.set(self._n_noise_vca, ag.VCA_SELECT, 0.0)
+        self._n_mix = f.add(ag.MIX, (b_bank, b_noise), f.output(self.audio_out))
+        f.set(self._n_mix, 0, 1.0)
+        f.set(self._n_mix, 1, 1.0)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent", "tune", "decay"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        f = self._fragment
+        self._bank.reset(f)
+        for node in (self._n_white, self._n_filt, self._n_noise_env, self._n_noise_vca):
+            f.reset(node)
+
+    def _graph_params(self):
+        ag = self._ag
+        f = self._fragment
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        accent_bright = (1.0 - a) + a * v
+        tune_ratio = 2.0 ** ((self.tune - 5.0) / 15.0)
+        decay_sec = 0.80 * 2.0 ** ((self.decay - 5.0) / 5.0)
+        gain = (self.level / 10.0) * accent_gain * 2.2
+        self._bank.set_tune(1.0, 3600.0 * tune_ratio, 7500.0 * tune_ratio)
+        self._bank.apply(
+            decay_sec=decay_sec,
+            gain_low=(1.2 - 0.4 * accent_bright) * gain,
+            gain_high=(0.7 + 0.6 * accent_bright) * gain,
+            velocity=v,
+            low_ratio=0.85,
+        )
+        noise_sec = decay_sec * 0.70
+        f.set(self._n_noise_env, ag.DECAY_DECAY, noise_sec)
+        f.set(self._n_noise_env, ag.DECAY_RESTRIKE, noise_sec)
+        f.set(self._n_noise_vca, ag.VCA_GAIN, 0.4 * accent_bright * gain)

@@ -408,7 +408,7 @@ class MetallicBankGraph:
             self.n_vcas.extend([n_low, n_high])
             self.n_mix = f.add(ag.MIX, (b_low_env, b_high_env), out)
 
-    def apply(self, *, decay_sec, gain_low, gain_high=None, velocity=1.0):
+    def apply(self, *, decay_sec, gain_low, gain_high=None, velocity=1.0, low_ratio=0.9):
         ag = self.ag
         f = self.f
         k = self.BANK_GAIN
@@ -422,7 +422,7 @@ class MetallicBankGraph:
         else:
             f.set(self.n_vels[1], 0, UNIT)
             d_high = max(0.001, decay_sec)
-            d_low = max(0.001, decay_sec * 0.9)
+            d_low = max(0.001, decay_sec * low_ratio)
             f.set(self.n_envs[0], ag.DECAY_DECAY, d_high)
             f.set(self.n_envs[0], ag.DECAY_RESTRIKE, d_high)
             f.set(self.n_envs[1], ag.DECAY_DECAY, d_low)
