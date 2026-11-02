@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import DEFAULT_BLOCK_SIZE, DEFAULT_SAMPLE_RATE, scale
 from ...dsp.drums import GuiroCore
+from .._drums_graph import BurstNoiseGraph
 
 
 class Rhythm78Guiro(Module):
@@ -65,3 +66,46 @@ class Rhythm78Guiro(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """A DECAY burst table over noise through a 2500 Hz band-pass.
+
+        Short is six scrapes over 80 ms, long twelve over 250 ms; each scrape is
+        a little louder than the last (0.6 to 1.0). The scrape falls 3.5 ms
+        (4 ms long) and the tail 8 ms (10 ms long), both 1/e.
+        """
+        long = self.which == "long"
+        count = 12 if long else 6
+        interval = (0.250 if long else 0.080) / (count - 1)
+        table = tuple((k * interval, 0.6 + 0.4 * k / (count - 1)) for k in range(count))
+        self._fragment = f
+        self._g = BurstNoiseGraph(
+            f,
+            f.input(self.gate_in),
+            f.output(self.audio_out),
+            table=table,
+            burst_sec=0.0040 if long else 0.0035,
+            tail_sec=0.0100 if long else 0.0080,
+            filters=((2500.0, 2.5),),
+            scale=3.0,
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._g.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._g.apply(gain=(self.level / 10.0) * accent_gain * 2.5, velocity=v)

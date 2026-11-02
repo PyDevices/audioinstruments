@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import DEFAULT_BLOCK_SIZE, DEFAULT_SAMPLE_RATE, scale
 from ...dsp.drums import BridgedTDrumCore
+from .._drums_graph import BridgedTGraph
 
 DRUM_SPECS = {
     "bd": {
@@ -146,3 +147,41 @@ class Rhythm78Drum(Module):
         spec = DRUM_SPECS.get(self.which, DRUM_SPECS["bd"])
         gain = (self.level / 10.0) * accent_gain * spec["gain"]
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``BridgedTDrumCore`` as nodes: the sine, amp-minus-rise and click of ``which``."""
+        self._fragment = f
+        self._bt = BridgedTGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), sample_rate=self.sample_rate
+        )
+        self._g = self._bt
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._g.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        spec = DRUM_SPECS.get(self.which, DRUM_SPECS["bd"])
+        self._bt.apply(
+            frequency=spec["freq"],
+            decay_sec=spec["decay"],
+            drop_cents=spec["drop"],
+            bend_time_sec=spec["bend_time"],
+            click_level=spec["click"],
+            click_tone_hz=spec["click_tone"],
+            gain=(self.level / 10.0) * accent_gain * spec["gain"],
+            velocity=v,
+        )

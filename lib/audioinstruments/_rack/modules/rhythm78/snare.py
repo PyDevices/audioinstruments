@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Snare drum voice module for Rhythm78, inspired by the Roland CR-78."""
 
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import (
@@ -15,6 +16,7 @@ from ...core.signal import (
 from ...dsp.biquad import BiquadFilter
 from ...dsp.drums import BridgedTDrumCore, OneShotEnvelopeCore
 from ...dsp.noise import NoiseGenerator
+from .._drums_graph import BridgedTGraph
 
 
 class Rhythm78Snare(Module):
@@ -111,3 +113,70 @@ class Rhythm78Snare(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.8
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """A bridged-T tone plus band-passed noise on a DECAY.
+
+        The module pre-scans the tone's edges, so the tone strikes once and its
+        amp step is ``0.20``. The noise envelope first scans the gate inside its
+        own ``render``, which forces 1.0, so its DECAY velocity is open.
+        """
+        import audiobiquad
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_tone, b_vel, b_env = f.buffer(), f.buffer(), f.buffer()
+        b_white, b_filt, b_noise = f.buffer(), f.buffer(), f.buffer()
+        self._bt = BridgedTGraph(f, gate, b_tone, sample_rate=self.sample_rate)
+        self._n_noise_vel = f.add(ag.CONST, (), b_vel)
+        f.set(self._n_noise_vel, 0, UNIT)
+        self._n_noise_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        f.set(self._n_noise_env, ag.DECAY_DECAY, 0.16)
+        f.set(self._n_noise_env, ag.DECAY_RESTRIKE, 0.16)
+        self._n_white = f.add(ag.NOISE, (), b_white)
+        f.set(self._n_white, 0, 0.5 * UNIT)
+        self._n_filt = f.add(ag.BIQUAD, (b_white,), b_filt)
+        f.set(self._n_filt, ag.BIQUAD_MODE, audiobiquad.BAND_PASS)
+        f.set(self._n_filt, ag.BIQUAD_FREQUENCY, 2000.0)
+        f.set(self._n_filt, ag.BIQUAD_Q, 1.5)
+        self._n_noise_vca = f.add(ag.VCA, (b_filt, b_env, None), b_noise)
+        f.set(self._n_noise_vca, ag.VCA_SELECT, 0.0)
+        self._n_mix = f.add(ag.MIX, (b_tone, b_noise), f.output(self.audio_out))
+        f.set(self._n_mix, 0, 1.0)
+        f.set(self._n_mix, 1, 1.0)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        f = self._fragment
+        self._bt.reset(f)
+        for node in (self._n_noise_env, self._n_white, self._n_filt, self._n_noise_vca):
+            f.reset(node)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        gain = (self.level / 10.0) * accent_gain * 2.8
+        self._bt.apply(
+            frequency=200.0,
+            decay_sec=0.16,
+            drop_cents=0.0,
+            bend_time_sec=0.035,
+            click_level=0.05,
+            click_tone_hz=1200.0,
+            gain=gain,
+            velocity=v,
+        )
+        self._fragment.set(self._n_noise_vca, self._ag.VCA_GAIN, 0.75 * gain)

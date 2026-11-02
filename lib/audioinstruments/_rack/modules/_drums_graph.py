@@ -125,7 +125,10 @@ class BridgedTGraph:
         beta = 1.0 - alpha
 
         f.set(self.n_vel, 0, v * amp_step * unit)
-        f.set(self.n_drop, 0, drop * unit)
+        # DECAY does not carry a negative level, so a drop below pitch (the rack's
+        # negative ``pitch_drop_cents``) is a positive level into a negative OSC range.
+        f.set(self.n_drop, 0, abs(drop) * unit)
+        f.set(self.n_osc, ag.OSC_PITCH_OCTAVES, 20.0 if drop >= 0.0 else -20.0)
         f.set(self.n_click_vel, 0, v * unit)
 
         f.set(self.n_osc, ag.OSC_FREQUENCY, f0)
@@ -804,3 +807,170 @@ class Cymbal909Graph:
     @property
     def noise_nodes(self):
         return (self.n_white,) if self.n_white is not None else ()
+
+
+class NoiseHatGraph:
+    """``NoiseHatCore`` as nodes: white noise, band-pass, high-pass, one DECAY.
+
+    The rack's core triggers inside its own ``render``, so the envelope peaks at
+    the strike velocity. The core's ``scale(dst, 2.5)`` is folded into the MIX
+    with the module's gain; ``decay_sec`` is the rack's -40 dB time.
+    """
+
+    def __init__(self, f, gate, out, *, bp_hz, bp_q, hp_hz):
+        import audiobiquad
+        import audiograph as ag
+
+        self.ag = ag
+        self.f = f
+
+        b_vel, b_env = f.buffer(), f.buffer()
+        b_white, b_bp, b_hp, b_shaped = f.buffer(), f.buffer(), f.buffer(), f.buffer()
+
+        self.n_vel = f.add(ag.CONST, (), b_vel)
+        self.n_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        self.n_white = f.add(ag.NOISE, (), b_white)
+        f.set(self.n_white, 0, 0.5 * UNIT)
+        self.n_bp = _biquad(f, ag, audiobiquad, b_white, b_bp, audiobiquad.BAND_PASS, bp_hz, bp_q)
+        self.n_hp = _biquad(f, ag, audiobiquad, b_bp, b_hp, audiobiquad.HIGH_PASS, hp_hz, 1.0)
+        self.n_vca = f.add(ag.VCA, (b_hp, b_env, None), b_shaped)
+        f.set(self.n_vca, ag.VCA_SELECT, 0.0)
+        self.n_mix = f.add(ag.MIX, (b_shaped,), out)
+        f.set(self.n_mix, 0, 2.5)
+
+    def apply(self, *, decay_sec, bp_hz, gain, velocity):
+        ag = self.ag
+        f = self.f
+        d = max(0.005, decay_sec)
+        f.set(self.n_vel, 0, max(0.0, min(1.0, velocity)) * UNIT)
+        f.set(self.n_env, ag.DECAY_DECAY, d)
+        f.set(self.n_env, ag.DECAY_RESTRIKE, d)
+        f.set(self.n_bp, ag.BIQUAD_FREQUENCY, bp_hz)
+        f.set(self.n_mix, 0, 2.5 * gain)
+
+    def reset(self, f):
+        for node in (self.n_env, self.n_white, self.n_bp, self.n_hp, self.n_vca):
+            f.reset(node)
+
+    @property
+    def noise_nodes(self):
+        return (self.n_white,)
+
+
+class BurstNoiseGraph:
+    """A burst table over band-passed white noise: the rack's ``JingleCore`` and ``GuiroCore``.
+
+    ``table`` is ``(seconds, level)`` pairs (levels times velocity). Between
+    spikes the envelope falls ``burst_sec`` (1/e) and after the last it falls
+    ``tail_sec`` (also 1/e): DECAY takes both to -40 dB, so each is times ``ln 100``.
+    ``filters`` are ``(frequency, q)`` band-passes on the same noise, summed.
+    ``scale`` is the core's own final ``scale(dst, k)``. The table is written once;
+    a hit changes nothing but the velocity.
+    """
+
+    def __init__(self, f, gate, out, *, table, burst_sec, tail_sec, filters, scale):
+        import audiobiquad
+        import audiograph as ag
+
+        self.ag = ag
+        self.f = f
+        self.scale = scale
+
+        b_vel, b_env, b_white = f.buffer(), f.buffer(), f.buffer()
+        self.n_vel = f.add(ag.CONST, (), b_vel)
+        self.n_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        f.table(self.n_env, table)
+        f.set(self.n_env, ag.DECAY_RESTRIKE, burst_sec * LN_100)
+        f.set(self.n_env, ag.DECAY_DECAY, tail_sec * LN_100)
+
+        self.n_white = f.add(ag.NOISE, (), b_white)
+        f.set(self.n_white, 0, 0.5 * UNIT)
+        self.n_filts = []
+        bands = []
+        for freq, q in filters:
+            b_band = f.buffer()
+            self.n_filts.append(
+                _biquad(f, ag, audiobiquad, b_white, b_band, audiobiquad.BAND_PASS, freq, q)
+            )
+            bands.append(b_band)
+        if len(bands) > 1:
+            b_sum = f.buffer()
+            self.n_sum = f.add(ag.MIX, tuple(bands), b_sum)
+            for i in range(len(bands)):
+                f.set(self.n_sum, i, 1.0)
+        else:
+            self.n_sum = None
+            b_sum = bands[0]
+        b_shaped = f.buffer()
+        self.n_vca = f.add(ag.VCA, (b_sum, b_env, None), b_shaped)
+        f.set(self.n_vca, ag.VCA_SELECT, 0.0)
+        self.n_mix = f.add(ag.MIX, (b_shaped,), out)
+        f.set(self.n_mix, 0, scale)
+
+    def apply(self, *, gain, velocity):
+        self.f.set(self.n_vel, 0, max(0.0, min(1.0, velocity)) * UNIT)
+        self.f.set(self.n_mix, 0, self.scale * gain)
+
+    def reset(self, f):
+        nodes = [self.n_env, self.n_white, self.n_vca] + self.n_filts
+        for node in nodes:
+            f.reset(node)
+
+    @property
+    def noise_nodes(self):
+        return (self.n_white,)
+
+
+class Cowbell78Graph:
+    """The Rhythm78 cowbell: two pulse OSCs under a two-stage DECAY, then a band-pass.
+
+    The rack shapes the tones (520 and 780 Hz) before the band-pass at 2400 Hz,
+    q 2.5, so the filter rings on through a re-strike. The envelope falls
+    ``exp(-1/(sr*0.011))`` for 0.012 s, then reaches -40 dB 0.150 s later. Output
+    ``* 2.2``.
+    """
+
+    FREQS = (520.0, 780.0)
+
+    def __init__(self, f, gate, out):
+        import audiobiquad
+        import audiograph as ag
+
+        self.ag = ag
+        self.f = f
+
+        b_vel, b_env = f.buffer(), f.buffer()
+        b1, b2, b_sum, b_shaped, b_filt = f.buffer(), f.buffer(), f.buffer(), f.buffer(), f.buffer()
+
+        self.n_vel = f.add(ag.CONST, (), b_vel)
+        self.n_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        f.set(self.n_env, ag.DECAY_RESTRIKE, 0.150)
+        f.set(self.n_env, ag.DECAY_DECAY, 0.150)
+        f.set(self.n_env, ag.DECAY_FAST, 0.011 * LN_100)
+        f.set(self.n_env, ag.DECAY_FAST_SEC, 0.012)
+
+        self.n_osc1 = f.add(ag.OSC, (None, None, None, None), b1)
+        self.n_osc2 = f.add(ag.OSC, (None, None, None, None), b2)
+        for node, freq in ((self.n_osc1, self.FREQS[0]), (self.n_osc2, self.FREQS[1])):
+            f.set(node, ag.OSC_WAVEFORM, 2)
+            f.set(node, ag.OSC_LEVEL, 0.25)
+            f.set(node, ag.OSC_FREQUENCY, freq)
+            f.set(node, ag.OSC_PULSE_WIDTH, 0.5)
+        self.n_sum = f.add(ag.MIX, (b1, b2), b_sum)
+        f.set(self.n_sum, 0, 1.0)
+        f.set(self.n_sum, 1, 1.0)
+        self.n_vca = f.add(ag.VCA, (b_sum, b_env, None), b_shaped)
+        f.set(self.n_vca, ag.VCA_SELECT, 0.0)
+        self.n_filt = _biquad(
+            f, ag, audiobiquad, b_shaped, b_filt, audiobiquad.BAND_PASS, 2400.0, 2.5
+        )
+        self.n_mix = f.add(ag.MIX, (b_filt,), out)
+        f.set(self.n_mix, 0, 2.2)
+
+    def apply(self, *, gain, velocity):
+        self.f.set(self.n_vel, 0, max(0.0, min(1.0, velocity)) * UNIT)
+        self.f.set(self.n_mix, 0, 2.2 * gain)
+
+    def reset(self, f):
+        for node in (self.n_osc1, self.n_osc2, self.n_env, self.n_vca, self.n_filt):
+            f.reset(node)

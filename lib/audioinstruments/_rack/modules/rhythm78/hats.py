@@ -7,6 +7,7 @@ from ...core.module import Module
 from ...core.signal import scale
 from ...dsp.blocks import EdgeDetector
 from ...dsp.drums import NoiseHatCore
+from .._drums_graph import NoiseHatGraph
 
 
 class Rhythm78HiHat(Module):
@@ -83,6 +84,60 @@ class Rhythm78HiHat(Module):
         gain = (self.level / 10.0) * accent_gain * 2.5
         scale(out, gain)
 
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``NoiseHatCore`` as nodes; the key and velocity of the hit pick the voicing.
+
+        Key 46 is the open hat (0.32 s, 8200 Hz); any other key is closed (0.04 s,
+        7500 Hz), opened a little (0.09 s, 7900 Hz) at velocity 120 and up.
+        """
+        self._fragment = f
+        self._g = NoiseHatGraph(
+            f,
+            f.input(self.gate_in),
+            f.output(self.audio_out),
+            bp_hz=7500.0,
+            bp_q=4.0,
+            hp_hz=6500.0,
+        )
+        self._velocity = 100.0 / 127.0
+        self._cv = -0.15
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.watch(self.pitch_in, self._graph_pitch)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_pitch(self, value):
+        self._cv = value
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._g.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        midi_key = int(round(self._cv * 120.0 + 60.0))
+        if midi_key == 46:
+            decay_sec, bp_hz = 0.320, 8200.0
+        elif int(round(v * 127.0)) >= 120:
+            decay_sec, bp_hz = 0.090, 7900.0
+        else:
+            decay_sec, bp_hz = 0.040, 7500.0
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._g.apply(
+            decay_sec=decay_sec,
+            bp_hz=bp_hz,
+            gain=(self.level / 10.0) * accent_gain * 2.5,
+            velocity=v,
+        )
+
 
 class Rhythm78Cymbal(Module):
     """Noise cymbal voice: lower voiced and longer decay (1.2 s)."""
@@ -131,3 +186,40 @@ class Rhythm78Cymbal(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``NoiseHatCore`` as nodes, voiced low: 5200 Hz band-pass, 4000 Hz high-pass, 1.2 s."""
+        self._fragment = f
+        self._g = NoiseHatGraph(
+            f,
+            f.input(self.gate_in),
+            f.output(self.audio_out),
+            bp_hz=5200.0,
+            bp_q=3.5,
+            hp_hz=4000.0,
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._g.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        self._g.apply(
+            decay_sec=1.2,
+            bp_hz=5200.0,
+            gain=(self.level / 10.0) * accent_gain * 2.5,
+            velocity=v,
+        )
