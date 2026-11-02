@@ -21,6 +21,7 @@ def main():
     # Install MIDI-to-CV and Patch2600
     midi_cv = rack.add_module(MidiCVModule("midi_cv"))
     patch2600 = rack.add_module(Patch2600("patch2600"))
+    patch2600.set_param("adsr_sustain", 0.7)
 
     # Connect master keyboard CV & Gate to Patch2600's primary inputs
     rack.connect(midi_cv.pitch_out, patch2600.kybd_cv_in, color="#9b59b6")

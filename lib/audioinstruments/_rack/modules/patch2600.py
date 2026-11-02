@@ -213,7 +213,9 @@ class Patch2600(Module):
 
         self.add_param("adsr_attack", "ADSR Attack (s)", default=0.01, min_val=0.001, max_val=4.0)
         self.add_param("adsr_decay", "ADSR Decay (s)", default=0.25, min_val=0.01, max_val=4.0)
-        self.add_param("adsr_sustain", "ADSR Sustain", default=0.7, min_val=0.0, max_val=1.0)
+        # The VCA is exponential, 60 dB across the envelope's 0..1: this default sits
+        # 6 dB down, where a held note stays near its attack.
+        self.add_param("adsr_sustain", "ADSR Sustain", default=0.9, min_val=0.0, max_val=1.0)
         self.add_param("adsr_release", "ADSR Release (s)", default=0.35, min_val=0.01, max_val=4.0)
         self.add_param("ar_attack", "AR Attack (s)", default=0.01, min_val=0.001, max_val=4.0)
         self.add_param("ar_release", "AR Release (s)", default=0.35, min_val=0.01, max_val=4.0)

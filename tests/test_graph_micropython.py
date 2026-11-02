@@ -24,7 +24,8 @@ POLY80_EXACT = {"slop": 0.0, "detune": 0.0}
 #: Voices whose filter cutoff goes through Python's pow every block: the most a sample may
 #: differ between interpreters, and how many may (of 198144 a channel). The Poly80's moving
 #: filters measure 3 counts on 5436 samples at the worst of its four phrases.
-FLOAT_POW = {"state_variable_mono": (1.0, 16), "poly80": (4.0, 8000)}
+#: The StateVariableMono measures 1 count on 96 samples, with its VCA 6 dB down.
+FLOAT_POW = {"state_variable_mono": (1.0, 128), "poly80": (4.0, 8000)}
 
 CASES = [
     ("hybrid_mono", 0),

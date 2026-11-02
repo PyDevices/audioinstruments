@@ -118,7 +118,10 @@ class HybridMono(Module):
         self.add_param("drive", "CMOS Drive", default=1.3, min_val=0.5, max_val=3.0)
         self.add_param("env_attack", "Attack (s)", default=0.005, min_val=0.002, max_val=3.0)
         self.add_param("env_decay", "Decay / Release (s)", default=0.22, min_val=0.01, max_val=5.0)
-        self.add_param("env_sustain", "Sustain", default=0.35, min_val=0.0, max_val=1.0)
+        # The VCA is exponential, 60 dB across the envelope's 0..1: this default sits
+        # 12 dB down, where a held note stays near its attack. It also holds the filter
+        # open, and any higher takes a three-note chord out of the mix's headroom.
+        self.add_param("env_sustain", "Sustain", default=0.80, min_val=0.0, max_val=1.0)
         self.add_param("lfo_rate", "LFO Frequency (Hz)", default=5.0, min_val=0.1, max_val=30.0)
         self.add_param("volume", "Master Output Level", default=1.0, min_val=0.0, max_val=1.5)
         for name in ("_saw1", "_pulse1", "_saw2", "_pulse2", "_mix", "_fcv", "_vcv", "_tmp"):

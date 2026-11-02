@@ -117,7 +117,9 @@ class StateVariableMono(Module):
         self.add_param("env1_sustain", "Env 1 Sustain", default=0.40, min_val=0.0, max_val=1.0)
         self.add_param("env2_attack", "Env 2 Attack (s)", default=0.008, min_val=0.002, max_val=5.0)
         self.add_param("env2_decay", "Env 2 Decay (s)", default=0.30, min_val=0.01, max_val=5.0)
-        self.add_param("env2_sustain", "Env 2 Sustain", default=0.60, min_val=0.0, max_val=1.0)
+        # The VCA is exponential, 60 dB across the envelope's 0..1: this default sits
+        # 6 dB down, where a held note stays near its attack.
+        self.add_param("env2_sustain", "Env 2 Sustain", default=0.90, min_val=0.0, max_val=1.0)
         self.add_param("lfo_rate", "LFO Rate (Hz)", default=4.0, min_val=0.1, max_val=30.0)
         self.add_param("vca_init_gain", "VCA Initial Gain", default=0.0, min_val=0.0, max_val=1.0)
         self.add_param("volume", "Master Volume", default=1.0, min_val=0.0, max_val=1.5)

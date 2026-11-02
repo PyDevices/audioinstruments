@@ -26,6 +26,12 @@ All notable changes to `audioinstruments` are recorded here.
   sustain was 0.5, which the exponential VCA puts 30 dB under the attack, so a
   held note all but vanished. A patch that sets `amp_sustain` itself sounds as
   before.
+- `duo20`, `hybrid_mono`, `state_variable_mono`, `patch2600` and the rack's
+  `ParaphonicSynth` had the same fault at 14 to 29 dB: their amplifier
+  envelope's sustain now defaults to 0.9 (0.8 on `hybrid_mono`), so a held note
+  stays close to its attack. On `hybrid_mono` the same envelope drives the
+  filter, so a held note is brighter too. A patch that sets its sustain sounds
+  as before.
 
 ## 0.5.0
 
