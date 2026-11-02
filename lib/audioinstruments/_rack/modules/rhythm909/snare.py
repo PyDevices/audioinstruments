@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Snare drum module for Rhythm909, inspired by the TR-909 snare drum."""
 
+from ...core.graph import UNIT
 from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import (
@@ -16,6 +17,7 @@ from ...dsp.biquad import BiquadFilter
 from ...dsp.blocks import EdgeDetector
 from ...dsp.drums import OneShotEnvelopeCore, SweptOscillatorDrumCore
 from ...dsp.noise import NoiseGenerator
+from .._drums_graph import SweptOscGraph
 
 
 class Rhythm909Snare(Module):
@@ -156,3 +158,108 @@ class Rhythm909Snare(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.5
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """Two ``SweptOscillatorDrumCore`` tones and a high-passed noise snap.
+
+        Each tone strikes twice on one gate edge (the module's ``trigger`` plus
+        the tone's own edge scan in ``render``), so each amp step is ``2.0``.
+        The snap's ``OneShotEnvelopeCore`` is first scanned inside ``render``,
+        which forces 1.0, so its DECAY velocity is open.
+        """
+        import audiobiquad
+        import audiograph as ag
+
+        self._ag = ag
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b1, b2, b_sum = f.buffer(), f.buffer(), f.buffer()
+        self._so1 = SweptOscGraph(f, gate, b1, sample_rate=self.sample_rate)
+        self._so2 = SweptOscGraph(f, gate, b2, sample_rate=self.sample_rate)
+        self._n_sum = f.add(ag.MIX, (b1, b2), b_sum)
+        f.set(self._n_sum, 0, 1.0)
+        f.set(self._n_sum, 1, 0.7)
+
+        b_vel, b_env, b_white, b_filt, b_noise = (
+            f.buffer(),
+            f.buffer(),
+            f.buffer(),
+            f.buffer(),
+            f.buffer(),
+        )
+        self._n_vel = f.add(ag.CONST, (), b_vel)
+        f.set(self._n_vel, 0, UNIT)
+        self._n_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        f.set(self._n_env, ag.DECAY_DECAY, 0.18)
+        f.set(self._n_env, ag.DECAY_RESTRIKE, 0.18)
+        self._n_white = f.add(ag.NOISE, (), b_white)
+        f.set(self._n_white, 0, 0.5 * UNIT)
+        self._n_filt = f.add(ag.BIQUAD, (b_white,), b_filt)
+        f.set(self._n_filt, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
+        f.set(self._n_filt, ag.BIQUAD_Q, 1.0)
+        self._n_noise_vca = f.add(ag.VCA, (b_filt, b_env, None), b_noise)
+        f.set(self._n_noise_vca, ag.VCA_SELECT, 0.0)
+        self._n_out = f.add(ag.MIX, (b_sum, b_noise), f.output(self.audio_out))
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "tune", "tone", "snappy", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.prime(self._graph_prime)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_prime(self, run):
+        """Start both sines a quarter-cycle behind, where the rack's shaped triangles start."""
+        self._so1.prime_frequency(self.block_size)
+        self._so2.prime_frequency(self.block_size)
+        run(self._fragment.bits, (self._so1.n_osc, self._so2.n_osc))
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._so1.reset(self._fragment)
+        self._so2.reset(self._fragment)
+        for node in (self._n_env, self._n_white, self._n_filt, self._n_noise_vca):
+            self._fragment.reset(node)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        gain = (self.level / 10.0) * accent_gain * 2.5
+        tune_factor = 2.0 ** ((self.tune - 5.0) / 15.0)
+        cutoff = 1400.0 + (self.tone / 10.0) * 4600.0
+        self._so1.apply(
+            frequency=180.0 * tune_factor,
+            decay_sec=0.18,
+            drop_cents=1200.0,
+            bend_time_sec=0.025,
+            click_level=0.2,
+            click_tone_hz=3000.0,
+            gain=gain,
+            velocity=v,
+            accent=0.5,
+            amp_step=2.0,
+        )
+        self._so2.apply(
+            frequency=330.0 * tune_factor,
+            decay_sec=0.15,
+            drop_cents=800.0,
+            bend_time_sec=0.020,
+            click_level=0.15,
+            click_tone_hz=3000.0,
+            gain=gain,
+            velocity=v,
+            accent=0.5,
+            amp_step=2.0,
+        )
+        f = self._fragment
+        ag = self._ag
+        f.set(self._n_filt, ag.BIQUAD_FREQUENCY, cutoff)
+        f.set(self._n_noise_vca, ag.VCA_GAIN, (self.snappy / 10.0) * 1.8 * gain)
+        f.set(self._n_out, 0, 1.0)
+        f.set(self._n_out, 1, 1.0)

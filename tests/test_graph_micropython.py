@@ -30,6 +30,7 @@ CASES = [
     ("clavichord", 0),
     ("electronic_drums5", 0),
     ("rhythm808", 0),
+    ("rhythm909", 0),
 ] + [("polya6", p) for p in (0, 3, 5, 8, 11)]
 
 

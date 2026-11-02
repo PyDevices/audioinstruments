@@ -14,6 +14,7 @@ from ...core.signal import (
 from ...dsp.biquad import BiquadFilter
 from ...dsp.blocks import EdgeDetector
 from ...dsp.drums import BridgedTDrumCore
+from .._drums_graph import BridgedTGraph
 
 
 class Rhythm909RimShot(Module):
@@ -109,3 +110,71 @@ class Rhythm909RimShot(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.8
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """Two ``BridgedTDrumCore`` tones into a 200 Hz high-pass.
+
+        Each core strikes twice on one gate edge (its own ``trigger`` plus the
+        tone's edge scan in ``render``), so each amp step is ``0.40``.
+        """
+        import audiobiquad
+
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b1, b2, b_sum = f.buffer(), f.buffer(), f.buffer()
+        self._bt1 = BridgedTGraph(f, gate, b1, sample_rate=self.sample_rate)
+        self._bt2 = BridgedTGraph(f, gate, b2, sample_rate=self.sample_rate)
+        import audiograph as ag
+
+        self._ag = ag
+        self._n_sum = f.add(ag.MIX, (b1, b2), b_sum)
+        f.set(self._n_sum, 0, 1.0)
+        f.set(self._n_sum, 1, 0.85)
+        self._n_hp = f.add(ag.BIQUAD, (b_sum,), f.output(self.audio_out))
+        f.set(self._n_hp, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
+        f.set(self._n_hp, ag.BIQUAD_FREQUENCY, 200.0)
+        f.set(self._n_hp, ag.BIQUAD_Q, 1.0)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bt1.reset(self._fragment)
+        self._bt2.reset(self._fragment)
+        self._fragment.reset(self._n_hp)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        gain = (self.level / 10.0) * accent_gain * 2.8
+        self._bt1.apply(
+            frequency=220.0,
+            decay_sec=0.022,
+            drop_cents=0.0,
+            bend_time_sec=0.001,
+            click_level=0.4,
+            click_tone_hz=3500.0,
+            gain=gain,
+            velocity=v,
+            amp_step=0.40,
+        )
+        self._bt2.apply(
+            frequency=1750.0,
+            decay_sec=0.018,
+            drop_cents=0.0,
+            bend_time_sec=0.001,
+            click_level=0.35,
+            click_tone_hz=3500.0,
+            gain=gain,
+            velocity=v,
+            amp_step=0.40,
+        )

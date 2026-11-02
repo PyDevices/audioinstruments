@@ -6,6 +6,7 @@ from ...core.jack import SignalType
 from ...core.module import Module
 from ...core.signal import scale
 from ...dsp.drums import SweptOscillatorDrumCore
+from .._drums_graph import SweptOscGraph
 
 
 class Rhythm909BassDrum(Module):
@@ -78,3 +79,50 @@ class Rhythm909BassDrum(Module):
 
         gain = (self.level / 10.0) * accent_gain * 3.2
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``SweptOscillatorDrumCore``'s shaped sine, click and no noise as nodes."""
+        self._fragment = f
+        self._so = SweptOscGraph(
+            f, f.input(self.gate_in), f.output(self.audio_out), sample_rate=self.sample_rate
+        )
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "tune", "attack", "decay", "accent"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.prime(self._graph_prime)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_prime(self, run):
+        """Start the sine a quarter-cycle behind, where the rack's shaped triangle starts."""
+        self._so.prime_frequency(self.block_size)
+        run(self._fragment.bits, (self._so.n_osc,))
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._so.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        accent_factor = (1.0 - a) + a * v
+        t = self.tune / 10.0
+        click_base = (self.attack / 10.0) * 0.65 + 0.05
+        self._so.apply(
+            frequency=45.0 + t * 20.0,
+            decay_sec=0.10 + (self.decay / 10.0) * 0.80,
+            drop_cents=1800.0 + t * 800.0,
+            bend_time_sec=0.032,
+            click_level=click_base * (0.7 + 0.6 * accent_factor),
+            click_tone_hz=3200.0,
+            gain=(self.level / 10.0) * accent_gain * 3.2,
+            velocity=v,
+            accent=a,
+        )

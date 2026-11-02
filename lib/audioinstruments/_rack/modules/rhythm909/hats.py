@@ -11,6 +11,7 @@ from ...core.signal import (
     scale,
 )
 from ...dsp.drums import BitDepthRateCore, MetallicBankCore, OneShotEnvelopeCore
+from .._drums_graph import CrushGraph, MetallicBankGraph
 
 
 class Rhythm909ClosedHat(Module):
@@ -97,6 +98,48 @@ class Rhythm909ClosedHat(Module):
         gain = (self.level / 10.0) * accent_gain * 2.8
         scale(out, gain)
 
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s hats bank under a 40-120 ms envelope, then the crusher.
+
+        The envelope is first scanned inside its own ``render`` and forces 1.0,
+        so its DECAY velocity is open. The crusher is the rack's
+        ``BitDepthRateCore``: anti-alias, CRUSH, SAMPLE_HOLD, with a dry path
+        for ``crush=False``.
+        """
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_bank = f.buffer()
+        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats")
+        self._crush = CrushGraph(f, b_bank, f.output(self.audio_out), sample_rate=self.sample_rate)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "decay", "accent", "bits", "crush"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bank.reset(self._fragment)
+        self._crush.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        decay_sec = 0.040 + (self.decay / 10.0) * 0.080
+        self._bank.apply(decay_sec=decay_sec, gain_low=1.0, velocity=1.0)
+        self._crush.apply(
+            bits=self.bits,
+            rate=32000.0,
+            crush=bool(self.crush),
+            gain=(self.level / 10.0) * accent_gain * 2.8,
+        )
+
 
 class Rhythm909OpenHat(Module):
     NAME = "Rhythm909OpenHat"
@@ -181,3 +224,40 @@ class Rhythm909OpenHat(Module):
 
         gain = (self.level / 10.0) * accent_gain * 2.8
         scale(out, gain)
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """``MetallicBankCore``'s hats bank under a 150-1000 ms envelope, then the crusher."""
+        self._fragment = f
+        gate = f.input(self.gate_in)
+        b_bank = f.buffer()
+        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats")
+        self._crush = CrushGraph(f, b_bank, f.output(self.audio_out), sample_rate=self.sample_rate)
+        self._velocity = 100.0 / 127.0
+        f.bind(("level", "decay", "accent", "bits", "crush"), self._graph_params)
+        f.watch(self.vel_in, self._graph_velocity)
+        f.on_reset(self._graph_reset)
+        self._graph_params()
+
+    def _graph_velocity(self, value):
+        self._velocity = value
+        self._graph_params()
+
+    def _graph_reset(self):
+        self._bank.reset(self._fragment)
+        self._crush.reset(self._fragment)
+
+    def _graph_params(self):
+        v = max(0.0, min(1.0, self._velocity))
+        a = self.accent / 10.0
+        accent_gain = (1.0 - a) + a * (v**1.85)
+        d = self.decay / 10.0
+        decay_sec = 0.150 + d * 0.850
+        self._bank.apply(decay_sec=decay_sec, gain_low=1.0, velocity=1.0)
+        self._crush.apply(
+            bits=self.bits,
+            rate=32000.0,
+            crush=bool(self.crush),
+            gain=(self.level / 10.0) * accent_gain * 2.8,
+        )
