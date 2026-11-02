@@ -238,6 +238,127 @@ def test_a_patch_with_buses_renders_on_the_rack_and_the_graph():
     inst.deinit()
 
 
+class BusOut(Module):
+    """The shared side of ``BusOutPatch``: the left channel is bus a and half of bus b,
+    the right bus b alone, so either bus going wrong shows in the output."""
+
+    NAME = "BusOut"
+
+    def _build(self):
+        audio = SignalType.AUDIO
+        self.a_in = self.add_input("a", signal_type=audio)
+        self.b_in = self.add_input("b", signal_type=audio)
+        self.left_out = self.add_output("left", signal_type=audio)
+        self.right_out = self.add_output("right", signal_type=audio)
+
+    def process(self, block_size):
+        a = self.a_in.get_buffer()
+        b = self.b_in.get_buffer()
+        for i in range(block_size):
+            self.left_out.buffer[i] = a[i] + 0.5 * b[i]
+            self.right_out.buffer[i] = b[i]
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        a, b = f.input(self.a_in), f.input(self.b_in)
+        left = f.add(ag.MIX, (a, b), f.output(self.left_out))
+        f.set(left, 0, 1.0)
+        f.set(left, 1, 0.5)
+        right = f.add(ag.MIX, (b,), f.output(self.right_out))
+        f.set(right, 0, 1.0)
+
+
+class GraphToyVoice(ToyVoice):
+    """``ToyVoice`` with a graph form, so the whole voice compiles: three ``MIX`` nodes
+    scaling the gate. (Run on the rack side, a module's output reaches the graph a
+    block late, which is not what these tests are about.)"""
+
+    NAME = "GraphToyVoice"
+
+    def fragment(self, f):
+        import audiograph as ag
+
+        gate = f.input(self.gate_in)
+        for jack, value in (
+            (self.a_out, self.a_val),
+            (self.b_out, self.b_val),
+            (self.main_out, self.a_val + self.b_val),
+        ):
+            node = f.add(ag.MIX, (gate,), f.output(jack))
+            f.set(node, 0, value)
+
+
+class BusOutPatch(BusPatch):
+    """Two voices whose buses are all the output there is."""
+
+    NAME = "busoutpatch"
+
+    def build(self, voice):
+        toy = voice.add(GraphToyVoice, "toy")
+        toy.a_val, toy.b_val = VALUES[voice.index]
+        voice.connect(voice.gate, toy.gate_in)
+        voice.bus("a", toy.a_out)
+        voice.bus("b", toy.b_out)
+        return toy.main_out
+
+    def build_shared(self, rack, left, right, buses):
+        out = rack.add_module(
+            BusOut("busout", sample_rate=rack.sample_rate, block_size=rack.block_size)
+        )
+        rack.connect(buses["a"], out.a_in)
+        rack.connect(buses["b"], out.b_in)
+        return out.left_out, out.right_out
+
+
+def render_buses(engine):
+    """Notes that wake, hold, steal and release both voices, as int16 stereo."""
+    inst = adapter.create(48000, voice=BusOutPatch(), engine=engine, output="pull")
+    try:
+        assert inst.engine == engine
+        if engine == "graph":
+            assert inst._compiled.rack_side == []
+        events = {2: (1, 60), 10: (1, 64), 30: (1, 67), 50: (0, 64), 60: (0, 67), 70: (1, 62)}
+        out = []
+        for b in range(120):
+            if b in events:
+                on, key = events[b]
+                inst.note_on(key, 100) if on else inst.note_off(key)
+            out.append(np.frombuffer(bytes(inst._pull()), dtype=np.int16).copy())
+        return np.concatenate(out).reshape(-1, 2).astype(np.int64)
+    finally:
+        inst.deinit()
+
+
+def buses_agree():
+    rack = render_buses("rack")
+    graph = render_buses("graph")
+    assert np.abs(rack).max() > 2000
+    return int(np.abs(rack - graph).max())
+
+
+def test_the_graph_sums_the_buses_to_the_racks_samples():
+    assert buses_agree() <= 2
+
+
+def _bus_1_quieter(self):
+    """Voice 1 a tenth quieter on both buses (and only there)."""
+    k = self._bus_pushed[1]
+    for node, slot in self._bus_slots[1]:
+        self._fragment.set(node, slot, 0.9 * (k or 0.0))
+
+
+def test_a_bus_gain_planted_wrong_on_the_graph_is_seen(monkeypatch):
+    real = VoiceMix._graph_block
+
+    def wrong(self):
+        real(self)
+        _bus_1_quieter(self)
+
+    monkeypatch.setattr(VoiceMix, "_graph_block", wrong)
+    assert buses_agree() > 2
+
+
 def test_a_patch_without_buses_is_unchanged():
     assert adapter.VoicePatch.BUSES == ()
     inst = adapter.create(48000, voice="mono_one", output="pull")
