@@ -210,6 +210,10 @@ built with the change from that block on (`tools/pump_swap.py`). The pump
 stands parked for 0.05 to 0.4 ms on a desktop CPython and 0.3 to 1.5 ms on
 the MicroPython unix port, from the 26-node Mono101 to the 676-node PolyA6;
 the compile, which it plays through, takes 0.5 to 7 ms and 1.6 to 54 ms.
+On an ESP32-P4 a patch change that plugs other cables takes 160 to 775 ms of the
+calling thread, from the Acid303 to the Patch2600: a held note plays on, with the
+odd underrun, while the screen and MIDI input wait for it, so change such a patch
+between phrases. A patch change with no cables to move takes 30 to 180 ms.
 A module that still runs in Python can't be added to an attached graph: the
 change is refused and the old patch plays on. The same goes for a `fed` module.
 
