@@ -4,6 +4,10 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.1
+
+The final of the 0.5.1 pre-releases below. It requires audiodsp 0.6.13.
+
 ## 0.5.1.dev4
 
 - Acid303 has twelve patches, from Squelch and Screamer to Sub Thump and Zap, and

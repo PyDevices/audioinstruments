@@ -6,7 +6,7 @@
 NAME = "duosynth"
 DISPLAY_NAME = "DuoSynth"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.1.dev4"
+VERSION = "0.5.1"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

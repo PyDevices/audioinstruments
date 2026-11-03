@@ -6,7 +6,7 @@
 NAME = "poly6"
 DISPLAY_NAME = "Poly6"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.1.dev4"
+VERSION = "0.5.1"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
