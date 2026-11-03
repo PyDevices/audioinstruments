@@ -66,7 +66,7 @@ class StateVariableMono(Module):
                 "env1_sustain": 0.1,
                 "env2_decay": 0.3,
                 "env2_sustain": 0.92,
-                "volume": 0.99,
+                "volume": 1.081,
             },
         ),
         (
@@ -85,7 +85,7 @@ class StateVariableMono(Module):
                 "env2_attack": 0.03,
                 "env2_decay": 0.35,
                 "env2_sustain": 0.95,
-                "volume": 1.06,
+                "volume": 1.148,
             },
         ),
         (
@@ -106,7 +106,7 @@ class StateVariableMono(Module):
                 "env2_attack": 0.7,
                 "env2_decay": 1.2,
                 "env2_sustain": 1.0,
-                "volume": 1.01,
+                "volume": 1.093,
             },
         ),
         (
@@ -127,7 +127,7 @@ class StateVariableMono(Module):
                 "env2_attack": 0.3,
                 "env2_decay": 0.9,
                 "env2_sustain": 1.0,
-                "volume": 0.97,
+                "volume": 1.053,
             },
             (("lfo_tri", "vco1_pw"),),
         ),
@@ -147,7 +147,7 @@ class StateVariableMono(Module):
                 "env1_sustain": 0.5,
                 "env2_decay": 0.4,
                 "env2_sustain": 1.0,
-                "volume": 0.96,
+                "volume": 1.043,
             },
         ),
         (
@@ -165,7 +165,7 @@ class StateVariableMono(Module):
                 "env2_attack": 0.5,
                 "env2_decay": 1.0,
                 "env2_sustain": 1.0,
-                "volume": 1.0,
+                "volume": 1.083,
             },
         ),
         (
@@ -183,7 +183,7 @@ class StateVariableMono(Module):
                 "env1_sustain": 0.0,
                 "env2_decay": 0.25,
                 "env2_sustain": 0.55,
-                "volume": 1.1,
+                "volume": 1.18,
             },
         ),
         (
@@ -205,7 +205,7 @@ class StateVariableMono(Module):
                 "env2_attack": 0.02,
                 "env2_decay": 0.3,
                 "env2_sustain": 1.0,
-                "volume": 1.03,
+                "volume": 1.113,
             },
         ),
         (
@@ -224,7 +224,7 @@ class StateVariableMono(Module):
                 "env1_sustain": 0.7,
                 "env2_decay": 0.4,
                 "env2_sustain": 1.0,
-                "volume": 1.0,
+                "volume": 1.083,
             },
         ),
         (
@@ -243,7 +243,7 @@ class StateVariableMono(Module):
                 "env1_sustain": 1.0,
                 "env2_decay": 0.3,
                 "env2_sustain": 1.0,
-                "volume": 0.97,
+                "volume": 1.053,
             },
         ),
         (
@@ -260,7 +260,7 @@ class StateVariableMono(Module):
                 "env1_sustain": 0.0,
                 "env2_decay": 0.25,
                 "env2_sustain": 0.7,
-                "volume": 1.03,
+                "volume": 1.133,
             },
         ),
     )
