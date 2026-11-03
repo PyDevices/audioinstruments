@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Play the Poly106: a pad progression, a bass line, brass stabs and a lead.
 
     python examples/poly106_demo.py            # writes wav_exports/poly106_demo.wav

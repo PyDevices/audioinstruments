@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`_sf2`: a SoundFont 2 bank read back exactly.
 
 The bank under test is written by `tests/support/sf2_builder.py` from the

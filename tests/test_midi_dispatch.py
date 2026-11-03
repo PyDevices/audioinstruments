@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`audioinstruments._rack.midi_dispatch`: MIDI in, instrument methods out.
 
 A recording instrument checks what each kind of input becomes: bytes with

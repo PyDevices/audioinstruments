@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A stand-in for ``audiopump.Events`` and ``audiopump.now`` for the sequencer.
 
 A `Sequencer` writes to its queue through two calls, ``q.at(frame, op,

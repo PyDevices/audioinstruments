@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The General MIDI gate: a real bank plays every program and the kit.
 
 Against FluidR3_GM.sf2 (MIT), looked for at `$FLUIDR3_GM`, then

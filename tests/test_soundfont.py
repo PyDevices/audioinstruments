@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`soundfont` and `soundfont_drums` on the bank `sf2_builder` writes.
 
 The plumbing, without a real bank: how the bank is found, the patch list

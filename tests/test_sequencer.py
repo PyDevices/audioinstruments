@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`audioinstruments._rack.sequencer.Sequencer`, driven by a clock a test moves.
 
 The sequencer's whole claim is that the groove does not depend on when
