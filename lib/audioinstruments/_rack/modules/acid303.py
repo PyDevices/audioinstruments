@@ -88,15 +88,12 @@ class Acid303(Module):
     #: circuits, as a step's flags do on the machine: a note struck at ``accent_velocity`` (0 to
     #: 1, 0.8 is 102) or harder accents, and a note played over the one before slides to it.
     #: Without the cables (Init) the 16 steps' own flags decide, whatever is played.
-    #: ``cutoff_hz`` and ``tuning`` are in Hz, ``decay`` in seconds. Init plays note 60 at the
-    #: tuning knob's 65.41 Hz, as the module always has; the others set it to 261.6 so that
-    #: a key sounds at its own pitch.
+    #: ``cutoff_hz`` and ``tuning`` are in Hz, ``decay`` in seconds.
     PRESETS = (
         ("Init", {}),
         (
             "Squelch",
             {
-                "tuning": 261.6,
                 # The sawtooth line with the filter nearly closed, a sharp envelope and the
                 # resonance high: the squelch.
                 "cutoff_hz": 300.0,
@@ -110,7 +107,6 @@ class Acid303(Module):
         (
             "Square Acid",
             {
-                "tuning": 261.6,
                 # The square wave, hollower and more nasal, with a shorter decay.
                 "waveform": 1,
                 "cutoff_hz": 350.0,
@@ -124,7 +120,6 @@ class Acid303(Module):
         (
             "Rubber Bass",
             {
-                "tuning": 261.6,
                 # A plain rounded bass: little resonance, a small envelope sweep.
                 "cutoff_hz": 250.0,
                 "resonance": 0.3,
@@ -138,7 +133,6 @@ class Acid303(Module):
         (
             "Screamer",
             {
-                "tuning": 261.6,
                 # The resonance at the edge of ringing and the filter swept far: the accents shriek.
                 "cutoff_hz": 900.0,
                 "resonance": 0.95,
@@ -154,7 +148,6 @@ class Acid303(Module):
             {
                 # A square wave low in the register, the filter mostly shut: a pulse under a kick.
                 "waveform": 1,
-                "tuning": 261.6,
                 "cutoff_hz": 260.0,
                 "resonance": 0.2,
                 "env_mod": 0.45,
@@ -169,7 +162,6 @@ class Acid303(Module):
             {
                 # A short bright square-wave blip, high in the register, for a stuttered top line.
                 "waveform": 1,
-                "tuning": 261.6,
                 "cutoff_hz": 1500.0,
                 "resonance": 0.5,
                 "env_mod": 0.2,
@@ -181,7 +173,6 @@ class Acid303(Module):
         (
             "Dark Roller",
             {
-                "tuning": 261.6,
                 # Low and closed, the envelope slow to let go: a bass line that rolls.
                 "cutoff_hz": 180.0,
                 "resonance": 0.75,
@@ -195,7 +186,6 @@ class Acid303(Module):
         (
             "Open Wail",
             {
-                "tuning": 261.6,
                 # The filter well open and a long decay, so each note sings before it falls.
                 "cutoff_hz": 1800.0,
                 "resonance": 0.6,
@@ -208,7 +198,6 @@ class Acid303(Module):
         (
             "Pluck Stab",
             {
-                "tuning": 261.6,
                 # The shortest decay and the full envelope sweep: a stab that snaps shut.
                 "cutoff_hz": 500.0,
                 "resonance": 0.55,
@@ -222,7 +211,6 @@ class Acid303(Module):
         (
             "Long Drone",
             {
-                "tuning": 261.6,
                 # A note that hardly decays, the filter half open: a line of held, sliding tones.
                 "cutoff_hz": 700.0,
                 "resonance": 0.45,
@@ -238,7 +226,6 @@ class Acid303(Module):
             {
                 # A square wave, a full sweep and ringing resonance, over in an instant.
                 "waveform": 1,
-                "tuning": 261.6,
                 "cutoff_hz": 600.0,
                 "resonance": 0.9,
                 "env_mod": 1.0,
@@ -268,7 +255,7 @@ class Acid303(Module):
         self.audio_out = self.add_output("audio_out", "Audio Out", audio)
         self.accent_out = self.add_output("accent_out", "Accent Out", gate)
 
-        self.add_param("tuning", "Tuning", 65.41, 16.0, 1100.0)
+        self.add_param("tuning", "Tuning", 261.6, 16.0, 1100.0)
         self.add_param("waveform", "Waveform", 0, 0, 1, "TOGGLE")
         self.add_param("cutoff_hz", "Cutoff", 400.0, 20.0, 12000.0)
         self.add_param("resonance", "Resonance", 0.7, 0.0, 0.98)
