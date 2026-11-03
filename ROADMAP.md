@@ -24,6 +24,9 @@ Planned work, in rough order:
 - Notes on their own frame with the graph on the audio pump. A note played in
   a turn lands at the next block; with `audiograph` setting a value at a frame
   inside a block, `schedulable` can be True and a sequencer can time notes.
+- StateVariableMono's filter envelope opening as fast on the graph as on the rack, once
+  audiodsp's `BIQUAD` node can take a new cutoff at once instead of walking to it over
+  20 ms. The patches in `tests/test_module_patches.py`'s `FAST_SWEEP` then lose their waiver.
 - Polyphony beyond the first cut: portamento between voices,
   growing a pool past the voices it was built with, one pool shared by several
   instruments, and notes queued on an `audiopump.Events` for frame-exact

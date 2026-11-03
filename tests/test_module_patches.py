@@ -25,8 +25,9 @@ PATCHED = [n for n in VOICES if get_module_class(adapter._MODULE_VOICES[n][0]).P
 EVERY_PATCH = [
     (name, index) for name in PATCHED for index in range(len(adapter.voice_patch(name).PATCHES))
 ]
-#: Windows of 20 ms, in dB, on the patches' own levels: noise and a free LFO are not
-#: the same sample for sample on the two engines, and a phase is not a difference.
+#: Windows of 960 interleaved stereo samples (10 ms), in dB, on the patches' own levels: noise
+#: and a free LFO are not the same sample for sample on the two engines, and a phase is not a
+#: difference.
 WINDOW = 960
 LEVEL_DB = 3.0
 #: Patches whose filter is swept hard by a cable, so the two engines part in level for a
@@ -53,9 +54,11 @@ VOICE_JACKS = (
     "mod",
     "pedal",
 )
-#: Patches whose filter envelope sweeps fast from a closed filter: the graph's filter takes
-#: its new cutoff one block later than the rack's, so the first 20 ms of a note differs by
-#: more than LEVEL_DB. They compare overall level only.
+#: Patches whose filter envelope sweeps fast from a closed filter. The graph's biquad walks
+#: to each new cutoff over 20 ms (``AUDIODSP_BIQUAD_F32_RAMP_MS``), and a cutoff that moves
+#: every block starts the walk again, where the rack's ``synthio.Biquad`` takes the new cutoff
+#: at once. The attack is duller for it, by more than LEVEL_DB. They compare overall level
+#: only, until audiodsp's node can move at once.
 FAST_SWEEP = (
     ("state_variable_mono", 1),
     ("state_variable_mono", 2),
@@ -193,10 +196,18 @@ def test_a_patch_is_the_same_level_on_rack_and_graph(name, index):
     assert level > 100.0
     assert np.abs(graph).max() < adapter.PCM_SCALE
     controls = get_module_class(adapter._MODULE_VOICES[name][0]).PRESETS[index][1]
+<<<<<<< HEAD
     noisy = any("noise" in param and value > 0.0 for param, value in controls.items())
     if noisy or (name, index) in OVERALL_ONLY + RANDOM_CABLED + FAST_SWEEP:
         # noise through a filter is another noise on each engine, and so is a random voltage,
         # and a fast sweep opens a block apart: the overall level only
+=======
+    if (name, index) in FAST_SWEEP or any(
+        "noise" in param and value > 0.0 for param, value in controls.items()
+    ):
+        # noise through a filter is another noise on each engine, and a fast sweep opens slower
+        # on the graph's biquad: the overall level only
+>>>>>>> ae40937 (FAST_SWEEP names its real cause: the graph biquad's 20 ms walk, not a block's lag)
         assert abs(20.0 * np.log10(level / np.sqrt(np.mean(rack**2)))) <= LEVEL_DB
     else:
         assert worst_level_db(rack, graph) <= LEVEL_DB
