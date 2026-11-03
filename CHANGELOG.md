@@ -4,6 +4,8 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.1.dev4
+
 - Acid303 has twelve patches, from Squelch and Screamer to Sub Thump and Zap, and
   `examples/acid303_demo.py` plays them. They accent a note struck hard and slide a note
   played over another. Init is as it was, except that a key now sounds at its own pitch:

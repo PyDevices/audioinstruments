@@ -6,7 +6,7 @@
 NAME = "reed_piano200a"
 DISPLAY_NAME = "Reed Piano 200A"
 CATEGORIES = ("Piano",)
-VERSION = "0.5.1.dev3"
+VERSION = "0.5.1.dev4"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
