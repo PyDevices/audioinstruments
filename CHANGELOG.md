@@ -18,6 +18,9 @@ All notable changes to `audioinstruments` are recorded here.
   patch as it was.
 - MonoOne has twelve patches, from Fat Bass and Sync Lead to Metal Bell and Wind,
   and `examples/mono_one_demo.py` plays them. Patch 0 is the Init patch as it was.
+- WestCoastSynth has twelve patches, from Soft Ping and Water Drops to Glass Chime and Wandering Fold,
+  and `examples/west_coast_synth_demo.py` plays them. Patch 0 is the Init patch as it was. A cable
+  from its random voltage to the timbre now compiles on the graph.
 - A module played as a voice can declare its patches in `PRESETS`: the parameters
   each sets, on both engines, and any cables it plugs. Only a change of cables
   compiles the graph again, once, and a held note plays on through it.

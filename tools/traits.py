@@ -127,12 +127,16 @@ SPECS = {
     },
     "state_variable_mono": {
         "patches": (0, 1, 4, 5, 6, 10),
+    "west_coast_synth": {
+        # not the two with a cable from the random voltage: they are never the same twice
+        "patches": (0, 1, 3, 5, 6, 7),
         "notes": (36, 60, 84),
         "velocity": 100,
         "velocities": (32, 80, 127),
         "velocity_note": 60,
         "hold": 0.5,
         "ring": 0.6,
+        "ring": 1.0,
         "tail": 0.3,
     },
     "mono101": {

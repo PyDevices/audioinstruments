@@ -37,6 +37,9 @@ OVERALL_ONLY = (
     ("duo20", 8),  # noise struck through a ringing filter
     ("duo20", 11),  # noise swept by the MG
 )
+#: Patches that cable the random voltage to the timbre: each engine draws its own values, so
+#: a window can differ by more than LEVEL_DB. They compare overall level only.
+RANDOM_CABLED = (("west_coast_synth", 4), ("west_coast_synth", 11))
 QUIET = 30.0
 VOICE_JACKS = (
     "pitch",
@@ -198,6 +201,10 @@ def test_a_patch_is_the_same_level_on_rack_and_graph(name, index):
     ):
         # noise through a filter is another noise on each engine, and a fast sweep opens a block
         # apart: the overall level only
+    noisy = any("noise" in param and value > 0.0 for param, value in controls.items())
+    if noisy or (name, index) in RANDOM_CABLED:
+        # noise through a filter is another noise on each engine, and so is a random voltage:
+        # its overall level only
         assert abs(20.0 * np.log10(level / np.sqrt(np.mean(rack**2)))) <= LEVEL_DB
     else:
         assert worst_level_db(rack, graph) <= LEVEL_DB
