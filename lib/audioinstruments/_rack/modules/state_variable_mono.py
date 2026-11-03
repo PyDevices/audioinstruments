@@ -544,6 +544,11 @@ class StateVariableMono(Module):
             f.set(node, ag.BIQUAD_Q, 0.7071)
             f.set(node, ag.BIQUAD_GAIN_DB, 0.0)
             f.set(node, ag.BIQUAD_MIX, 1.0)
+            # The rack's filter takes a new cutoff at once, and a fast envelope moves it every
+            # block: walk to each in one frame, so a sweep opens as fast here. An audiodsp too
+            # old to have this walks for 20 ms and plays the same notes a little duller.
+            if hasattr(ag, "BIQUAD_RAMP"):
+                f.set(node, ag.BIQUAD_RAMP, 0.0)
         self._n_vcf = f.add(ag.MIX, (b_lp, b_hp, b_bp), f.output(self.vcf_out))
 
         b_vcv = f.buffer()

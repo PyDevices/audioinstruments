@@ -19,6 +19,10 @@ All notable changes to `audioinstruments` are recorded here.
 - StateVariableMono has twelve patches, from Fat Bass and Brass Stab to Notch Pad and
   Squelch Zap, and `examples/state_variable_mono_demo.py` plays them. Patch 0 is the Init
   patch as it was.
+- StateVariableMono's fast filter sweeps open as fast on the graph as on the rack, by setting
+  audiodsp's new `BIQUAD_RAMP` to one frame on its filters. Every patch's sound moves a little on
+  the graph, Init included, and most on the fast sweeps of Fat Bass, Brass Stab, Nasal Reed, Wobble Bass
+  and Squelch Zap. An audiodsp without the option plays as before.
 - MonoOne has twelve patches, from Fat Bass and Sync Lead to Metal Bell and Wind,
   and `examples/mono_one_demo.py` plays them. Patch 0 is the Init patch as it was.
 - WestCoastSynth has twelve patches, from Soft Ping and Water Drops to Glass Chime and Wandering Fold,
