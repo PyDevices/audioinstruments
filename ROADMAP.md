@@ -11,6 +11,10 @@ Planned work, in rough order:
 - Board timings for every instrument. `docs/performance.md` has five instruments
   measured on an ESP32-P4; the rest, and an S3 build, need the same run before
   we say which are playable on a microcontroller.
+- A patch change that plugs other cables takes 160 to 775 ms on an ESP32-P4, while the
+  screen and MIDI input wait. Find where that goes, and make it short enough to use mid-phrase.
+- Fast filter sweeps on the Poly80, Poly106 and Poly6: `BIQUAD_RAMP` closes the gap on the
+  StateVariableMono, and each of these wants its own listen before it moves.
 - Live output with the block deadline measured. `examples/play_audio.py`
   already plays live through `board_config.pcm_out`; what's left is timing
   the conversion to PCM and the device write against the block budget, and
