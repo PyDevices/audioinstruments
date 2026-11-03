@@ -54,18 +54,6 @@ VOICE_JACKS = (
     "mod",
     "pedal",
 )
-#: Patches whose filter envelope sweeps fast from a closed filter. The graph's biquad walks
-#: to each new cutoff over 20 ms (``AUDIODSP_BIQUAD_F32_RAMP_MS``), and a cutoff that moves
-#: every block starts the walk again, where the rack's ``synthio.Biquad`` takes the new cutoff
-#: at once. The attack is duller for it, by more than LEVEL_DB. They compare overall level
-#: only, until audiodsp's node can move at once.
-FAST_SWEEP = (
-    ("state_variable_mono", 1),
-    ("state_variable_mono", 2),
-    ("state_variable_mono", 8),
-    ("state_variable_mono", 10),
-    ("state_variable_mono", 11),
-)
 
 
 def create(name, engine):
@@ -197,9 +185,9 @@ def test_a_patch_is_the_same_level_on_rack_and_graph(name, index):
     assert np.abs(graph).max() < adapter.PCM_SCALE
     controls = get_module_class(adapter._MODULE_VOICES[name][0]).PRESETS[index][1]
     noisy = any("noise" in param and value > 0.0 for param, value in controls.items())
-    if noisy or (name, index) in OVERALL_ONLY + RANDOM_CABLED + FAST_SWEEP:
-        # noise through a filter is another noise on each engine, and so is a random voltage,
-        # and a fast sweep opens slower on the graph's biquad: the overall level only
+    if noisy or (name, index) in OVERALL_ONLY + RANDOM_CABLED:
+        # noise through a filter is another noise on each engine, and so is a random voltage:
+        # the overall level only
         assert abs(20.0 * np.log10(level / np.sqrt(np.mean(rack**2)))) <= LEVEL_DB
     else:
         assert worst_level_db(rack, graph) <= LEVEL_DB

@@ -19,14 +19,12 @@ What matches to how many counts, and why:
   graph's 16-bit wires: the VCO mix and the two biquad outputs round to a count
   on the way into the morph mixer and the VCA.
 * When Env 1 or the LFO moves the cutoff once a block as the rack does,
-  ``synthio.Biquad`` in the rack steps direct-form coefficients instantly
-  without slewing, whereas ``audiograph.BIQUAD`` runs a 20 ms (1024-sample,
-  ``AUDIODSP_BIQUAD_F32_RAMP_MS``) parameter walk through an internal SVF
-  topology whenever coefficients move. Because cutoff updates every block
-  (5.3 ms), the graph filter continuously slews across the 20 ms window.
-  At slow LFO rates (0.25 Hz) the difference is 19 counts rms (0.84% of
-  level); at 6 Hz it is 258 counts rms (11% of level) and converges when
-  modulation settles. Over the note it matches within 11% rms of level.
+  ``synthio.Biquad`` in the rack takes each new cutoff at once, and the graph's
+  ``BIQUAD`` walks to it in one frame (``BIQUAD_RAMP`` at 0). Across the moving
+  cases below that is 4.1 counts rms at the worst, 0.17% of level, and 257 counts
+  at the worst on the sample a move lands on. An audiodsp with no ``BIQUAD_RAMP``
+  walks for 20 ms and restarts the walk each block (5.3 ms), so the filter slews
+  behind the rack's, up to 11% rms of level, which is the bar here while it works.
 * Over a phrase with voice steals the held chord matches to 32 counts and
   1.5 counts rms.
 * The LFO's triangle on ``lfo_tri_out`` matches within two counts and the
@@ -182,6 +180,46 @@ def test_an_audiograph_without_biquad_leaves_the_voice_on_the_rack(monkeypatch):
     inst = adapter.create(48000, voice="state_variable_mono", engine="auto", output="pull")
     assert inst.engine == "rack"
     inst.deinit()
+
+
+def filter_ramps():
+    """Each voice's three biquads' BIQUAD_RAMP, on a fresh StateVariableMono's graph."""
+    import audiograph
+
+    inst = adapter.create(48000, voice="state_variable_mono", engine="graph", output="pull")
+    try:
+        assert inst.engine == "graph"
+        return [
+            module._fragment.get(node, audiograph.BIQUAD_RAMP)
+            for module in inst.voice_pool.modules("synth")
+            for node in (module._n_lp, module._n_hp, module._n_bp)
+        ]
+    finally:
+        inst.deinit()
+
+
+def test_the_filters_walk_for_one_frame_where_audiodsp_can():
+    import audiograph
+
+    if not hasattr(audiograph, "BIQUAD_RAMP"):
+        pytest.skip("this audiodsp has no BIQUAD_RAMP")
+    assert set(filter_ramps()) == {0.0}
+
+
+def test_an_audiograph_without_the_ramp_still_compiles_the_voice(monkeypatch):
+    import audiograph
+
+    if not hasattr(audiograph, "BIQUAD_RAMP"):
+        pytest.skip("this audiodsp has no BIQUAD_RAMP to take away")
+    ramp = audiograph.BIQUAD_RAMP
+    monkeypatch.delattr(audiograph, "BIQUAD_RAMP")
+    inst = adapter.create(48000, voice="state_variable_mono", engine="auto", output="pull")
+    try:
+        assert inst.engine == "graph"
+        module = next(iter(inst.voice_pool.modules("synth")))
+        assert module._fragment.get(module._n_lp, ramp) == 20.0
+    finally:
+        inst.deinit()
 
 
 # -- the voice --------------------------------------------------------------------------
