@@ -60,6 +60,229 @@ class HybridMono(Module):
         9: "UNIPOLAR",
     }
 
+    #: The twelve patches. The VCA is exponential, so ``env_sustain`` stays near 1.0
+    #: for a note that holds. ``dco2_pitch`` is in octaves, so a fifth is 0.585, and
+    #: ``filter_freq`` is a knob, 30 Hz to 13.5 kHz. The filter's CV mix has no knob for
+    #: the LFO's depth: the cable swings it a full triangle, ten octaves a unit.
+    PRESETS = (
+        ("Init", {}),
+        (
+            "Buzz Bass",
+            {
+                # A sawtooth and a square an octave below it, a shade apart: a thick, rough buzz.
+                "dco1_oct": 2.0,
+                "dco1_wave": 0.0,
+                "dco2_oct": 0.0,
+                "dco2_wave": 1.0,
+                "dco2_pitch": 0.01,
+                "filter_freq": 0.25,
+                "filter_res": 0.3,
+                "filter_env_depth": 0.5,
+                "drive": 1.8,
+                "env_attack": 0.003,
+                "env_decay": 0.25,
+                "env_sustain": 0.95,
+                "volume": 0.97,
+            },
+        ),
+        (
+            "Stinger Bass",
+            {
+                # A narrow pulse over a sawtooth, a resonant filter snapping shut after each note.
+                "dco1_oct": 2.0,
+                "dco1_wave": 1.0,
+                "dco1_pw": 0.3,
+                "dco2_oct": 1.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.0,
+                "filter_freq": 0.2,
+                "filter_res": 0.48,
+                "filter_env_depth": 0.75,
+                "drive": 1.3,
+                "env_attack": 0.002,
+                "env_decay": 0.14,
+                "env_sustain": 0.88,
+                "volume": 1.08,
+            },
+        ),
+        (
+            "Fifth Lead",
+            {
+                # Two sawtooths a fifth apart, the filter open, for a hard-edged lead.
+                "dco1_oct": 2.0,
+                "dco1_wave": 0.0,
+                "dco2_oct": 1.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.585,
+                "dco2_level": 0.6,
+                "filter_freq": 0.6,
+                "filter_res": 0.3,
+                "filter_env_depth": 0.3,
+                "drive": 1.4,
+                "env_decay": 0.4,
+                "env_sustain": 1.0,
+                "volume": 1.0,
+            },
+        ),
+        (
+            "Hollow Square",
+            {
+                # Two squares an octave apart through a gentle low-pass: reedy and hollow.
+                "dco1_oct": 2.0,
+                "dco1_wave": 1.0,
+                "dco1_pw": 0.5,
+                "dco2_oct": 2.0,
+                "dco2_wave": 1.0,
+                "dco2_pitch": 0.003,
+                "dco2_level": 0.5,
+                "filter_freq": 0.42,
+                "filter_res": 0.2,
+                "filter_env_depth": 0.35,
+                "drive": 1.2,
+                "env_attack": 0.01,
+                "env_decay": 0.3,
+                "env_sustain": 1.0,
+                "volume": 0.96,
+            },
+        ),
+        (
+            "Nasal Reed",
+            {
+                # The band-pass filter on a sawtooth pair, a vowel-like hum.
+                "dco1_oct": 2.0,
+                "dco1_wave": 0.0,
+                "dco2_oct": 2.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.008,
+                "filter_mode": 1.0,
+                "filter_freq": 0.5,
+                "filter_res": 0.55,
+                "filter_env_depth": 0.2,
+                "drive": 1.5,
+                "env_attack": 0.02,
+                "env_decay": 0.3,
+                "env_sustain": 1.0,
+                "volume": 0.95,
+            },
+        ),
+        (
+            "Raw Brass",
+            {
+                # Detuned sawtooths with the filter opening on a slow attack, then settling.
+                "dco1_oct": 2.0,
+                "dco1_wave": 0.0,
+                "dco2_oct": 1.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.012,
+                "filter_freq": 0.28,
+                "filter_res": 0.2,
+                "filter_env_depth": 0.55,
+                "drive": 1.6,
+                "env_attack": 0.07,
+                "env_decay": 0.4,
+                "env_sustain": 0.97,
+                "volume": 1.0,
+            },
+        ),
+        (
+            "Pluck",
+            {
+                # A square and a sawtooth, a short decay on both the filter and the level.
+                "dco1_oct": 2.0,
+                "dco1_wave": 1.0,
+                "dco1_pw": 0.35,
+                "dco2_oct": 2.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.0,
+                "filter_freq": 0.3,
+                "filter_res": 0.35,
+                "filter_env_depth": 0.6,
+                "env_attack": 0.002,
+                "env_decay": 0.15,
+                "env_sustain": 0.86,
+                "volume": 1.08,
+            },
+        ),
+        (
+            "Wah Bass",
+            {
+                # The LFO cabled to the filter: a slow, wide wah that rides under each note.
+                "dco1_oct": 2.0,
+                "dco1_wave": 0.0,
+                "dco2_oct": 1.0,
+                "dco2_wave": 1.0,
+                "dco2_pitch": 0.006,
+                "filter_freq": 0.8,
+                "filter_res": 0.4,
+                "filter_env_depth": 0.2,
+                "lfo_rate": 2.5,
+                "env_decay": 0.3,
+                "env_sustain": 0.97,
+                "volume": 0.98,
+            },
+            (("lfo_out", "filter_cv"),),
+        ),
+        (
+            "Filter Siren",
+            {
+                # A held chord-less tone with the LFO cabled to a ringing band-pass.
+                "dco1_oct": 2.0,
+                "dco1_wave": 0.0,
+                "dco2_oct": 2.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.01,
+                "filter_mode": 1.0,
+                "filter_freq": 0.95,
+                "filter_res": 0.4,
+                "drive": 1.0,
+                "filter_env_depth": 0.0,
+                "lfo_rate": 4.0,
+                "env_attack": 0.03,
+                "env_decay": 0.5,
+                "env_sustain": 1.0,
+                "volume": 0.99,
+            },
+            (("lfo_out", "filter_cv"),),
+        ),
+        (
+            "Gritty Lead",
+            {
+                # A thin pulse driven hard into the clipping stages, with a touch of resonance.
+                "dco1_oct": 3.0,
+                "dco1_wave": 1.0,
+                "dco1_pw": 0.15,
+                "dco2_oct": 2.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.014,
+                "filter_freq": 0.55,
+                "filter_res": 0.5,
+                "filter_env_depth": 0.3,
+                "drive": 3.0,
+                "env_decay": 0.35,
+                "env_sustain": 1.0,
+                "volume": 0.9,
+            },
+        ),
+        (
+            "Slow Pad",
+            {
+                # Detuned sawtooths with a slow attack and release and the filter half open.
+                "dco1_oct": 2.0,
+                "dco1_wave": 0.0,
+                "dco2_oct": 2.0,
+                "dco2_wave": 0.0,
+                "dco2_pitch": 0.015,
+                "filter_freq": 0.34,
+                "filter_res": 0.2,
+                "filter_env_depth": 0.35,
+                "env_attack": 0.6,
+                "env_decay": 1.2,
+                "env_sustain": 1.0,
+                "volume": 1.0,
+            },
+        ),
+    )
+
     def _build(self):
         sr, n = self.sample_rate, self.block_size
         self.dco1 = OscillatorCore(sr)

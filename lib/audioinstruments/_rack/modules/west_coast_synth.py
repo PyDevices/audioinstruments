@@ -55,6 +55,199 @@ class WestCoastSynth(Module):
         10: "UNIPOLAR",
     }
 
+    #: The twelve patches. A held key keeps both gates open, so a pluck is a short note and
+    #: its decay is the function generator's fall and the gate's decay together. ``princ_freq``
+    #: and ``mod_freq`` are octaves from the key; the two oscillators track it, so ``mod_freq``
+    #: is a fixed ratio (an octave up is 2:1). ``fm_index`` is in steps of 2 kHz of deviation, so
+    #: a small index is already bright on a low note. The random voltage changes on each strike
+    #: and is cabled to the timbre only, where it can't hold a gate open.
+    PRESETS = (
+        ("Init", {}),
+        (
+            "Soft Ping",
+            {
+                # A sine through two gates in series, round and quiet, the plain pluck.
+                "timbre": 0.12,
+                "lpg1_decay": 0.18,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.3,
+                "func1_fall": 0.14,
+                "func2_fall": 0.22,
+                "volume": 1.15,
+            },
+        ),
+        (
+            "Bright Pluck",
+            {
+                # A little FM at an octave up and a good fold, snapped shut by the gate.
+                "princ_wave": 1.0,
+                "mod_freq": 1.0,
+                "mod_wave": 1.0,
+                "fm_index": 0.05,
+                "timbre": 0.5,
+                "lpg1_decay": 0.12,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.2,
+                "func1_fall": 0.1,
+                "func2_fall": 0.16,
+                "volume": 1.5,
+            },
+        ),
+        (
+            "Water Drops",
+            {
+                # A high sine with a modulator a tritone off, so each ping bends like a bubble.
+                "princ_freq": 1.0,
+                "mod_freq": -0.5,
+                "mod_wave": 1.0,
+                "fm_index": 0.08,
+                "timbre": 0.1,
+                "lpg1_decay": 0.1,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.14,
+                "func1_fall": 0.08,
+                "func2_fall": 0.12,
+                "volume": 1.5,
+            },
+        ),
+        (
+            "Bubbling",
+            {
+                # A fifth up on the modulator, and each strike picks a new fold at random.
+                "mod_freq": 0.585,
+                "mod_wave": 1.0,
+                "fm_index": 0.06,
+                "timbre": 0.4,
+                "lpg1_decay": 0.15,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.22,
+                "func1_fall": 0.12,
+                "func2_fall": 0.18,
+                "volume": 1.2,
+            },
+            (("random_out", "timbre_cv"),),
+        ),
+        (
+            "Glass Chime",
+            {
+                # Amplitude modulation at a ratio of three, a long ring through the gates.
+                "princ_freq": 1.0,
+                "princ_wave": 1.0,
+                "mod_mode": 1.0,
+                "mod_freq": 1.585,
+                "mod_wave": 1.0,
+                "fm_index": 0.8,
+                "timbre": 0.18,
+                "lpg1_decay": 1.2,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 1.6,
+                "func1_fall": 1.4,
+                "func2_fall": 1.8,
+                "volume": 1.5,
+            },
+        ),
+        (
+            "Hollow Bass",
+            {
+                # A triangle with a little fold, so the bottom note has harmonics a small speaker
+                # can play, and the second gate left open as a plain amplifier.
+                "princ_wave": 1.0,
+                "timbre": 0.3,
+                "lpg1_decay": 0.45,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.5,
+                "func1_fall": 0.4,
+                "func2_fall": 0.45,
+                "volume": 1.3,
+            },
+        ),
+        (
+            "Folded Lead",
+            {
+                # A triangle driven hard into the folder, off centre, for a singing top line.
+                "princ_wave": 1.0,
+                "timbre": 0.7,
+                "symmetry": 0.3,
+                "fm_index": 0.015,
+                "mod_wave": 1.0,
+                "lpg1_mode": 1.0,
+                "lpg1_decay": 0.35,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.4,
+                "func1_fall": 0.3,
+                "func2_fall": 0.3,
+                "volume": 1.0,
+            },
+        ),
+        (
+            "Buzz Reed",
+            {
+                # The saw modulator in unison with the sine, which reads as a reed.
+                "mod_freq": 0.0,
+                "mod_wave": 0.0,
+                "fm_index": 0.12,
+                "timbre": 0.3,
+                "lpg1_mode": 1.0,
+                "lpg1_decay": 0.3,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.3,
+                "func1_fall": 0.25,
+                "func2_fall": 0.25,
+                "volume": 1.1,
+            },
+        ),
+        (
+            "Metal Clang",
+            {
+                # A modulator at an unrelated ratio, hard folded, ringing with the gates wide.
+                "mod_freq": 1.3,
+                "mod_wave": 0.0,
+                "fm_index": 0.35,
+                "timbre": 0.6,
+                "lpg1_decay": 0.9,
+                "lpg2_decay": 1.1,
+                "func1_fall": 0.8,
+                "func2_fall": 1.0,
+                "volume": 1.5,
+            },
+        ),
+        (
+            "Low Tom",
+            {
+                # An octave down and a good fold, a short thump that closes fast.
+                "princ_freq": -1.0,
+                "princ_wave": 1.0,
+                "timbre": 0.6,
+                "mod_freq": -1.0,
+                "mod_wave": 1.0,
+                "fm_index": 0.05,
+                "lpg1_decay": 0.16,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.2,
+                "func1_fall": 0.12,
+                "func2_fall": 0.16,
+                "volume": 1.4,
+            },
+        ),
+        (
+            "Wandering Fold",
+            {
+                # A sustained fold that moves by itself: the random voltage rides the timbre.
+                "princ_wave": 1.0,
+                "timbre": 0.45,
+                "symmetry": -0.4,
+                "lpg1_mode": 1.0,
+                "lpg1_decay": 0.8,
+                "lpg2_mode": 1.0,
+                "lpg2_decay": 0.8,
+                "func1_fall": 0.7,
+                "func2_fall": 0.7,
+                "volume": 0.9,
+            },
+            (("random_out", "timbre_cv"),),
+        ),
+    )
+
     def _build(self):
         sr, n = self.sample_rate, self.block_size
         self.mod_osc = OscillatorCore(sr)
@@ -257,6 +450,10 @@ class WestCoastSynth(Module):
         self._gate = 0.0
         self._scanned = None  # the gate the generators' edge detectors last saw
         self._still = None  # the gate both generators ran out under: nothing more to do at it
+        # first, before anything reads the random voltage as a buffer (a cable to the timbre)
+        self._random = (
+            f.control(self.random_out, self.random_val) if self.random_out.cables else None
+        )
         b_mod = f.output(self.mod_osc_out)
         b_fm = f.buffer()
         b_osc = f.buffer()
@@ -302,9 +499,6 @@ class WestCoastSynth(Module):
         f.set(self._n_am, ag.MIX_OFFSET, 0.5 * UNIT)
         f.set(self._n_raw, ag.VCA_SELECT, 0.0)
         f.set(self._n_raw, ag.VCA_GAIN, 2.0)
-        self._random = (
-            f.control(self.random_out, self.random_val) if self.random_out.cables else None
-        )
         f.bind(("mod_freq", "mod_wave", "princ_freq", "princ_wave"), self._graph_oscillators)
         f.bind(("fm_index", "mod_mode"), self._graph_modulation)
         f.bind(("timbre", "symmetry"), self._graph_fold)

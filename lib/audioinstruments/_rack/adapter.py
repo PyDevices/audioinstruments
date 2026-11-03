@@ -269,11 +269,18 @@ class ModuleVoice(VoicePatch):
     def plug_patch(self, pool, index):
         """Pull the cables of the patch that is up and plug those of patch ``index``."""
         wanted = self._wanted(index)
-        for module in pool.modules("synth"):
+        for voice in pool.voices:
+            module = voice.modules.get("synth")
+            if module is None:
+                continue
             for _, into in self._cables:
                 pool.rack.disconnect(module.inputs[into])
             for out, into in wanted:
-                pool.rack.connect(module.outputs[out], module.inputs[into])
+                # "voice.legato" is a jack of the voice's own line, not of the module
+                source = (
+                    getattr(voice, out[6:]) if out.startswith("voice.") else module.outputs[out]
+                )
+                pool.rack.connect(source, module.inputs[into])
         self._cables = wanted
 
 

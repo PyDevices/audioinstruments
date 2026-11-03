@@ -43,6 +43,228 @@ class StateVariableMono(Module):
         7: "UNIPOLAR",
     }
 
+    #: The twelve patches. ``vcf_cutoff`` is a knob, 30 Hz to 15 kHz; an envelope or LFO
+    #: depth of 0.1 moves the filter an octave. The VCA is exponential, so ``env2_sustain``
+    #: sits near 0.9 for a note that holds. Tunes are in octaves from the played note.
+    PRESETS = (
+        ("Init", {}),
+        (
+            "Fat Bass",
+            {
+                # A sawtooth over a pulse an octave down, the filter closing quickly.
+                "vco1_wave": 0.0,
+                "vco2_wave": 1.0,
+                "vco2_tune": -1.0,
+                "vco2_fine": 0.0,
+                "vco2_pw": 0.4,
+                "vco_mix": 0.5,
+                "vcf_cutoff": 0.24,
+                "vcf_res": 0.25,
+                "vcf_env1_depth": 0.42,
+                "env1_attack": 0.004,
+                "env1_decay": 0.22,
+                "env1_sustain": 0.1,
+                "env2_decay": 0.3,
+                "env2_sustain": 0.92,
+                "volume": 0.99,
+            },
+        ),
+        (
+            "Brass Stab",
+            {
+                # Two sawtooths a shade apart and a filter that swells open on each hit.
+                "vco2_wave": 0.0,
+                "vco2_fine": 0.012,
+                "vco_mix": 0.5,
+                "vcf_cutoff": 0.3,
+                "vcf_res": 0.15,
+                "vcf_env1_depth": 0.45,
+                "env1_attack": 0.07,
+                "env1_decay": 0.4,
+                "env1_sustain": 0.5,
+                "env2_attack": 0.03,
+                "env2_decay": 0.35,
+                "env2_sustain": 0.95,
+                "volume": 1.06,
+            },
+        ),
+        (
+            "Warm Pad",
+            {
+                # Slow attack, two detuned sawtooths and a filter breathing with the LFO.
+                "vco2_wave": 0.0,
+                "vco2_fine": 0.018,
+                "vco1_fine": -0.012,
+                "vcf_cutoff": 0.33,
+                "vcf_res": 0.2,
+                "vcf_env1_depth": 0.12,
+                "vcf_lfo_depth": 0.07,
+                "lfo_rate": 0.3,
+                "env1_attack": 0.9,
+                "env1_decay": 1.0,
+                "env1_sustain": 0.6,
+                "env2_attack": 0.7,
+                "env2_decay": 1.2,
+                "env2_sustain": 1.0,
+                "volume": 1.01,
+            },
+        ),
+        (
+            "PWM Strings",
+            {
+                # A pulse whose width the LFO moves on a cable, over a sawtooth a shade apart.
+                "vco1_wave": 1.0,
+                "vco2_wave": 0.0,
+                "vco2_fine": 0.015,
+                "vco_mix": 0.6,
+                "vcf_cutoff": 0.46,
+                "vcf_res": 0.12,
+                "vcf_env1_depth": 0.05,
+                "lfo_rate": 0.6,
+                "env1_attack": 0.4,
+                "env1_decay": 0.8,
+                "env1_sustain": 0.8,
+                "env2_attack": 0.3,
+                "env2_decay": 0.9,
+                "env2_sustain": 1.0,
+                "volume": 0.97,
+            },
+            (("lfo_tri", "vco1_pw"),),
+        ),
+        (
+            "Sync Lead",
+            {
+                # VCO 1 resets VCO 2, which sits a fifth up and leads the mix.
+                "sync": 1.0,
+                "vco2_wave": 0.0,
+                "vco2_tune": 0.583,
+                "vco2_fine": 0.0,
+                "vco_mix": 0.85,
+                "vcf_cutoff": 0.6,
+                "vcf_res": 0.25,
+                "vcf_env1_depth": 0.2,
+                "env1_decay": 0.5,
+                "env1_sustain": 0.5,
+                "env2_decay": 0.4,
+                "env2_sustain": 1.0,
+                "volume": 0.96,
+            },
+        ),
+        (
+            "Notch Pad",
+            {
+                # The filter set to notch and swept slowly, so the chord seems to turn.
+                "vco2_wave": 0.0,
+                "vco2_fine": 0.014,
+                "vcf_mode": 0.5,
+                "vcf_cutoff": 0.5,
+                "vcf_res": 0.55,
+                "vcf_env1_depth": 0.0,
+                "vcf_lfo_depth": 0.22,
+                "lfo_rate": 0.35,
+                "env2_attack": 0.5,
+                "env2_decay": 1.0,
+                "env2_sustain": 1.0,
+                "volume": 1.0,
+            },
+        ),
+        (
+            "Resonant Pluck",
+            {
+                # Pulse and sawtooth through a ringing filter that snaps shut.
+                "vco2_wave": 1.0,
+                "vco2_pw": 0.35,
+                "vco_mix": 0.5,
+                "vcf_cutoff": 0.28,
+                "vcf_res": 0.6,
+                "vcf_env1_depth": 0.45,
+                "env1_attack": 0.002,
+                "env1_decay": 0.18,
+                "env1_sustain": 0.0,
+                "env2_decay": 0.25,
+                "env2_sustain": 0.55,
+                "volume": 1.1,
+            },
+        ),
+        (
+            "Nasal Reed",
+            {
+                # A narrow pulse into the band-pass switch, a vowel more than a note.
+                "vco1_wave": 1.0,
+                "vco1_pw": 0.2,
+                "vco2_wave": 1.0,
+                "vco2_pw": 0.3,
+                "vco2_fine": 0.01,
+                "vcf_bp": 1.0,
+                "vcf_cutoff": 0.45,
+                "vcf_res": 0.5,
+                "vcf_env1_depth": 0.22,
+                "env1_attack": 0.03,
+                "env1_decay": 0.3,
+                "env1_sustain": 0.6,
+                "env2_attack": 0.02,
+                "env2_decay": 0.3,
+                "env2_sustain": 1.0,
+                "volume": 1.03,
+            },
+        ),
+        (
+            "Thin Lead",
+            {
+                # High-pass, with VCO 2 an octave up: all edge and no body.
+                "vco2_wave": 0.0,
+                "vco2_tune": 1.0,
+                "vco2_fine": 0.01,
+                "vco_mix": 0.4,
+                "vcf_mode": 1.0,
+                "vcf_cutoff": 0.38,
+                "vcf_res": 0.3,
+                "vcf_env1_depth": 0.1,
+                "env1_decay": 0.4,
+                "env1_sustain": 0.7,
+                "env2_decay": 0.4,
+                "env2_sustain": 1.0,
+                "volume": 1.0,
+            },
+        ),
+        (
+            "Wobble Bass",
+            {
+                # The LFO swinging the low-pass of a thick pair, once every third of a second.
+                "vco1_wave": 0.0,
+                "vco2_wave": 0.0,
+                "vco2_tune": -1.0,
+                "vco2_fine": 0.008,
+                "vcf_cutoff": 0.27,
+                "vcf_res": 0.45,
+                "vcf_env1_depth": 0.1,
+                "vcf_lfo_depth": 0.22,
+                "lfo_rate": 3.0,
+                "env1_sustain": 1.0,
+                "env2_decay": 0.3,
+                "env2_sustain": 1.0,
+                "volume": 0.97,
+            },
+        ),
+        (
+            "Squelch Zap",
+            {
+                # Resonance nearly at ringing and a fast envelope: a falling zap on every note.
+                "vco2_wave": 0.0,
+                "vco_mix": 0.3,
+                "vcf_cutoff": 0.18,
+                "vcf_res": 0.9,
+                "vcf_env1_depth": 0.55,
+                "env1_attack": 0.002,
+                "env1_decay": 0.14,
+                "env1_sustain": 0.0,
+                "env2_decay": 0.25,
+                "env2_sustain": 0.7,
+                "volume": 1.03,
+            },
+        ),
+    )
+
     def _build(self):
         sr, n = self.sample_rate, self.block_size
         self.osc1 = OscillatorCore(sr)

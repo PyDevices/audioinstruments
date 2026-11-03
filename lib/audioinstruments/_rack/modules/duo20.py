@@ -73,6 +73,263 @@ class Duo20(Module):
         10: "UNIPOLAR",
     }
 
+    #: The twelve patches (see ``Module.PRESETS``). The filters' knobs are 0..1 across 25 Hz
+    #: to 5 kHz (HPF) and 40 Hz to 12 kHz (LPF), and a CV of 0.1 moves a cutoff an
+    #: octave: the MG, the sample and hold and the envelopes swing it by up to five octaves,
+    #: so a patch that cables one in sets the cutoff to sit where that reach is musical.
+    PRESETS = (
+        ("Init", {}),
+        (
+            "Screaming Lead",
+            {
+                # Two detuned saws into a high-pass and a low-pass both pushed toward
+                # self-oscillation, with a little glide between notes.
+                "glide": 0.06,
+                "vco1_scale": 2.0,
+                "vco2_wave": 0.0,
+                "vco2_scale": 1.0,
+                "vco2_pitch": 0.012,
+                "vco1_level": 1.0,
+                "vco2_level": 1.0,
+                "hpf_cutoff": 0.2,
+                "hpf_peak": 0.4,
+                "lpf_cutoff": 0.44,
+                "lpf_peak": 0.85,
+                "lpf_eg2_depth": 0.45,
+                "eg2_attack": 0.01,
+                "eg2_decay": 0.35,
+                "eg2_sustain": 0.88,
+                "eg2_release": 0.2,
+                "volume": 1.06,
+            },
+        ),
+        (
+            "Resonant Bass",
+            {
+                # A saw and a square an octave down, the low-pass peaking on a fast envelope.
+                "vco1_scale": 1.0,
+                "vco2_scale": 0.0,
+                "vco2_pitch": 0.008,
+                "vco1_level": 0.85,
+                "vco2_level": 0.7,
+                "hpf_cutoff": 0.02,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.2,
+                "lpf_peak": 0.46,
+                "lpf_eg2_depth": 0.62,
+                "eg2_attack": 0.004,
+                "eg2_decay": 0.22,
+                "eg2_sustain": 0.85,
+                "eg2_release": 0.1,
+                "volume": 1.055,
+            },
+        ),
+        (
+            "Wobble Bass",
+            {
+                # The MG's triangle cabled to the low-pass cutoff, which sits low so
+                # the swing opens it upward and closes it again.
+                "vco1_scale": 1.0,
+                "vco2_scale": 0.0,
+                "vco2_pitch": 0.01,
+                "vco1_level": 0.85,
+                "vco2_level": 0.75,
+                "hpf_cutoff": 0.0,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.28,
+                "lpf_peak": 0.45,
+                "lpf_eg2_depth": 0.0,
+                "mg_rate": 3.4,
+                "eg2_attack": 0.004,
+                "eg2_sustain": 0.85,
+                "eg2_release": 0.12,
+                "volume": 1.1,
+            },
+            (("mg_tri", "lpf_cutoff_cv"),),
+        ),
+        (
+            "Random Bleeps",
+            {
+                # The sample and hold, clocked by the MG's square and fed by the noise,
+                # steps the low-pass to a new cutoff at every tick.
+                "vco1_scale": 2.0,
+                "vco2_wave": 0.0,
+                "vco2_scale": 1.0,
+                "vco1_level": 1.0,
+                "vco2_level": 1.0,
+                "hpf_cutoff": 0.1,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.6,
+                "lpf_peak": 0.45,
+                "lpf_eg2_depth": 0.0,
+                "mg_rate": 7.0,
+                "eg2_attack": 0.006,
+                "eg2_sustain": 0.9,
+                "eg2_release": 0.12,
+                "volume": 1.08,
+            },
+            (("sh_out", "lpf_cutoff_cv"),),
+        ),
+        (
+            "Ring Bell",
+            {
+                # VCO 1's pulse against VCO 2's square through the ring modulator, tuned
+                # off an octave so the partials are not harmonic.
+                "vco1_wave": 2.0,
+                "vco1_scale": 3.0,
+                "vco2_wave": 3.0,
+                "vco2_scale": 2.0,
+                "vco2_pitch": 0.205,
+                "vco1_level": 0.0,
+                "vco2_level": 1.0,
+                "hpf_cutoff": 0.28,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.7,
+                "lpf_peak": 0.1,
+                "lpf_eg2_depth": 0.2,
+                "eg2_attack": 0.002,
+                "eg2_decay": 1.4,
+                "eg2_sustain": 0.0,
+                "eg2_release": 1.4,
+                "volume": 1.09,
+            },
+        ),
+        (
+            "Brass",
+            {
+                # Two saws, an attack that leans into the note and a filter that opens with it.
+                "vco1_scale": 2.0,
+                "vco2_wave": 0.0,
+                "vco2_scale": 1.0,
+                "vco2_pitch": 0.014,
+                "hpf_cutoff": 0.06,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.28,
+                "lpf_peak": 0.2,
+                "lpf_eg2_depth": 0.6,
+                "eg2_attack": 0.11,
+                "eg2_decay": 0.25,
+                "eg2_sustain": 0.92,
+                "eg2_release": 0.14,
+                "vco1_level": 1.0,
+                "vco2_level": 1.0,
+                "volume": 1.05,
+            },
+        ),
+        (
+            "Electro Pluck",
+            {
+                # A narrow pulse and a saw, the filter snapping shut quickly on each note.
+                "vco1_wave": 2.0,
+                "vco1_pw": 0.3,
+                "vco1_scale": 2.0,
+                "vco2_wave": 0.0,
+                "vco2_scale": 2.0,
+                "vco2_pitch": 0.007,
+                "vco1_level": 0.8,
+                "vco2_level": 0.6,
+                "hpf_cutoff": 0.1,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.2,
+                "lpf_peak": 0.45,
+                "lpf_eg2_depth": 0.7,
+                "eg2_attack": 0.002,
+                "eg2_decay": 0.45,
+                "eg2_sustain": 0.0,
+                "eg2_release": 0.3,
+                "volume": 1.02,
+            },
+        ),
+        (
+            "Resonant Tom",
+            {
+                # Noise through a low-pass that rings at its own pitch when each hit
+                # strikes it.
+                "vco1_wave": 3.0,
+                "vco1_level": 1.0,
+                "vco2_level": 0.0,
+                "hpf_cutoff": 0.0,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.38,
+                "lpf_peak": 0.44,
+                "lpf_eg2_depth": 0.0,
+                "eg2_attack": 0.002,
+                "eg2_decay": 0.4,
+                "eg2_sustain": 0.0,
+                "eg2_release": 0.3,
+                "volume": 1.3,
+            },
+        ),
+        (
+            "Slow Pad",
+            {
+                # EG1 shapes the volume, so the note swells in and fades out slowly while
+                # EG2 opens the filter with it.
+                "vco1_scale": 2.0,
+                "vco2_wave": 0.0,
+                "vco2_scale": 1.0,
+                "vco2_pitch": 0.02,
+                "vco1_level": 0.7,
+                "vco2_level": 0.7,
+                "hpf_cutoff": 0.0,
+                "hpf_peak": 0.0,
+                "lpf_cutoff": 0.3,
+                "lpf_peak": 0.15,
+                "lpf_eg2_depth": 0.35,
+                "eg1_attack": 1.2,
+                "eg1_release": 1.8,
+                "eg2_attack": 1.6,
+                "eg2_decay": 1.5,
+                "eg2_sustain": 0.8,
+                "eg2_release": 1.8,
+                "volume": 1.05,
+            },
+            (("eg1_out", "vca_cv_in"),),
+        ),
+        (
+            "Squeal",
+            {
+                # The high-pass and low-pass set close together, both peaking, so the
+                # note comes out as a narrow whistle that the cutoffs steer.
+                "vco1_scale": 2.0,
+                "vco2_wave": 0.0,
+                "vco2_scale": 1.0,
+                "vco1_level": 1.0,
+                "vco2_level": 1.0,
+                "hpf_cutoff": 0.45,
+                "hpf_peak": 0.85,
+                "lpf_cutoff": 0.7,
+                "lpf_peak": 0.4,
+                "lpf_eg2_depth": 0.0,
+                "eg2_attack": 0.01,
+                "eg2_sustain": 0.9,
+                "eg2_release": 0.3,
+                "volume": 1.07,
+            },
+        ),
+        (
+            "Wind",
+            {
+                # Noise with both filters peaking, swept slowly by the MG's triangle on the
+                # cutoffs of both.
+                "vco1_wave": 3.0,
+                "vco1_level": 1.0,
+                "vco2_level": 0.0,
+                "hpf_cutoff": 0.1,
+                "hpf_peak": 0.8,
+                "lpf_cutoff": 0.6,
+                "lpf_peak": 0.45,
+                "lpf_eg2_depth": 0.0,
+                "mg_rate": 0.4,
+                "eg2_attack": 1.2,
+                "eg2_sustain": 0.9,
+                "eg2_release": 1.6,
+                "volume": 1.15,
+            },
+            (("mg_tri", "total_cutoff_cv"),),
+        ),
+    )
+
     def _build(self):
         sr, n = self.sample_rate, self.block_size
         self.osc1 = OscillatorCore(sr)

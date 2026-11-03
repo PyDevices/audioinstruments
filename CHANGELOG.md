@@ -4,8 +4,24 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- Acid303 has twelve patches, from Squelch and Screamer to Sub Thump and Zap, and
+  `examples/acid303_demo.py` plays them. They accent a note struck hard and slide a note
+  played over another; Init is as it was.
+- Duo20 has twelve patches, from Screaming Lead and Resonant Bass to Ring Bell and
+  Wind, and `examples/duo20_demo.py` plays them. Patch 0 is the Init patch as it was.
+- HybridMono has twelve patches, from Buzz Bass and Fifth Lead to Wah Bass and Slow Pad,
+  and `examples/hybrid_mono_demo.py` plays them. Patch 0 is the Init patch as it was.
+- Patch2600 has twelve patches, from Fat Bass and Sync Lead to Ring Bell and Laser Zap, two of
+  them with a cable plugged, and `examples/patch2600_demo.py` plays them. Patch 0 is the Init
+  patch as it was.
+- StateVariableMono has twelve patches, from Fat Bass and Brass Stab to Notch Pad and
+  Squelch Zap, and `examples/state_variable_mono_demo.py` plays them. Patch 0 is the Init
+  patch as it was.
 - MonoOne has twelve patches, from Fat Bass and Sync Lead to Metal Bell and Wind,
   and `examples/mono_one_demo.py` plays them. Patch 0 is the Init patch as it was.
+- WestCoastSynth has twelve patches, from Soft Ping and Water Drops to Glass Chime and Wandering Fold,
+  and `examples/west_coast_synth_demo.py` plays them. Patch 0 is the Init patch as it was. A cable
+  from its random voltage to the timbre now compiles on the graph.
 - A module played as a voice can declare its patches in `PRESETS`: the parameters
   each sets, on both engines, and any cables it plugs. Only a change of cables
   compiles the graph again, once, and a held note plays on through it.
