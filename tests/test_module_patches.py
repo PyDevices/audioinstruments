@@ -196,18 +196,10 @@ def test_a_patch_is_the_same_level_on_rack_and_graph(name, index):
     assert level > 100.0
     assert np.abs(graph).max() < adapter.PCM_SCALE
     controls = get_module_class(adapter._MODULE_VOICES[name][0]).PRESETS[index][1]
-<<<<<<< HEAD
     noisy = any("noise" in param and value > 0.0 for param, value in controls.items())
     if noisy or (name, index) in OVERALL_ONLY + RANDOM_CABLED + FAST_SWEEP:
         # noise through a filter is another noise on each engine, and so is a random voltage,
-        # and a fast sweep opens a block apart: the overall level only
-=======
-    if (name, index) in FAST_SWEEP or any(
-        "noise" in param and value > 0.0 for param, value in controls.items()
-    ):
-        # noise through a filter is another noise on each engine, and a fast sweep opens slower
-        # on the graph's biquad: the overall level only
->>>>>>> ae40937 (FAST_SWEEP names its real cause: the graph biquad's 20 ms walk, not a block's lag)
+        # and a fast sweep opens slower on the graph's biquad: the overall level only
         assert abs(20.0 * np.log10(level / np.sqrt(np.mean(rack**2)))) <= LEVEL_DB
     else:
         assert worst_level_db(rack, graph) <= LEVEL_DB
