@@ -103,6 +103,8 @@ SPECS = {
         "ring": 0.4,
     "duo20": {
         "patches": (0, 1, 2, 5, 6, 7),
+    "hybrid_mono": {
+        "patches": (0, 1, 2, 4, 8, 11),
         "notes": (36, 60, 84),
         "velocity": 100,
         "velocities": (32, 80, 127),
