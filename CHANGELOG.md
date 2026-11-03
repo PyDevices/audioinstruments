@@ -7,6 +7,8 @@ All notable changes to `audioinstruments` are recorded here.
 - Acid303 has twelve patches, from Squelch and Screamer to Sub Thump and Zap, and
   `examples/acid303_demo.py` plays them. They accent a note struck hard and slide a note
   played over another; Init is as it was.
+- Duo20 has twelve patches, from Screaming Lead and Resonant Bass to Ring Bell and
+  Wind, and `examples/duo20_demo.py` plays them. Patch 0 is the Init patch as it was.
 - MonoOne has twelve patches, from Fat Bass and Sync Lead to Metal Bell and Wind,
   and `examples/mono_one_demo.py` plays them. Patch 0 is the Init patch as it was.
 - A module played as a voice can declare its patches in `PRESETS`: the parameters

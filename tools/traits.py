@@ -101,6 +101,14 @@ SPECS = {
         "velocity_note": 48,
         "hold": 0.4,
         "ring": 0.4,
+    "duo20": {
+        "patches": (0, 1, 2, 5, 6, 7),
+        "notes": (36, 60, 84),
+        "velocity": 100,
+        "velocities": (32, 80, 127),
+        "velocity_note": 60,
+        "hold": 0.5,
+        "ring": 0.6,
         "tail": 0.3,
     },
     "mono_one": {
