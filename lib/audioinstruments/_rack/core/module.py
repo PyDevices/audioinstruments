@@ -21,6 +21,12 @@ class Module:
 
     MACRO_LABELS = ()
     MACRO_MODES = {}
+    #: The patches of a module played as a voice (``ModuleVoice``), each ``(name, {param:
+    #: value})`` or ``(name, {param: value}, ((output, input), ...))``. A patch sets the
+    #: parameters it names and leaves the rest at their defaults, so the first, ``("Init",
+    #: {})``, is the module as it comes. Cables are jack names on this module; they are
+    #: plugged while the patch is up. Empty when the module has only that first patch.
+    PRESETS = ()
 
     #: A module that can run as graph nodes defines ``fragment(self, f)``
     #: instead; see ``audioinstruments._rack.core.graph``. None means it stays on the rack.

@@ -4,6 +4,12 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- MonoOne has twelve patches, from Fat Bass and Sync Lead to Metal Bell and Wind,
+  and `examples/mono_one_demo.py` plays them. Patch 0 is the Init patch as it was.
+- A module played as a voice can declare its patches in `PRESETS`: the parameters
+  each sets, on both engines, and any cables it plugs. Only a change of cables
+  compiles the graph again, once, and a held note plays on through it.
+
 ## 0.5.1.dev3
 
 - The drum kits play at one level: Rhythm808, Rhythm909, Rhythm606 and Rhythm78 come up to

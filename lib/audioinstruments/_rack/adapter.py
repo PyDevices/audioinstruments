@@ -187,7 +187,13 @@ class VoicePatch:
 
 
 class ModuleVoice(VoicePatch):
-    """One module as a voice, with the module's own macros."""
+    """One module as a voice, with the module's own macros and patches.
+
+    Patch 0 is the module's defaults, called "Init". A module with ``PRESETS``
+    (see ``Module``) has those as its patches too. A change of patch resets every
+    parameter the new patch doesn't name, and plugs and pulls the cables the two
+    patches differ by. Only a change of cables compiles the graph again.
+    """
 
     def __init__(self, name):
         try:
@@ -211,6 +217,21 @@ class ModuleVoice(VoicePatch):
             int(round(probe.get_macro(i) * 127.0)) for i in range(len(self.MACRO_LABELS))
         )
         self.PATCHES = {0: ("Init", defaults)}
+        self._presets = self._cls.PRESETS
+        self._cables = ()  # the jacks the patch that is up has plugged
+        self._defaults = tuple(probe.params.items())
+        fresh = dict(self._defaults)
+        for index in range(1, len(self._presets)):
+            name, controls = self._presets[index][:2]
+            for param, value in controls.items():
+                probe.set_param(param, value)
+            # not rounded: a macro is a coarse step on a wide knob, and a patch's tuning is exact
+            self.PATCHES[index] = (
+                name,
+                tuple(probe.get_macro(i) * 127.0 for i in range(len(self.MACRO_LABELS))),
+            )
+            for param in controls:
+                probe.set_param(param, fresh[param])
 
     def build(self, voice):
         module = voice.add(self._cls, "synth")
@@ -220,6 +241,40 @@ class ModuleVoice(VoicePatch):
 
     def set_macro(self, pool, index, norm):
         pool.set_macro("synth", index, norm)
+
+    def set_control(self, pool, name, value):
+        """Set one of the module's parameters in every voice, in its own units."""
+        pool.set_param("synth", name, value)
+
+    def apply_patch(self, pool, index):
+        if not self._presets:
+            return
+        controls = self._presets[index][1]
+        modules = pool.modules("synth")
+        for name, fresh in self._defaults:
+            value = controls.get(name, fresh)
+            for module in modules:
+                # one knob can run a handler that writes a dozen graph parameters
+                if module.params[name] != value:
+                    module.set_param(name, value)
+
+    def cables_differ(self, index):
+        """True when patch ``index`` plugs other cables than the patch that is up."""
+        return self._cables != self._wanted(index)
+
+    def _wanted(self, index):
+        preset = self._presets[index] if self._presets else ()
+        return preset[2] if len(preset) > 2 else ()
+
+    def plug_patch(self, pool, index):
+        """Pull the cables of the patch that is up and plug those of patch ``index``."""
+        wanted = self._wanted(index)
+        for module in pool.modules("synth"):
+            for _, into in self._cables:
+                pool.rack.disconnect(module.inputs[into])
+            for out, into in wanted:
+                pool.rack.connect(module.outputs[out], module.inputs[into])
+        self._cables = wanted
 
 
 def voice_patch(name):
@@ -856,9 +911,20 @@ class Instrument:
                 self._at(sample_position, apply_patch, self._pool, index)
             for macro_index, macro_value in enumerate(patch[1]):
                 self._at(sample_position, self._apply_macro, macro_index, float(macro_value))
+            # after the knobs, so the graph is compiled once, with them where they will be
+            if hasattr(self.patch, "plug_patch"):
+                self._at(sample_position, self._replug, index)
+                if self._due:
+                    with self._lock:
+                        self._recompile()
         finally:
             self.commit()
         self._patch_index = index
+
+    def _replug(self, index):
+        """Change to patch ``index``'s cables, if they differ; that swaps in a new graph."""
+        if self.patch.cables_differ(index):
+            self._swap(self.patch.plug_patch, (self._pool, index))
 
     def transport_changed(self):
         """Nothing in the voices follows tempo yet."""

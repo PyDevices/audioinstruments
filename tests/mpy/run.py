@@ -32,6 +32,7 @@ MODULES = (
     "test_mono",
     "test_unison",
     "test_mono101",
+    "test_module_patches",
     "test_mono_synth",
     "test_poly106",
     "test_graph_poly106",
