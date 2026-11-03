@@ -6,7 +6,9 @@ All notable changes to `audioinstruments` are recorded here.
 
 - Acid303 has twelve patches, from Squelch and Screamer to Sub Thump and Zap, and
   `examples/acid303_demo.py` plays them. They accent a note struck hard and slide a note
-  played over another; Init is as it was.
+  played over another. Init is as it was, except that a key now sounds at its own pitch:
+  the `tuning` knob comes up at 261.6 Hz rather than 65.41, two octaves higher. A rack that
+  relies on the old pitch sets `tuning` itself, as a sequencer line would.
 - Duo20 has twelve patches, from Screaming Lead and Resonant Bass to Ring Bell and
   Wind, and `examples/duo20_demo.py` plays them. Patch 0 is the Init patch as it was.
 - HybridMono has twelve patches, from Buzz Bass and Fifth Lead to Wah Bass and Slow Pad,

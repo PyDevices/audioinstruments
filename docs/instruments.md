@@ -2830,9 +2830,8 @@ after Init cable your playing to the accent and slide circuits, which the machin
 sets per step: a note struck at velocity 102 or harder (the module's
 `accent_velocity`) accents, and a note played before the last one is let go
 slides to its pitch. A line played softly and detached sounds plain. Init plugs
-nothing, so the sequencer's own flags still decide, as they always have, and it
-plays note 60 at 65 Hz; the other patches set the tuning so a key sounds at its
-own pitch. The macros are `tempo_bpm`, `tuning`, `cutoff`, `resonance`,
+nothing, so the sequencer's own flags still decide, as they always have. Every
+patch plays a key at its own pitch. The macros are `tempo_bpm`, `tuning`, `cutoff`, `resonance`,
 `env_mod`, `decay`, `accent`, `waveform` and `volume`.
 
 Going between Init and another patch compiles the graph again, once, while the

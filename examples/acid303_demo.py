@@ -88,7 +88,7 @@ def sweep(t, macro, low, high, seconds, steps=24):
 
 def init(t):
     """A plain climb and fall, the patch as it comes."""
-    events, end = line(t, (60, 67, 72, 75, 79, 84, 79, 75, 72, 67, 60, None), 0.3)
+    events, end = line(t, (36, 43, 48, 51, 55, 60, 55, 51, 48, 43, 36, None), 0.3)
     return events, end + 0.3
 
 
