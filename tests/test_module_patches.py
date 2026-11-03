@@ -30,10 +30,28 @@ EVERY_PATCH = [
 WINDOW = 960
 LEVEL_DB = 3.0
 QUIET = 30.0
+VOICE_JACKS = (
+    "pitch",
+    "gate",
+    "velocity",
+    "pressure",
+    "note",
+    "trig",
+    "legato",
+    "bend",
+    "mod",
+    "pedal",
+)
 
 
 def create(name, engine):
-    inst = adapter.create(48000, voice=name, voices=2, engine=engine, output="pull")
+    inst = adapter.create(
+        48000,
+        voice=name,
+        voices=1 if name in adapter._MONO_MODULE_VOICES else 2,
+        engine=engine,
+        output="pull",
+    )
     assert inst.engine == engine
     return inst
 
@@ -64,7 +82,7 @@ def params_are_the_patch(inst, name, index):
     """True when every voice's every parameter is what patch ``index`` says or its default."""
     voice = inst.patch
     controls = voice._cls.PRESETS[index][1]
-    labels = voice.MACRO_LABELS
+    labels = getattr(voice._cls, "MACRO_PARAMS", voice.MACRO_LABELS)
     for module in inst.voice_pool.modules("synth"):
         for param, fresh in voice._defaults:
             want = controls.get(param, fresh)
@@ -97,7 +115,9 @@ def test_a_declaration_is_well_formed(name):
             spec = module._param_specs[param]  # a misspelt name fails here
             assert spec["min"] <= value <= spec["max"], (preset[0], param, value)
         for out, into in preset[2] if len(preset) > 2 else ():
-            assert out in module.outputs and into in module.inputs, (preset[0], out, into)
+            # "voice.legato" names a jack of the voice's own line, not of the module
+            source = out[6:] in VOICE_JACKS if out.startswith("voice.") else out in module.outputs
+            assert source and into in module.inputs, (preset[0], out, into)
 
 
 @pytest.mark.parametrize("name", VOICES)

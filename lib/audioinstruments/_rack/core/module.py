@@ -24,8 +24,8 @@ class Module:
     #: The patches of a module played as a voice (``ModuleVoice``), each ``(name, {param:
     #: value})`` or ``(name, {param: value}, ((output, input), ...))``. A patch sets the
     #: parameters it names and leaves the rest at their defaults, so the first, ``("Init",
-    #: {})``, is the module as it comes. Cables are jack names on this module; they are
-    #: plugged while the patch is up. Empty when the module has only that first patch.
+    #: {})``, is the module as it comes. Cables are jack names on this module (an output written
+    #: ``"voice.legato"`` is that jack of the voice's own line); they are plugged while the patch is up. Empty when the module has only that first patch.
     PRESETS = ()
 
     #: A module that can run as graph nodes defines ``fragment(self, f)``

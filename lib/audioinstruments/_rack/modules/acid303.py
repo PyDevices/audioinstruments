@@ -25,6 +25,14 @@ from .drum_synth import InternalClock
 
 _LN2 = math.log(2.0)
 
+#: The cables every patch after Init plugs: a hard-struck note accents, a legato note slides.
+_LINE = (("voice.velocity", "velocity_in"), ("voice.legato", "slide_in"))
+
+
+def _panel(name):
+    """An attribute that reads and writes the parameter ``name``, so a patch and the panel agree."""
+    return property(lambda self: self.params[name], lambda self, v: self.set_param(name, v))
+
 
 class Acid303(Module):
     NAME = "Acid303"
@@ -35,6 +43,18 @@ class Acid303(Module):
         "tempo_bpm",
         "tuning",
         "cutoff",
+        "resonance",
+        "env_mod",
+        "decay",
+        "accent",
+        "waveform",
+        "volume",
+    )
+    #: The parameter each macro moves, where the macro's name is not the parameter's.
+    MACRO_PARAMS = (
+        "bpm",
+        "tuning",
+        "cutoff_hz",
         "resonance",
         "env_mod",
         "decay",
@@ -54,6 +74,182 @@ class Acid303(Module):
         8: "UNIPOLAR",
     }
 
+    tuning = _panel("tuning")
+    waveform = _panel("waveform")
+    cutoff_hz = _panel("cutoff_hz")
+    resonance = _panel("resonance")
+    env_mod = _panel("env_mod")
+    decay = _panel("decay")
+    accent = _panel("accent")
+    bpm = _panel("bpm")
+    volume = _panel("volume")
+
+    #: The eleven patches after Init. Each cables the played line to the accent and slide
+    #: circuits, as a step's flags do on the machine: a note struck at ``accent_velocity`` (0 to
+    #: 1, 0.8 is 102) or harder accents, and a note played over the one before slides to it.
+    #: Without the cables (Init) the 16 steps' own flags decide, whatever is played.
+    #: ``cutoff_hz`` and ``tuning`` are in Hz, ``decay`` in seconds. Init plays note 60 at the
+    #: tuning knob's 65.41 Hz, as the module always has; the others set it to 261.6 so that
+    #: a key sounds at its own pitch.
+    PRESETS = (
+        ("Init", {}),
+        (
+            "Squelch",
+            {
+                "tuning": 261.6,
+                # The sawtooth line with the filter nearly closed, a sharp envelope and the
+                # resonance high: the squelch.
+                "cutoff_hz": 300.0,
+                "resonance": 0.85,
+                "env_mod": 0.75,
+                "decay": 0.3,
+                "accent": 0.85,
+            },
+            _LINE,
+        ),
+        (
+            "Square Acid",
+            {
+                "tuning": 261.6,
+                # The square wave, hollower and more nasal, with a shorter decay.
+                "waveform": 1,
+                "cutoff_hz": 350.0,
+                "resonance": 0.8,
+                "env_mod": 0.7,
+                "decay": 0.22,
+                "accent": 0.8,
+            },
+            _LINE,
+        ),
+        (
+            "Rubber Bass",
+            {
+                "tuning": 261.6,
+                # A plain rounded bass: little resonance, a small envelope sweep.
+                "cutoff_hz": 250.0,
+                "resonance": 0.3,
+                "env_mod": 0.35,
+                "decay": 0.2,
+                "accent": 0.5,
+                "volume": 1.5,
+            },
+            _LINE,
+        ),
+        (
+            "Screamer",
+            {
+                "tuning": 261.6,
+                # The resonance at the edge of ringing and the filter swept far: the accents shriek.
+                "cutoff_hz": 900.0,
+                "resonance": 0.95,
+                "env_mod": 0.85,
+                "decay": 0.6,
+                "accent": 1.0,
+                "volume": 0.9,
+            },
+            _LINE,
+        ),
+        (
+            "Sub Thump",
+            {
+                # A square wave low in the register, the filter mostly shut: a pulse under a kick.
+                "waveform": 1,
+                "tuning": 261.6,
+                "cutoff_hz": 260.0,
+                "resonance": 0.2,
+                "env_mod": 0.45,
+                "decay": 0.3,
+                "accent": 0.4,
+                "volume": 1.3,
+            },
+            _LINE,
+        ),
+        (
+            "Bleep",
+            {
+                # A short bright square-wave blip, high in the register, for a stuttered top line.
+                "waveform": 1,
+                "tuning": 261.6,
+                "cutoff_hz": 1500.0,
+                "resonance": 0.5,
+                "env_mod": 0.2,
+                "decay": 0.08,
+                "accent": 0.6,
+            },
+            _LINE,
+        ),
+        (
+            "Dark Roller",
+            {
+                "tuning": 261.6,
+                # Low and closed, the envelope slow to let go: a bass line that rolls.
+                "cutoff_hz": 180.0,
+                "resonance": 0.75,
+                "env_mod": 0.55,
+                "decay": 0.45,
+                "accent": 0.7,
+                "volume": 1.1,
+            },
+            _LINE,
+        ),
+        (
+            "Open Wail",
+            {
+                "tuning": 261.6,
+                # The filter well open and a long decay, so each note sings before it falls.
+                "cutoff_hz": 1800.0,
+                "resonance": 0.6,
+                "env_mod": 0.5,
+                "decay": 1.0,
+                "accent": 0.9,
+            },
+            _LINE,
+        ),
+        (
+            "Pluck Stab",
+            {
+                "tuning": 261.6,
+                # The shortest decay and the full envelope sweep: a stab that snaps shut.
+                "cutoff_hz": 500.0,
+                "resonance": 0.55,
+                "env_mod": 1.0,
+                "decay": 0.06,
+                "accent": 0.6,
+                "volume": 1.25,
+            },
+            _LINE,
+        ),
+        (
+            "Long Drone",
+            {
+                "tuning": 261.6,
+                # A note that hardly decays, the filter half open: a line of held, sliding tones.
+                "cutoff_hz": 700.0,
+                "resonance": 0.45,
+                "env_mod": 0.3,
+                "decay": 1.5,
+                "accent": 0.5,
+                "volume": 1.5,
+            },
+            _LINE,
+        ),
+        (
+            "Zap",
+            {
+                # A square wave, a full sweep and ringing resonance, over in an instant.
+                "waveform": 1,
+                "tuning": 261.6,
+                "cutoff_hz": 600.0,
+                "resonance": 0.9,
+                "env_mod": 1.0,
+                "decay": 0.15,
+                "accent": 1.0,
+                "volume": 0.9,
+            },
+            _LINE,
+        ),
+    )
+
     def _build(self):
         sr, n = self.sample_rate, self.block_size
         self.vco = OscillatorCore(sr)
@@ -67,19 +263,22 @@ class Acid303(Module):
         self.gate_in = self.add_input("gate_in", "Gate In", gate)
         self.accent_in = self.add_input("accent_in", "Accent In", gate)
         self.slide_in = self.add_input("slide_in", "Slide In", gate)
+        self.velocity_in = self.add_input("velocity_in", "Velocity In", cv)
         self.clock_in = self.add_input("clock_in", "Clock In", clk)
         self.audio_out = self.add_output("audio_out", "Audio Out", audio)
         self.accent_out = self.add_output("accent_out", "Accent Out", gate)
 
-        self.tuning = 65.41
-        self.waveform = 0
-        self.cutoff_hz = 400.0
-        self.resonance = 0.7
-        self.env_mod = 0.6
-        self.decay = 0.25
-        self.accent = 0.7
-        self.bpm = 128.0
-        self.volume = 1.0
+        self.add_param("tuning", "Tuning", 65.41, 16.0, 1100.0)
+        self.add_param("waveform", "Waveform", 0, 0, 1, "TOGGLE")
+        self.add_param("cutoff_hz", "Cutoff", 400.0, 20.0, 12000.0)
+        self.add_param("resonance", "Resonance", 0.7, 0.0, 0.98)
+        self.add_param("env_mod", "Env Mod", 0.6, 0.0, 1.0)
+        self.add_param("decay", "Decay", 0.25, 0.05, 1.55)
+        self.add_param("accent", "Accent", 0.7, 0.0, 1.0)
+        self.add_param("bpm", "Tempo", 128.0, 40.0, 240.0)
+        self.add_param("volume", "Volume", 1.0, 0.0, 1.5)
+        # the lowest velocity (0..1) that accents a note, where the velocity jack is cabled
+        self.add_param("accent_velocity", "Accent Velocity", 0.8, 0.0, 1.0)
         self.seq_idx = -1  # the first clock tick lands on step 0
         self.step_pitches = [
             0.0,
@@ -150,6 +349,10 @@ class Acid303(Module):
             return self.volume / 1.5
         return 0.0
 
+    def _struck(self, velocity):
+        """The accent a note of ``velocity`` (0..1) plays: all of it above the threshold, else none."""
+        return self.accent if velocity >= self.params["accent_velocity"] else 0.0
+
     def set_step(self, step_idx, pitch, gate=True, accent=False, slide=False):
         """Program one of the 16 steps: pitch offset (1 V/oct) and three flags."""
         if 0 <= step_idx < 16:
@@ -195,6 +398,9 @@ class Acid303(Module):
         ext = jack_signal(self.gate_in)
         if ext is not None:
             gate = ext
+        ext = jack_signal(self.velocity_in)
+        if ext is not None:
+            accent = self._struck(float(ext[0]))
         ext = jack_signal(self.accent_in)
         if ext is not None:
             accent = float(ext[0]) * self.accent
@@ -272,8 +478,9 @@ class Acid303(Module):
         f.set(self._n_vca, ag.VCA_CURVE, ag.VCA_LINEAR)
 
         # what the panel jacks hand over when something is plugged in
-        self._k_pitch = self._k_accent = self._k_slide = None
+        self._k_pitch = self._k_accent = self._k_slide = self._k_velocity = None
         f.watch(self.pitch_in, self._graph_pitch)
+        f.watch(self.velocity_in, self._graph_velocity)
         f.watch(self.accent_in, self._graph_accent)
         f.watch(self.slide_in, self._graph_slide)
         f.before_run(self._graph_block)
@@ -282,6 +489,9 @@ class Acid303(Module):
 
     def _graph_pitch(self, value):
         self._k_pitch = value
+
+    def _graph_velocity(self, value):
+        self._k_velocity = value
 
     def _graph_accent(self, value):
         self._k_accent = value
@@ -305,6 +515,8 @@ class Acid303(Module):
             target = self.step_pitches[s]
             if self._k_pitch is not None:
                 target = self._k_pitch
+            if self._k_velocity is not None:
+                accent = self._struck(self._k_velocity)
             if self._k_accent is not None:
                 accent = self._k_accent * self.accent
             if self._k_slide is not None:

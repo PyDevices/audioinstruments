@@ -93,6 +93,16 @@ NUDGES = (BEND_CENTRE + 3, BEND_CENTRE - 3)
 #: under the interpreter ``VRACK_MICROPYTHON`` names (or ``micropython`` on
 #: the path).
 SPECS = {
+    "acid303": {
+        "patches": (0, 1, 2, 4, 5, 9),
+        "notes": (36, 48, 60),
+        "velocity": 100,
+        "velocities": (32, 80, 127),
+        "velocity_note": 48,
+        "hold": 0.4,
+        "ring": 0.4,
+        "tail": 0.3,
+    },
     "mono_one": {
         "patches": (0, 1, 2, 4, 7, 9),
         "notes": (36, 60, 84),
