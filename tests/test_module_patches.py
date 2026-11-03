@@ -52,6 +52,7 @@ VOICE_JACKS = (
     "bend",
     "mod",
     "pedal",
+)
 #: Patches whose filter envelope sweeps fast from a closed filter: the graph's filter takes
 #: its new cutoff one block later than the rack's, so the first 20 ms of a note differs by
 #: more than LEVEL_DB. They compare overall level only.
@@ -192,19 +193,10 @@ def test_a_patch_is_the_same_level_on_rack_and_graph(name, index):
     assert level > 100.0
     assert np.abs(graph).max() < adapter.PCM_SCALE
     controls = get_module_class(adapter._MODULE_VOICES[name][0]).PRESETS[index][1]
-    if (name, index) in OVERALL_ONLY or any(
-        "noise" in param and value > 0.0 for param, value in controls.items()
-    ):
-        # noise through a filter is another noise on each engine: its overall level only
-    if (name, index) in FAST_SWEEP or any(
-        "noise" in param and value > 0.0 for param, value in controls.items()
-    ):
-        # noise through a filter is another noise on each engine, and a fast sweep opens a block
-        # apart: the overall level only
     noisy = any("noise" in param and value > 0.0 for param, value in controls.items())
-    if noisy or (name, index) in RANDOM_CABLED:
-        # noise through a filter is another noise on each engine, and so is a random voltage:
-        # its overall level only
+    if noisy or (name, index) in OVERALL_ONLY + RANDOM_CABLED + FAST_SWEEP:
+        # noise through a filter is another noise on each engine, and so is a random voltage,
+        # and a fast sweep opens a block apart: the overall level only
         assert abs(20.0 * np.log10(level / np.sqrt(np.mean(rack**2)))) <= LEVEL_DB
     else:
         assert worst_level_db(rack, graph) <= LEVEL_DB
@@ -219,10 +211,9 @@ def test_a_patch_adds_no_nodes(name, index):
     cables = fresh.patch._cables
     fresh.deinit()
     # Only a cable can add one: a jack with no reader has no node until it has one. A cable
-    # may start up to two (a sampler and its clock) in each of the two voices.
-    assert extra == 0 or (cables and 0 < extra <= 4 * len(cables))
-    # can also take one away, by leaving the jack it replaced with no reader.
-    assert extra == 0 or (cables and extra <= 2 * len(cables))
+    # may start up to two (a sampler and its clock) in each of the two voices, and can take
+    # one away, by leaving the jack it replaced with no reader.
+    assert extra == 0 or (cables and extra <= 4 * len(cables))
 
 
 def test_a_knob_patch_does_not_compile_the_graph_again():

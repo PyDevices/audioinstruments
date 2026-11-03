@@ -2813,41 +2813,6 @@ The Acid303 is a bass voice inspired by the Roland TB-303: a sawtooth or square
 oscillator into a resonant diode-ladder filter, one decay envelope, and the
 accent and slide that make a line squelch. It plays one note at a time, so
 `voices=1`, and its own 16-step sequencer runs unless you play it.
-### Playing the Duo20
-
-The Duo20 is a synth inspired by the Korg MS-20: two VCOs, a ring modulator, a
-high-pass and a low-pass filter that both peak hard, two envelopes, a modulation
-generator, noise and a sample and hold, with a patch panel where the cables go. It
-is polyphonic unless you ask for one voice.
-### Playing the HybridMono
-
-The HybridMono is a raw, buzzy synth voice inspired by the EDP Wasp: two DCOs
-with a sawtooth, a pulse or a square each, a multimode CMOS filter whose stages
-clip, one envelope, an LFO and a VCA. It is polyphonic unless you ask for one
-voice. Nothing in it sets the LFO's depth: a cable from the LFO to the filter
-swings the cutoff a full triangle, so the two patches that use one keep the
-cutoff high, where the sweep opens and closes the sound.
-### Playing the Patch2600
-
-The Patch2600 is a semi-modular voice inspired by the ARP 2600: three VCOs, a
-ladder filter, a VCA, an ADSR and an AR envelope, a ring modulator, noise, sample
-and hold, and a panel pre-wired so the keyboard, the ADSR and the VCO pulses reach
-the filter and amp with no cable plugged. As a voice it plays the VCA's output, so
-the spring reverb is not in it. It is polyphonic unless you ask for one voice.
-### Playing the StateVariableMono
-
-The StateVariableMono is a bass, lead and pad voice inspired by the Oberheim SEM:
-two VCOs with sync, a 12 dB filter you sweep from low-pass through notch to
-high-pass (or switch to band-pass), two ADS envelopes, an LFO and a patch panel. It
-is polyphonic unless you ask for one voice, so a lead or a bass wants `voices=1`.
-### Playing the WestCoastSynth
-
-The WestCoastSynth is a West Coast voice inspired by the Buchla Music Easel: a
-principal and a modulation oscillator that frequency- or amplitude-modulate each
-other, a timbre wavefolder, two vactrol low-pass gates in series, two function
-generators and a random voltage. A key press strikes the gates, so a short note
-is a pluck and a long one holds the gates open. It is polyphonic, and four
-voices let the rings overlap.
 
 ```python
 import audioinstruments._rack.adapter as adapter
@@ -2874,6 +2839,17 @@ Going between Init and another patch compiles the graph again, once, while the
 note plays on; between the other eleven it only moves knobs.
 `examples/acid303_demo.py` plays all twelve and writes
 `wav_exports/acid303_demo.wav`.
+
+### Playing the Duo20
+
+The Duo20 is a synth inspired by the Korg MS-20: two VCOs, a ring modulator, a
+high-pass and a low-pass filter that both peak hard, two envelopes, a modulation
+generator, noise and a sample and hold, with a patch panel where the cables go. It
+is polyphonic unless you ask for one voice.
+
+```python
+import audioinstruments._rack.adapter as adapter
+
 inst = adapter.create(48000, voice="duo20", voices=1)
 audio_out.play(inst.output)
 inst.program_change(1)                           # Screaming Lead
@@ -2900,6 +2876,19 @@ little of the note reaches it, which is why only Screaming Lead pushes it that
 far, and keeps both oscillators loud. The high-pass peak has no such limit, and
 is where Squeal and Wind get their whistle. `examples/duo20_demo.py` plays all
 twelve and writes `wav_exports/duo20_demo.wav`.
+
+### Playing the HybridMono
+
+The HybridMono is a raw, buzzy synth voice inspired by the EDP Wasp: two DCOs
+with a sawtooth, a pulse or a square each, a multimode CMOS filter whose stages
+clip, one envelope, an LFO and a VCA. It is polyphonic unless you ask for one
+voice. Nothing in it sets the LFO's depth: a cable from the LFO to the filter
+swings the cutoff a full triangle, so the two patches that use one keep the
+cutoff high, where the sweep opens and closes the sound.
+
+```python
+import audioinstruments._rack.adapter as adapter
+
 inst = adapter.create(48000, voice="hybrid_mono", voices=1)
 audio_out.play(inst.output)
 inst.program_change(1)                           # Buzz Bass
@@ -2917,6 +2906,18 @@ Wah Bass and Filter Siren cable the LFO to the filter, so going to either or
 leaving it compiles the graph again, once, while the note plays on; every other
 patch only moves knobs. `examples/hybrid_mono_demo.py` plays all twelve and
 writes `wav_exports/hybrid_mono_demo.wav`.
+
+### Playing the Patch2600
+
+The Patch2600 is a semi-modular voice inspired by the ARP 2600: three VCOs, a
+ladder filter, a VCA, an ADSR and an AR envelope, a ring modulator, noise, sample
+and hold, and a panel pre-wired so the keyboard, the ADSR and the VCO pulses reach
+the filter and amp with no cable plugged. As a voice it plays the VCA's output, so
+the spring reverb is not in it. It is polyphonic unless you ask for one voice.
+
+```python
+import audioinstruments._rack.adapter as adapter
+
 inst = adapter.create(48000, voice="patch2600", voices=1)
 audio_out.play(inst.output)
 inst.program_change(2)                           # Sync Lead
@@ -2934,6 +2935,17 @@ to VCO 1's frequency. Going to or from either compiles the graph again, once, wh
 note plays on; every other patch only moves knobs. The sixteen macros start with the
 VCO tunings and the filter cutoff and resonance. `examples/patch2600_demo.py` plays all
 twelve and writes `wav_exports/patch2600_demo.wav`.
+
+### Playing the StateVariableMono
+
+The StateVariableMono is a bass, lead and pad voice inspired by the Oberheim SEM:
+two VCOs with sync, a 12 dB filter you sweep from low-pass through notch to
+high-pass (or switch to band-pass), two ADS envelopes, an LFO and a patch panel. It
+is polyphonic unless you ask for one voice, so a lead or a bass wants `voices=1`.
+
+```python
+import audioinstruments._rack.adapter as adapter
+
 inst = adapter.create(48000, voice="state_variable_mono", voices=1)
 audio_out.play(inst.output)
 inst.program_change(5)                           # Sync Lead
@@ -2951,6 +2963,19 @@ PWM Strings cables the LFO to VCO 1's pulse width, so going to it or leaving it
 compiles the graph again, once, while the note plays on; every other patch only
 moves knobs. `examples/state_variable_mono_demo.py` plays all twelve and writes
 `wav_exports/state_variable_mono_demo.wav`.
+
+### Playing the WestCoastSynth
+
+The WestCoastSynth is a West Coast voice inspired by the Buchla Music Easel: a
+principal and a modulation oscillator that frequency- or amplitude-modulate each
+other, a timbre wavefolder, two vactrol low-pass gates in series, two function
+generators and a random voltage. A key press strikes the gates, so a short note
+is a pluck and a long one holds the gates open. It is polyphonic, and four
+voices let the rings overlap.
+
+```python
+import audioinstruments._rack.adapter as adapter
+
 inst = adapter.create(48000, voice="west_coast_synth", voices=4)
 audio_out.play(inst.output)
 inst.program_change(3)                           # Water Drops
