@@ -9,7 +9,7 @@ in Python, with the behaviour the sequencer leans on:
   wrapping comparison, hands back a token counting from 1, and answers **0**
   rather than raising when the queue is full;
 * ``cancel()`` is True only while the event is still pending;
-* :meth:`Events.apply` applies every event inside ``[now, now + block)`` in
+* `Events.apply` applies every event inside ``[now, now + block)`` in
   frame order, and counts late ones;
 * ``stats()`` returns the numbers in the same order.
 

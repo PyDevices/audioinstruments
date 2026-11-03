@@ -165,7 +165,7 @@ class Sequencer:
         For a player changing kit mid-bar. The steps already on the queue
         belong to the instrument that is leaving, so they are taken back
         here rather than left to sound on a machine the dropdown says is
-        gone; :meth:`relay` lays them again on the new one.
+        gone; `relay` lays them again on the new one.
         """
         if not instrument.schedulable:
             raise ValueError("%r cannot be scheduled" % instrument)

@@ -6,7 +6,7 @@ The classic string-machine ensemble is three bucket-brigade lines, wet only,
 each swept by the sum of a slow and a fast LFO, the three 120 degrees apart on
 both. Their sum in mono is steady (the three sweeps add to zero), while the
 left and right sides each take a different mix of the three and spread apart.
-It is a different animal from :class:`~audioinstruments._rack.dsp.chorus.BBDChorusCore`, which
+It is a different animal from `BBDChorusCore <audioinstruments._rack.dsp.chorus.BBDChorusCore>`, which
 is two lines swept in antiphase by one triangle with the dry signal always
 mixed in, so it sits beside it on the same node.
 
@@ -27,7 +27,7 @@ swell halfway, and only moves between chunks.
 
 Those are the defaults. The number of lines and everything about each one are
 constructor parameters, so a different ensemble is a different list of
-:class:`EnsembleLine` and a few keywords, not a different core: each line has
+`EnsembleLine` and a few keywords, not a different core: each line has
 its own slow rate, fast ratio, phase (a fraction of a period, on both sweeps;
 0.5 turns the sweep upside down), a level into the left and the right side,
 and a ``mix`` for its own node (2 is the wet alone, 1 the dry plus the wet).
@@ -186,7 +186,7 @@ def sweep_table(sweep, table_len=TABLE_LEN):
 class EnsembleCore:
     """Swept lines, wet only, and a bypass input that is as late as they are.
 
-    ``lines`` is a sequence of :class:`EnsembleLine` (the string ensemble's
+    ``lines`` is a sequence of `EnsembleLine` (the string ensemble's
     three by default). The other keywords are the delay every line sweeps
     around (``centre_ms``), the depths of the slow and fast sweeps in ms, the
     lines' low-pass (``tone_hz``), the length of a sweep table and the slow
