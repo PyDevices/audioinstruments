@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Render a SoundFont instrument and measure what came out, for the
 `soundfont` tests. No numpy: these run wherever audiodsp builds."""
 

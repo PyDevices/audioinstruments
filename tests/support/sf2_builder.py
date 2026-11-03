@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Write a SoundFont 2 bank from scratch, for the `_sf2` reader's tests.
 
 Nothing here reads a `.sf2`; it only writes one, chunk by chunk, from the

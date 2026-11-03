@@ -148,7 +148,7 @@ def _band_hz(note):
 
 
 def _rolloff(hz):
-    """The divider's level at ``hz`` (48 kHz), from :data:`ROLLOFF`."""
+    """The divider's level at ``hz`` (48 kHz), from `ROLLOFF`."""
     x = hz / 1000.0
     i = int(x)
     if i >= len(ROLLOFF) - 1:
@@ -202,7 +202,7 @@ class ToneBank:
         self._sine = None
 
     def partial(self, key):
-        """The partial ``DrawbarToneCore`` sums for a footage key (see :func:`footage_key`)."""
+        """The partial ``DrawbarToneCore`` sums for a footage key (see `footage_key`)."""
         table = self.squares.get(key)
         if table is None:
             table = self._square(key[0], key[1], key[2])
@@ -232,7 +232,7 @@ class ToneBank:
 
     def _square(self, h, count, f1):
         """An int16 table holding ``h`` cycles of a square of ``count`` odd harmonics,
-        :data:`PARTIAL_UNIT` counts high, each harmonic rolled off as a divider's
+        `PARTIAL_UNIT` counts high, each harmonic rolled off as a divider's
         square at ``f1`` Hz would be."""
         n = TONE_LEN
         sine = self._sine

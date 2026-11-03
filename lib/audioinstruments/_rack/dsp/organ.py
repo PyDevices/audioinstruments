@@ -5,10 +5,10 @@
 An organ voice is a few pitches a key switches on together, each at a fixed
 interval from the key (a footage: 8' is the key's own pitch, 16' an octave
 under it, 4' an octave over it), each at a level a drawbar or a tab sets.
-:class:`DrawbarToneCore` sums those pitches into one single-cycle table at a
+`DrawbarToneCore` sums those pitches into one single-cycle table at a
 base pitch every footage is a whole harmonic of, and synthio plays the table.
 What each footage sounds like is the ``partial`` it is given: a tonewheel's is
-a near-sine (:func:`sine_partial`); a divide-down organ's is a square or a
+a near-sine (`sine_partial`); a divide-down organ's is a square or a
 pulse, which is one more function of the same form that sums a few odd sines.
 Which harmonic each footage plays on a given key (the foldback at the ends of
 the keyboard) belongs to the organ, so the voice hands the core both the
@@ -17,8 +17,8 @@ levels and the harmonics.
 A tonewheel organ has 91 wheels on one shaft, each in front of a pickup, so
 every pitch is a near-sine that is always turning; a key closes nine contacts
 that connect nine of them to the drawbars' busbars. The nine footages and the
-harmonic each takes of the 16' pitch are in :data:`TONEWHEEL_FOOTAGES`;
-:func:`tonewheel_harmonics` folds them at the keyboard's ends, as the organ
+harmonic each takes of the 16' pitch are in `TONEWHEEL_FOOTAGES`;
+`tonewheel_harmonics` folds them at the keyboard's ends, as the organ
 does because it has no wheels past its top and bottom.
 """
 
@@ -117,14 +117,14 @@ class DrawbarToneCore:
 
     ``harmonics`` lists every harmonic of the base pitch a footage may be asked
     to play (their partials are fetched once, here); ``partial(h)`` gives the
-    table of one footage at harmonic ``h`` (:func:`sine_partial` by default);
+    table of one footage at harmonic ``h`` (`sine_partial` by default);
     ``base_ratio`` is the table's pitch against the key's (0.5: the table is at
     16', so the 8' is its second harmonic); ``level`` scales the sum;
     ``table_len`` is the table's length, which every partial shares (synthio
     plays the table without interpolating, so a longer one sounds cleaner).
 
-    :meth:`set_levels` rebuilds the table when a level or a harmonic changes,
-    in buffers the core owns. :meth:`render` plays it through a
+    `set_levels` rebuilds the table when a level or a harmonic changes,
+    in buffers the core owns. `render` plays it through a
     ``ChunkedBridge``, so the tone trails the controls by 256 frames. The
     contacts (a 3 ms ramp each way) follow the gate 256 frames late too, which
     is when the tone at the key's pitch arrives, so a note never begins on the

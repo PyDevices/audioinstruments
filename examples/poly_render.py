@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Render chords through the polyphonic adapter and check the steals for clicks.
 
     python examples/poly_render.py [voice]        # CPython

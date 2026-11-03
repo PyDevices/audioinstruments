@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A second SoundFont instrument after a big bank has loaded.
 
 Resolving every preset when a bank opened left a MicroPython heap in pieces

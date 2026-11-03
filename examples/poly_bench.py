@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """How much of real time a polyphonic instrument takes.
 
     python examples/poly_bench.py [voice] [voices]       # CPython

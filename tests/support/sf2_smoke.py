@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Build the tiny bank, read it back, check it: the one check that runs on
 every interpreter.
 

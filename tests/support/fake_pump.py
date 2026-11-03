@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A stand-in for ``audiopump.Events`` and ``audiopump.now`` for the sequencer.
 
 A `Sequencer` writes to its queue through two calls, ``q.at(frame, op,
@@ -9,7 +13,7 @@ in Python, with the behaviour the sequencer leans on:
   wrapping comparison, hands back a token counting from 1, and answers **0**
   rather than raising when the queue is full;
 * ``cancel()`` is True only while the event is still pending;
-* :meth:`Events.apply` applies every event inside ``[now, now + block)`` in
+* `Events.apply` applies every event inside ``[now, now + block)`` in
   frame order, and counts late ones;
 * ``stats()`` returns the numbers in the same order.
 

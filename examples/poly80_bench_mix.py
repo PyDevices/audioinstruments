@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The Poly80's cost with one channel heard: Init, eight notes, ``mix`` at channel I.
 
     python examples/poly80_bench_mix.py            # CPython
