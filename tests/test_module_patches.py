@@ -200,6 +200,8 @@ def test_a_patch_adds_no_nodes(name, index):
     # Only a cable can add one: a jack with no reader has no node until it has one. A cable
     # may start up to two (a sampler and its clock) in each of the two voices.
     assert extra == 0 or (cables and 0 < extra <= 4 * len(cables))
+    # can also take one away, by leaving the jack it replaced with no reader.
+    assert extra == 0 or (cables and extra <= 2 * len(cables))
 
 
 def test_a_knob_patch_does_not_compile_the_graph_again():

@@ -105,6 +105,8 @@ SPECS = {
         "patches": (0, 1, 2, 5, 6, 7),
     "hybrid_mono": {
         "patches": (0, 1, 2, 4, 8, 11),
+    "patch2600": {
+        "patches": (0, 1, 2, 5, 7, 9),
         "notes": (36, 60, 84),
         "velocity": 100,
         "velocities": (32, 80, 127),

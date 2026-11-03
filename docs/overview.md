@@ -184,8 +184,8 @@ under a MicroPython build with audiodsp and ulab compiled in:
 
 Without `--no-live` the script tries `board_config.pcm_out` from the
 pydevices package for live output and falls back to WAV files when that is
-not available. `examples/headless_synth.py` and
-`examples/patch2600_demo.py` are smaller starting points. `examples/hmi_instrument.py` plays an
+not available. `examples/headless_synth.py` is a smaller starting point, and
+`examples/patch2600_demo.py` plays the Patch2600's twelve patches. `examples/hmi_instrument.py` plays an
 instrument's demo phrase with the rack open to front panels over hmilink
 (preview): a phone opens `http://<this machine>:9000/`, and
 `examples/rackview/lvgl_panel.py` is the same panel as an LVGL screen. Both draw

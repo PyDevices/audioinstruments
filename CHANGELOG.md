@@ -11,6 +11,9 @@ All notable changes to `audioinstruments` are recorded here.
   Wind, and `examples/duo20_demo.py` plays them. Patch 0 is the Init patch as it was.
 - HybridMono has twelve patches, from Buzz Bass and Fifth Lead to Wah Bass and Slow Pad,
   and `examples/hybrid_mono_demo.py` plays them. Patch 0 is the Init patch as it was.
+- Patch2600 has twelve patches, from Fat Bass and Sync Lead to Ring Bell and Laser Zap, two of
+  them with a cable plugged, and `examples/patch2600_demo.py` plays them. Patch 0 is the Init
+  patch as it was.
 - MonoOne has twelve patches, from Fat Bass and Sync Lead to Metal Bell and Wind,
   and `examples/mono_one_demo.py` plays them. Patch 0 is the Init patch as it was.
 - A module played as a voice can declare its patches in `PRESETS`: the parameters
