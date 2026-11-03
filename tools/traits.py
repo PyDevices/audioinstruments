@@ -125,6 +125,16 @@ SPECS = {
         "ring": 0.6,
         "tail": 0.3,
     },
+    "state_variable_mono": {
+        "patches": (0, 1, 4, 5, 6, 10),
+        "notes": (36, 60, 84),
+        "velocity": 100,
+        "velocities": (32, 80, 127),
+        "velocity_note": 60,
+        "hold": 0.5,
+        "ring": 0.6,
+        "tail": 0.3,
+    },
     "mono101": {
         "patches": (0, 1, 2, 4, 6, 7),
         "notes": (36, 60, 84),

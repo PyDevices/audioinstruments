@@ -13,6 +13,8 @@ All notable changes to `audioinstruments` are recorded here.
   and `examples/hybrid_mono_demo.py` plays them. Patch 0 is the Init patch as it was.
 - Patch2600 has twelve patches, from Fat Bass and Sync Lead to Ring Bell and Laser Zap, two of
   them with a cable plugged, and `examples/patch2600_demo.py` plays them. Patch 0 is the Init
+- StateVariableMono has twelve patches, from Fat Bass and Brass Stab to Notch Pad and
+  Squelch Zap, and `examples/state_variable_mono_demo.py` plays them. Patch 0 is the Init
   patch as it was.
 - MonoOne has twelve patches, from Fat Bass and Sync Lead to Metal Bell and Wind,
   and `examples/mono_one_demo.py` plays them. Patch 0 is the Init patch as it was.
