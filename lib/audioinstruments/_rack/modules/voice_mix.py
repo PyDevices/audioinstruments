@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Voice mix: sums the voices of a polyphonic patch into a stereo pair.
 

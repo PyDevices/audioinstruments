@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm606 on MicroPython: 7 voices, 4 presets, every pad sounds, choke, re-strike, flat allocation."""
 

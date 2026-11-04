@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Clavichord, a ten-voice struck-string electric clavichord with two pickups,
 four tone tabs and a mute, inspired by the Hohner Clavinet D6.

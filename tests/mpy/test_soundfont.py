@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The SoundFont instruments, the dispatcher, midi_cc and the sequencer on MicroPython.
 

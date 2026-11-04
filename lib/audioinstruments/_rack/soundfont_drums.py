@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A SoundFont 2 bank's kits as a drum instrument: bank 128, one patch per
 kit, the General MIDI percussion keys 35-81 as the pads.

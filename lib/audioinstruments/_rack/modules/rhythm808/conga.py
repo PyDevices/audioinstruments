@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Conga module for Rhythm808, inspired by the TR-808 low, mid, and high congas."""
 

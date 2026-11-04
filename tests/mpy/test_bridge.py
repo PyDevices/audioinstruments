@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The audiodsp bridge on MicroPython: lockstep, and no allocation in the pull."""
 

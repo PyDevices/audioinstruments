@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Eurorack Jack abstractions: InputJack with normaling, OutputJack with fan-out."""
 

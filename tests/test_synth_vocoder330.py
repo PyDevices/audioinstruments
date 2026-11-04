@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Vocoder330: every control changes the sound, every route reaches where it should, and the
 instrument stays quiet, level and clean.

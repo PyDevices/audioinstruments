@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """PolyA6, a set of modules inspired by the Alesis Andromeda A6.
 

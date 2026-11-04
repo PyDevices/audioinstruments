@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Mono101, a monophonic bass and lead synth inspired by the Roland SH-101.
 

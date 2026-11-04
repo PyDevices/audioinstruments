@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rotary speaker module: tube drive, 800 Hz crossover, horn and drum rotors, stereo imaging."""
 

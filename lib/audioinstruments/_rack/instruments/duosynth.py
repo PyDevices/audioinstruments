@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """DuoSynth, a duophonic two-oscillator synthesizer inspired by the ARP Odyssey.
 

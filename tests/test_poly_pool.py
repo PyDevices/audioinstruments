@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """VoicePool, PolyMidiCV and VoiceMix: polyphony in a rack."""
 

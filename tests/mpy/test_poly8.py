@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The Poly8 on MicroPython: patches play through the ring, the assign modes, sync and cross-mod."""
 

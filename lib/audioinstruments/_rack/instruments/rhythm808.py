@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm808, an analog drum machine with sixteen sounds, one circuit per pad, inspired by the Roland TR-808.
 

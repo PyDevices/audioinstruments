@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Cowbell module for Rhythm808, inspired by the TR-808 cowbell."""
 

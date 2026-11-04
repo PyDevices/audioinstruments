@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """PolyXa, an eight-voice two-oscillator poly synth inspired by the Oberheim OB-Xa.
 

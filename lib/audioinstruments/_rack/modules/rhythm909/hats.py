@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Hi-hat modules for Rhythm909, inspired by the TR-909 closed and open hi-hats."""
 

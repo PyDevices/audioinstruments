@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The rack every instrument is built on: a virtual Eurorack modular synthesizer in portable Python."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """WestCoastSynth, a West Coast voice inspired by the Buchla Music Easel: a complex oscillator (modulation and
 principal oscillators with FM or AM), a timbre wavefolder, two vactrol

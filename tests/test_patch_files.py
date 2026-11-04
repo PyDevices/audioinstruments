@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Tests for JSON patch files and audioinstruments._rack.load_rack()."""
 

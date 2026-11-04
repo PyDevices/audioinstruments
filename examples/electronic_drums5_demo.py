@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play ElectronicDrums5: five classic 1980s electronic drum patterns across its five patches.
 

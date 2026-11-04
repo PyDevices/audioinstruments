@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular55 envelope generator, inspired by the Moog 911: T1 attack, T2 decay, Es sustain, T3 release."""
 

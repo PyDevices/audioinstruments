@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ElectronicDrums5, an electronic drum kit with swept tones and noise hats, inspired by the Simmons SDS-V.
 

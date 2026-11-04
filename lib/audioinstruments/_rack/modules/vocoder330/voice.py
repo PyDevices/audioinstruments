@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Vocoder330 voice: one key of a keyboard that sounds every key it is given.
 

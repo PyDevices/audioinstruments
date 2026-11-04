@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """EnsembleCore on MicroPython: the sweep tables, the latency, a wire when off,
 a steady sum, no click on a switch, and the four-line configuration.

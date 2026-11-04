@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular55 VCA, inspired by the Moog 902: differential inputs and outputs, linear or exponential, fixed CV bias."""
 

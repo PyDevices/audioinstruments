@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MonoSynth, a monophonic bass and lead synth inspired by the Moog Minimoog Model D.
 

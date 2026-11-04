@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play WestCoastSynth on a keyboard's gate and pitch, on the rack or compiled, on any interpreter.
 

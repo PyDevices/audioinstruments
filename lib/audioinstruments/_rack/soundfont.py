@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A SoundFont 2 bank as an instrument: every melodic preset under one
 program change, played through `audiosampler`.

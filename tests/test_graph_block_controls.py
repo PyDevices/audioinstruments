@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A value a hook writes only when it moved still arrives, on CPython and on MicroPython.
 

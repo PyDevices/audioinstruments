@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rim shot module for Rhythm909, inspired by the TR-909 rim shot."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """PolyXa LFO, inspired by the Oberheim OB-Xa's: one LFO for every voice.
 

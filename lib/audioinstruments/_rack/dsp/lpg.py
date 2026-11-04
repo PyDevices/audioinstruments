@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Vactrol low-pass gate: a sluggish control element driving a filter and a gain."""
 

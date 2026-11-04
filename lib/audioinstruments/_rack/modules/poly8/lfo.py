@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly8 LFO, inspired by the Roland Jupiter-8's: one LFO for every voice, with a delay.
 

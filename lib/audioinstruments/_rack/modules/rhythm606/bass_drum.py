@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Bass drum module for Rhythm606, inspired by the TR-606 bass drum."""
 

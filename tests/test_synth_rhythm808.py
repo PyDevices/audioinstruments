@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm808: every pad sounds, choke cuts open hat, re-strike re-pings without click,
 accent brightens and scales level, presets load, and every control moves its circuit."""

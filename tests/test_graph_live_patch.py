@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A patch changed while it plays: compiled beside the running graph, swapped in at a block.
 

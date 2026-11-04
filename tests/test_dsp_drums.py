@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Tests for shared drum synthesis cores in audioinstruments._rack.dsp.drums."""
 

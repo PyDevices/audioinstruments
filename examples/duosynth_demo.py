@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the DuoSynth: lead, sync sweep, thirds, ring bell, strings, pluck bass, S&H, trill, repeat pulse, wind, and FM clang.
 

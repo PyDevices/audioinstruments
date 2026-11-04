@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """BassPedals, a monophonic pedal bass synthesizer inspired by the Moog Taurus.
 

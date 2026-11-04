@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The Poly6 on MicroPython: six voices, 256-sample latency, and stereo effects."""
 

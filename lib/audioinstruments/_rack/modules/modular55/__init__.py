@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular55, a set of single modules inspired by the Moog System 55 (and Behringer's System 55 Eurorack modules).
 

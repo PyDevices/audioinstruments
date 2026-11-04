@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """StringEnsemble output section: bus low-pass, VCA, ensemble, master volume and DC block.
 

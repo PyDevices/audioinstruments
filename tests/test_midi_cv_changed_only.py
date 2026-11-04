@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MidiCV writes a one-value jack only when its value changes: every jack still reads right.
 

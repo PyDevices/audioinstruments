@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly6 LFO module: the modulation generator (MG) and a dedicated PWM LFO.
 

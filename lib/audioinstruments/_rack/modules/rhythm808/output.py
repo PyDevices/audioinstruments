@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Output stage for Rhythm808 with volume control and soft ceiling saturation."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Struck keys: a hammer, a bank of tuned modes it rings, and a magnetic pickup.
 

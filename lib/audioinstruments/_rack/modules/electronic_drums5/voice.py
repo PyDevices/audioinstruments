@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Channel voice module for ElectronicDrums5, inspired by the Simmons SDS-V."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Acid303, a bass voice inspired by the Roland TB-303: saw or square VCO, the diode ladder with accent
 circuit, a decay envelope, slide, and a 16-step sequencer with gate, accent

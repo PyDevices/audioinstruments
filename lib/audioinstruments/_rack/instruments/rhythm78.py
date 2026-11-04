@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm78, an analog preset rhythm machine with fifteen sounds, inspired by the Roland CR-78.
 

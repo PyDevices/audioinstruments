@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MidiCV's ``"duo"`` priority and the ``pitch_hi`` and ``note_hi`` jacks.
 

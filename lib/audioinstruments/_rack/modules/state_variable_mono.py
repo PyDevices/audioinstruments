@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """StateVariableMono, a voice inspired by the Oberheim SEM: two VCOs, a 12 dB multimode filter that morphs from
 low-pass through notch to high-pass (or switches to band-pass), two ADS

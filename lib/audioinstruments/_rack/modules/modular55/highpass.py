@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular55 high-pass filter, inspired by the Moog 904B: 24 dB/oct, two ranges, three control inputs.
 

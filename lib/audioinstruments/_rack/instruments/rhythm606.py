@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm606, an analog drum machine with seven sounds, inspired by the Roland TR-606.
 

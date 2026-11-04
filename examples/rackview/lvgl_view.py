@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Decoupled LVGL touchscreen UI renderer with tap-to-patch interactive catenary cables."""
 

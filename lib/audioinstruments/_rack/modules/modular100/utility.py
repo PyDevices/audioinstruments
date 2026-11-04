@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular100 utility, inspired by the Roland 150: ring modulator, noise, sample and hold, and an LFO.
 

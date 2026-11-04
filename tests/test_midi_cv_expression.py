@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MidiCV's ``expr`` (CC 11) and ``foot`` (CC 4) jacks: a pedal's value, 0 to 1.
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The graph compiler lends a buffer to the next wire once a wire's last reader has run.
 

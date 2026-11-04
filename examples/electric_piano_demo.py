@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the ElectricPiano: ballad, funk bark, glass tines, dark tonebar, fast pan and short damper.
 

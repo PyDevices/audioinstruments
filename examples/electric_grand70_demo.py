@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the ElectricGrand70: stage grand, bright rock, ballad, chorused and tremolo.
 

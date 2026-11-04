@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ElectricGrand70, a ten-voice electric grand piano inspired by the Yamaha CP-70.
 

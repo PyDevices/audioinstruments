@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MacroOscillator, a macro oscillator inspired by Mutable Instruments Plaits: eight models, harmonics, timbre and morph
 controls, a trigger-driven low-pass gate, and main and aux outputs.

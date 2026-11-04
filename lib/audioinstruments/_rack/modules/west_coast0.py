@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """WestCoast0, a voice inspired by the Make Noise 0-Coast: triangle VCO with linear FM, overtone multiplier,
 wavefolder, balance, a dynamics low-pass gate, and the Slope and Contour

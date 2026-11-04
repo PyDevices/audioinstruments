@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The Vocoder330 compiled to a graph sounds the rack's Vocoder330, part by part.
 

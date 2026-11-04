@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """HybridMono, a voice inspired by the EDP Wasp: two DCOs, a CMOS multimode filter whose inverter stages
 clip, an envelope, an LFO and a VCA, with a small patch panel.

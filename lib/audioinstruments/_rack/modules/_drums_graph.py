@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Graph fragments for the drum cores in ``_rack/dsp/drums.py``.
 

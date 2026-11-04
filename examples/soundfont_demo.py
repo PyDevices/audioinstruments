@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play a short phrase on a SoundFont bank: drums first, then a piano comes in.
 

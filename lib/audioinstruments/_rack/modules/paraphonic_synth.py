@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ParaphonicSynth, a paraphonic voice inspired by the Behringer Neutron: two wave-blending VCOs, a multimode filter,
 overdrive, a bucket-brigade delay, two envelopes, an LFO and utilities."""

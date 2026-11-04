@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """PinMatrix3, a synthesizer with a 16 x 16 pin matrix, inspired by the EMS VCS3.
 

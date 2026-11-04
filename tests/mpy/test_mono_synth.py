@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The MonoSynth on MicroPython: every patch plays through the ring, legato, priority and glide work."""
 

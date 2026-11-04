@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The DSP cores: a signal comes out, it is finite, it is in range, and the
 controls do what their names say. Nothing here compares against a reference

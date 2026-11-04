@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The Poly6 with its graph pulled a block at a time, as the audio pump pulls it.
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A SoundFont 2 (.sf2) reader, written from the SoundFont 2.04 specification.
 

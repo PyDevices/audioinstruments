@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly MIDI to CV: MidiCV with a pitch, a gate, a velocity and a pressure jack per voice.
 

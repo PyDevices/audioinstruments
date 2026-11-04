@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ReedPiano output section, inspired by the Hohner Pianet preamp and built-in pan.
 

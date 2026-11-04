@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly5 voice, inspired by one voice of the Sequential Prophet-5 (rev 3).
 
