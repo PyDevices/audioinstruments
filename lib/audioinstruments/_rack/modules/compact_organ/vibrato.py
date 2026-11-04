@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """CompactOrgan master pitch vibrato: shared LFO wobbling all voices together.
 

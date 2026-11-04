@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Guiro voice module for Rhythm78, inspired by the Roland CR-78."""
 

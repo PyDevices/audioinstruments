@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Voice buses: named mono sums that fade, park and scale as the pool's main jack does.
 

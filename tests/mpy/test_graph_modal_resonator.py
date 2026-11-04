@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ModalResonator in graph form on MicroPython: it compiles, plays, and tracks the rack.
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Low and high tom modules for Rhythm606, inspired by the TR-606 toms."""
 

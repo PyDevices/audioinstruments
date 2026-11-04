@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """CompactOrgan voice: divide-down footage oscillators and keyer gate.
 

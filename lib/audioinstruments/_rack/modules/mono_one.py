@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MonoOne, a voice inspired by the Sequential Pro-One: two VCOs with sync, a four-pole filter, two ADSRs, an
 LFO, glide, and the poly-mod matrix that sends the filter envelope and VCO B

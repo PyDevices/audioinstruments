@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ModalResonator, a resonator inspired by Mutable Instruments Rings: a modal bank (bells, bars), a sympathetic string, or
 an inharmonic membrane, struck by a trigger or excited by audio.

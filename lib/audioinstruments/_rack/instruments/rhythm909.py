@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm909, a drum machine with eleven synthesized sounds, inspired by the Roland TR-909.
 

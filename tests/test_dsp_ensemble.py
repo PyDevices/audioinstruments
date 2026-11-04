@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """EnsembleCore: three phases, latency, a wire when off, two wobbles, a steady
 sum, no click on a switch, no allocation in a block, and a second

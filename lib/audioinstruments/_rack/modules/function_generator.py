@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """FunctionGenerator, a dual function generator inspired by Make Noise Maths, with attenuverters and analog logic.
 

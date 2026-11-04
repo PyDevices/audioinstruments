@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Pressure on MicroPython: ``press`` on MidiCV, ``press1``..``pressN`` on PolyMidiCV, the adapter."""
 

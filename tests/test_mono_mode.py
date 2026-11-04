@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Mono mode: the note stack, priority, legato, the trig pulse, the pedal and the glide."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The BassPedals on MicroPython: every patch plays, the lower pedal sounds, and a voice allocates the same at any block size."""
 

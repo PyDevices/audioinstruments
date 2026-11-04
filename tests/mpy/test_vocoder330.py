@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The Vocoder330 on MicroPython: every patch plays through the ring, the vibrato and align lines
 keep their latency, the vocoder follows the mic, and a block allocates no more at 256 frames than at 64."""

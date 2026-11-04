@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Change a patch while the audio pump plays it, and check the swap, on any interpreter.
 

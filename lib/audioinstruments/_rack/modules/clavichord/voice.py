@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Clavichord voice, inspired by one voice of the Hohner Clavinet D6.
 

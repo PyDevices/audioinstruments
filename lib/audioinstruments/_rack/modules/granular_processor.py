@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """GranularProcessor, a granular texture processor inspired by Mutable Instruments Clouds, with a diffuse reverb.
 

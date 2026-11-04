@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A patch changed while it plays, on MicroPython: the checks of tools/live_patch.py.
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The StateVariableMono compiled to a graph sounds the rack's StateVariableMono.
 

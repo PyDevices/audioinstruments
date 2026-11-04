@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A stereo bucket-brigade chorus: two short lines swept in opposite directions.
 

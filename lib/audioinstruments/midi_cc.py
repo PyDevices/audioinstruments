@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """``audioinstruments._rack.midi_cc``, under the name it has always had here."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """VibratoCore, AlignCore and EnsembleCore's ``on`` keyword, with the four-line
 ensemble the Vocoder330 builds from it.

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the PolyA6: Init chords, brass swell, PWM strings, huge pad, unison lead, sync sweep, ring bells, FM clang, series notch, pluck bass, S&H steps, and noise wind.
 

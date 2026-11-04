@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Organ cores: a footage tone generator, key click, percussion, scanner vibrato, swell pedal.
 

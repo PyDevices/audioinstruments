@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MicroPython manifest for audioinstruments: freeze the instruments and the rack under them.
 

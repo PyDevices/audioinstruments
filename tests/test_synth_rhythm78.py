@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm78: 15 voices, 4 patches, pad map, open/closed hat single voice cutoff,
 balance, tone tilt, accent, guiro scrapes, and no hard clipping on 15 simultaneous strikes."""

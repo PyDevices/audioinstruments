@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular100 dual VCO, inspired by the Roland 112: two oscillators with range switches, PWM and sync.
 

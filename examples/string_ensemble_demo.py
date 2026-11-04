@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the StringEnsemble: Init, Full Strings, Slow Swell, High Violins, Dark Violas,
 Dry Strings, Brass Section, Muted Horns, Strings and Brass, Bass Pedal, Everything,

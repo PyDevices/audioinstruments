@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly6 output section, inspired by the Korg Polysix's effects: chorus, phase, ensemble.
 

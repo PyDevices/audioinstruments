@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """RandomSequencer, a random looping sequencer inspired by the Music Thing Turing Machine.
 

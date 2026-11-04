@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """CompactOrgan output section: voice tab filters, Multi-Tone booster, bass section, swell.
 

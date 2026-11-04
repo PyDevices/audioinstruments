@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular55 low-pass filter, inspired by the Moog 904A: a 24 dB/oct transistor ladder with regeneration and three ranges."""
 

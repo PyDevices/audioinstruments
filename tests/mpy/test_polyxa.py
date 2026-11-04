@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The PolyXa on MicroPython: patches play through the ring, assign modes, sync, cross-mod, and voice allocation."""
 

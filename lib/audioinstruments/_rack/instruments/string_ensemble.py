@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """StringEnsemble, a fully polyphonic divide-down string machine with one shared envelope,
 a monophonic bass and a three-phase ensemble, inspired by the ARP/Eminent Solina String Ensemble.

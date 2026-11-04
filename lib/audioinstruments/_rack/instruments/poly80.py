@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly80, an eight-voice polysynth inspired by the Yamaha CS-80.
 

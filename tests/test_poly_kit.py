@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A pool played as a drum kit: one voice per pad, re-strikes without a fade, chokes.
 

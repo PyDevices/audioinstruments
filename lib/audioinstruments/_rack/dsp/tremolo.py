@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Tremolo and auto-pan: a sine LFO that modulates amplitude or pans stereo.
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Linear two-pole filters on audiodsp: synthio.Biquad inside audiofilters.Filter.
 

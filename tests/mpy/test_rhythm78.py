@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm78 on MicroPython: 15 voices, 4 presets, every pad sounds, hat cutoff, re-strike, flat allocation."""
 

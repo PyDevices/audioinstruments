@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Duo20, a voice inspired by the Korg MS-20: two VCOs, a high-pass into a low-pass Sallen-Key pair
 with diode-clipped peak, two envelopes, a modulation generator, noise, sample

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rhythm606: every pad sounds, choke cuts hats, re-strike re-pings without click,
 accent brightens and scales level, presets load, and every control moves its circuit."""

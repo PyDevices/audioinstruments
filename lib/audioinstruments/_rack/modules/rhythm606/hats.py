@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Closed and open hi-hat modules for Rhythm606, inspired by the TR-606."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """A compiled voice mix is one ``PAN`` node, and sounds as the two ``MIX`` nodes it replaced.
 

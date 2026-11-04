@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play instruments from MIDI: bytes, `adafruit_midi` messages or a file.
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Polyphony and the adapter on MicroPython: allocation, stealing, the voice count, the ring."""
 

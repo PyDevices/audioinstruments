@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """DrumSynth, a percussion voice inspired by the Moog DFAM: two VCOs with FM, noise, a ladder filter, two
 decay envelopes and an eight-step pitch and velocity sequencer.

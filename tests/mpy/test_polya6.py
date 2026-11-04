@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The PolyA6 on MicroPython: sixteen voices, twelve patches, node cores, and voice allocation."""
 

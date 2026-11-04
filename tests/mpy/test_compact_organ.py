@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """CompactOrgan on MicroPython: six presets, 49 voices, bass section, flat allocation."""
 

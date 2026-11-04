@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly80 output section: ring modulator, tremolo/chorus, and DC block.
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """West Coast wavefolder: three sine-shaped folds with symmetry control."""
 

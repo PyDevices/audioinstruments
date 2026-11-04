@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly8, an eight-voice two-oscillator poly synth inspired by the Roland Jupiter-8.
 

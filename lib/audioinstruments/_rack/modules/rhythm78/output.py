@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Output stage for Rhythm78 with volume control, tone tilt filter, and soft ceiling."""
 

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Strike ModalResonator in a phrase, on the rack or compiled, on any interpreter.
 

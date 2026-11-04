@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Instruments: voice patches with their presets, ready for ``audioinstruments._rack.adapter.create()``.
 

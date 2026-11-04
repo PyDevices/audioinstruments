@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ElectronicDrums5: every pad sounds, presets load, controls move circuits,
 velocity scales level and bend, and re-strike re-pings cleanly.

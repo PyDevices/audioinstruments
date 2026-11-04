@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The rack, its jacks and cables, the signal kernels and the audiodsp bridge."""
 

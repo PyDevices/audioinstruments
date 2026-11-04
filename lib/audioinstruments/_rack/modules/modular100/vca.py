@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular100 dual VCA, inspired by the Roland 130: two amplifiers with input mixers and linear or exponential response."""
 

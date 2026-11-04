@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The ElectricGrand70 on MicroPython: patches play through the ring, tremolo modulates, and damper/sustain work."""
 

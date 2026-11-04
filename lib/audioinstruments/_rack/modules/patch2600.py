@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Patch2600, a semi-modular voice inspired by the ARP 2600 (and Behringer's 2600): three VCOs, a ladder VCF, a VCA, two envelopes,
 ring modulator, noise, sample and hold, a voltage processor and a spring reverb.

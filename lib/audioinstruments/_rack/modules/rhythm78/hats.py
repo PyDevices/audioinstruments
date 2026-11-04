@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Hi-hat and cymbal voice modules for Rhythm78, inspired by the Roland CR-78."""
 

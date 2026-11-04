@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the Clavichord: classic funk riff, brilliant lead, warm chords, out-of-phase, muted plucks, and auto-wah.
 

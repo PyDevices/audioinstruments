@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """PolyA6, a sixteen-voice poly synth inspired by the Alesis Andromeda A6.
 

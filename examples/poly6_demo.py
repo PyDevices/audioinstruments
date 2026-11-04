@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the Poly6: strings, brass, pad, chord stab, unison bass, sub bass,
 tremolo keys, organ with effect switching, phaser sweep, vibrato lead, and noise surf.

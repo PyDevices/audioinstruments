@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Mono101 LFO, inspired by the Roland SH-101's modulation oscillator.
 

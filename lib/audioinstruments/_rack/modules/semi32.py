@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Semi32, a voice inspired by the Moog Mother-32: one VCO, a ladder filter switchable to high-pass, an
 AD envelope with a sustain switch, an LFO, noise, and a 32-step sequencer

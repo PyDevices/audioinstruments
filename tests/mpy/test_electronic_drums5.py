@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ElectronicDrums5 on MicroPython: 8 voices, 5 presets, every pad sounds, macros, re-strike, hat choke, flat allocation."""
 

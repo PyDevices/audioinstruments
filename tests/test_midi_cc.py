@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """`audioinstruments._rack.midi_cc`: every Control Change code has a scaler, and the scalers keep their promises."""
 

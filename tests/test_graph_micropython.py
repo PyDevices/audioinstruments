@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """HybridMono, Duo20 and PolyA6 render to the same samples on MicroPython.
 

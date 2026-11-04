@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Rotary speaker core: tube amplifier overdrive, crossover, horn and drum rotors, stereo mics.
 

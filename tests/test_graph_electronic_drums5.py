@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The ElectronicDrums5 compiled to a graph sounds the rack's ElectronicDrums5.
 

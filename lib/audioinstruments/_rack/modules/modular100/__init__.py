@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular100, a set of single modules inspired by the Roland System-100M (and Behringer's System 100 Eurorack modules).
 

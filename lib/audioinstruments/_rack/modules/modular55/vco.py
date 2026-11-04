@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular55 VCO, inspired by the Moog 921: range switch, coarse and fine tune, linear FM, sync, five waveforms at once."""
 

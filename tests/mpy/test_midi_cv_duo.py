@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """MidiCV's ``"duo"`` priority on MicroPython: the two lines and the trig rule."""
 

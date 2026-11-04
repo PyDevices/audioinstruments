@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Vocoder330 bank: a ten-band vocoder, once for the whole keyboard.
 

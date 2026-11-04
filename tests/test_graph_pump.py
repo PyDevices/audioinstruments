@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """An instrument whose graph is pulled by the audio pump sounds what step() renders.
 

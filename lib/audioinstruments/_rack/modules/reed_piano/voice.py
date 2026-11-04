@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ReedPiano voice, inspired by one voice of the Hohner Pianet T electric piano.
 

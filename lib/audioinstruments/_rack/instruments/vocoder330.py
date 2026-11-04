@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Vocoder330, a fully polyphonic string, choir and ten-band vocoder keyboard,
 inspired by the Roland VP-330 Vocoder Plus.

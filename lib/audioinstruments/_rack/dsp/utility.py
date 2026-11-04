@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Utility circuits: sample and hold, slew (glide), ring modulation, inversion."""
 

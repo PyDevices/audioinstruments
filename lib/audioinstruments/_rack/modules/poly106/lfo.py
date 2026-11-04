@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly106 LFO, inspired by the Roland Juno-106's: one triangle for every voice.
 

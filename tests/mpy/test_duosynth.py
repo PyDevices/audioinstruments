@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The DuoSynth on MicroPython: patches play through the ring, duo priority, and voice allocation."""
 

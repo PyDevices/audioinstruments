@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Vocoder330 keys: what the whole keyboard shares, read off the voices' gates.
 

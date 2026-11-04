@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """PolyA6 voice, inspired by one voice of the Alesis Andromeda A6.
 

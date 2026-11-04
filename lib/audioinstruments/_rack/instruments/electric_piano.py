@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """ElectricPiano, a ten-voice tine electric piano inspired by the Fender Rhodes Suitcase 73.
 

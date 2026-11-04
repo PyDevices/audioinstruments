@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Mono mode on MicroPython: the note stack, legato, the trig pulse, the pedal and the glide."""
 

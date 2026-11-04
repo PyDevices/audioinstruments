@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """CompactOrgan, a fully polyphonic divide-down transistor combo organ with voice tabs,
 a bass section and a pitch vibrato, after the portable combo organs of the mid-1960s.

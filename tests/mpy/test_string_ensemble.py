@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """The StringEnsemble on MicroPython: patches play through the ring, ensemble widens, and bass range."""
 

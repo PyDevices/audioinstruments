@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """audioinstruments.panel on MicroPython: the contract, the MIDI path, bypass, reload."""
 

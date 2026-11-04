@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Poly5, a five-voice two-oscillator poly synth inspired by the Sequential Prophet-5 (rev 3).
 

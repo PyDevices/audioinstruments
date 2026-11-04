@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Modular100 dual VCF, inspired by the Roland 121: two 24 dB/oct resonant low-pass filters with input mixers.
 

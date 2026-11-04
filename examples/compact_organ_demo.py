@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """Play the CompactOrgan: Garage riff, Bright Strings, Soft Flutes, Trumpet lead, and Full Combo.
 

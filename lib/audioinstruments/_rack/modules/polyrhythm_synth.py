@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Brad Barnett
+#
 # SPDX-License-Identifier: MIT
 """PolyrhythmSynth, a voice inspired by the Moog Subharmonicon: two VCOs, each with two subharmonic oscillators
 at integer divisions of its pitch, a four-divider polyrhythm engine driving
