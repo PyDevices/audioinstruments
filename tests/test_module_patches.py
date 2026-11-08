@@ -135,8 +135,11 @@ def test_a_declaration_is_well_formed(name):
 
 @pytest.mark.parametrize("name", VOICES)
 def test_patch_0_is_the_modules_defaults(name):
+    """The module's defaults as a voice: the panel's, but for what ``VOICE_PARAMS`` names."""
     voice = adapter.voice_patch(name)
     probe = voice._cls("probe")
+    for param, value in getattr(voice._cls, "VOICE_PARAMS", {}).items():
+        probe.set_param(param, value)
     assert voice.PATCHES[0] == (
         "Init",
         tuple(int(round(probe.get_macro(i) * 127.0)) for i in range(len(voice.MACRO_LABELS))),

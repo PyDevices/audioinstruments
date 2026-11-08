@@ -214,6 +214,10 @@ class ModuleVoice(VoicePatch):
         self.DISPLAY_NAME = self._cls.DISPLAY_NAME
         self.MACRO_MODES = dict(self._cls.MACRO_MODES)
         probe = self._cls("probe")
+        # what the module starts from as a voice, where that differs from the panel
+        for param, value in getattr(self._cls, "VOICE_PARAMS", {}).items():
+            probe.set_param(param, value)
+        self._shared = None
         defaults = tuple(
             int(round(probe.get_macro(i) * 127.0)) for i in range(len(self.MACRO_LABELS))
         )
@@ -240,12 +244,48 @@ class ModuleVoice(VoicePatch):
         voice.connect(voice.gate, module.inputs[self._gate])
         return module.outputs[self._audio]
 
+    def build_shared(self, rack, left, right):
+        """The module's ``VOICE_SHARED`` section, if it names one: a module after the voices'
+        mix, built once, and the parameters of the voice that it takes over."""
+        shared = getattr(self._cls, "VOICE_SHARED", None)
+        if shared is None:
+            return left, right
+        from .modules import get_module_class
+
+        name, params = shared
+        module = rack.add_module(
+            get_module_class(name)(
+                "shared", sample_rate=rack.sample_rate, block_size=rack.block_size
+            )
+        )
+        for param in params:
+            module.set_param(param, getattr(self._cls, "VOICE_PARAMS", {}).get(param, 0.0))
+        rack.connect(left, module.left_in)
+        rack.connect(right, module.right_in)
+        self._shared = (module, params)
+        return module.left_out, module.right_out
+
+    def _sync_shared(self, pool):
+        """Hand the shared section the voices' value of each parameter it takes over."""
+        if self._shared is None:
+            return
+        module, params = self._shared
+        voices = pool.modules("synth")
+        if not voices:
+            return
+        for param in params:
+            value = voices[0].params[param]
+            if module.params[param] != value:
+                module.set_param(param, value)
+
     def set_macro(self, pool, index, norm):
         pool.set_macro("synth", index, norm)
+        self._sync_shared(pool)
 
     def set_control(self, pool, name, value):
         """Set one of the module's parameters in every voice, in its own units."""
         pool.set_param("synth", name, value)
+        self._sync_shared(pool)
 
     def apply_patch(self, pool, index):
         if not self._presets:
@@ -258,6 +298,7 @@ class ModuleVoice(VoicePatch):
                 # one knob can run a handler that writes a dozen graph parameters
                 if module.params[name] != value:
                     module.set_param(name, value)
+        self._sync_shared(pool)
 
     def cables_differ(self, index):
         """True when patch ``index`` plugs other cables than the patch that is up."""

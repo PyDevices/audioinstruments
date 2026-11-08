@@ -340,3 +340,45 @@ def test_the_instrument_sounds_what_the_rack_instrument_sounds():
     assert np.abs(outs["rack"]).max() > 1000.0
     assert diff.max() <= 24.0, diff.max()
     assert np.sqrt(np.mean(diff**2)) <= 2.5
+
+
+def _voice_render(engine, reverb):
+    inst = adapter.create(
+        48000, voice="patch2600", engine=engine, output="pull", buffer_frames=BLOCK, voices=2
+    )
+    try:
+        if reverb is not None:
+            inst.set_macro(15, reverb)
+        inst.note_on(48, 100)
+        out = []
+        for b in range(400):
+            if b == 80:
+                inst.note_off(48)
+            out.append(np.frombuffer(inst._pull(), dtype=np.int16).astype(np.float64))
+        return np.concatenate(out)
+    finally:
+        inst.deinit()
+
+
+@pytest.mark.parametrize("engine", ("rack", "graph"))
+def test_the_voices_reverb_knob_adds_a_tail(engine):
+    """As a voice, macro 15 turns one spring after the voices' mix. At 0 the instrument
+    sounds as it did with no spring at all; turned up, a tail rings on after the note."""
+    plain = _voice_render(engine, None)
+    off = _voice_render(engine, 0)
+    wet = _voice_render(engine, 100)
+    assert np.array_equal(plain, off)
+    tail = slice(2 * BLOCK * 200, None)  # stereo frames, 0.27 s after the release
+    assert np.abs(off[tail]).max() == 0.0
+    assert np.sqrt(np.mean(wet[tail] ** 2)) > 50.0
+
+
+def test_the_voices_reverb_sounds_what_the_rack_reverb_sounds():
+    """Within 80 counts at the worst and 18 rms on a signal of 1580 rms at macro 100: the
+    spring's own gap, as on the master jacks, over two tanks on a stereo sum."""
+    rack = _voice_render("rack", 100)
+    graph = _voice_render("graph", 100)
+    diff = np.abs(rack - graph)
+    assert np.abs(rack).max() > 1000.0
+    assert diff.max() <= 120.0, diff.max()
+    assert np.sqrt(np.mean(diff**2)) <= 25.0, np.sqrt(np.mean(diff**2))
