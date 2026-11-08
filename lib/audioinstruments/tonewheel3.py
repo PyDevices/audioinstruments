@@ -7,7 +7,7 @@
 NAME = "tonewheel3"
 DISPLAY_NAME = "Tonewheel3"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.1"
+VERSION = "0.5.2.dev1"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
