@@ -4,6 +4,10 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.2.dev1
+
+The same changes as 0.5.2.dev0, whose packages never published.
+
 ## 0.5.2.dev0
 
 - Patch2600: the reverb knob works when the patch is played as a voice, on the shared spring.
