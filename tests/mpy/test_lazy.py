@@ -41,8 +41,8 @@ def test_soundfont_loads_no_rack_core():
     # A SoundFont plays on audiosampler alone, so a board without ulab can
     # play one: nothing on its path may import the rack's array code.
     _purge()
-    import audioinstruments._rack.soundfont
-    import audioinstruments._rack.soundfont_drums
+    import audioinstruments._rack.soundfont  # noqa: F401
+    import audioinstruments._rack.soundfont_drums  # noqa: F401
 
     assert "audioinstruments._rack.core.signal" not in sys.modules
     assert _synths() == [], _synths()
