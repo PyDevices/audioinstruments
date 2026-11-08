@@ -12,7 +12,7 @@ from ..core.bridge import OSC_LEVEL, PITCH_OCTAVES, PWM_DEPTH
 from ..core.graph import UNIT
 from ..core.jack import SignalType
 from ..core.module import Module
-from ..core.signal import BASE_FREQ_C4, add_scaled, copy_into, crossfade_into
+from ..core.signal import BASE_FREQ_C4, add_scaled, copy_into, create_buffer, crossfade_into
 from ..dsp.amplifier import AmplifierCore
 from ..dsp.envelope import EnvelopeCore
 from ..dsp.ladder import LadderCore
@@ -71,8 +71,14 @@ class Patch2600(Module):
     #: struck (Init sits half an octave off, as the panel does). The VCA is exponential: the
     #: AR envelope (``vca_lin_lvl``) holds a note at full level while the ADSR is free for the
     #: filter, and ``vca_exp_lvl`` hands the amp back to the ADSR. ``vca_init_gain`` is a
-    #: trim, 60 dB a unit. The spring reverb sits after the VCA and a voice plays the VCA's
-    #: output, so ``reverb_mix`` is not part of any patch.
+    #: trim, 60 dB a unit. The spring reverb sits after the VCA, so ``reverb_mix`` is not
+    #: part of any patch.
+    #: As a voice (``create(voice="patch2600")``) the module plays from its VCA, and one
+    #: spring, ``Patch2600Spring``, sits after the voices' mix for the whole instrument:
+    #: ``reverb_mix`` (macro 15) turns that. A voice starts with it at 0, where it costs nothing.
+    VOICE_PARAMS = {"reverb_mix": 0.0}
+    VOICE_SHARED = ("Patch2600Spring", ("reverb_mix",))
+
     PRESETS = (
         ("Init", {}),
         (
@@ -1001,3 +1007,121 @@ class Patch2600(Module):
     def _graph_reset(self):
         for node in self._nodes:
             self._fragment.reset(node)
+
+
+class Patch2600Spring(Module):
+    """Patch2600's spring reverb after the voices of ``create(voice="patch2600")``.
+
+    One for the whole instrument, where each voice's own spring would cost a
+    pair of Freeverbs a voice. It hears the voices' mix as a mono send, as the
+    panel's spring hears the VCA, and adds its two returns to the left and right
+    sides. At a ``reverb_mix`` of 0 the mix passes through untouched and the
+    tanks do not run.
+    """
+
+    NAME = "Patch2600Spring"
+    DISPLAY_NAME = "Patch2600 Spring"
+    HP = 4
+
+    def _build(self):
+        audio = SignalType.AUDIO
+        self.left_in = self.add_input("left_in", "Left In", audio)
+        self.right_in = self.add_input("right_in", "Right In", audio)
+        self.left_out = self.add_output("left_out", "Left Out", audio)
+        self.right_out = self.add_output("right_out", "Right Out", audio)
+        self.add_param("reverb_mix", "Spring Reverb Mix", default=0.0, min_val=0.0, max_val=1.0)
+        self._buffers(self.sample_rate, self.block_size)
+
+    def _buffers(self, sr, n):
+        self.reverb_core = SpringReverbCore(sr, n)
+        self._send = create_buffer(n)
+        self._wet_l = create_buffer(n)
+        self._wet_r = create_buffer(n)
+        self._running = False
+
+    def set_block_size(self, block_size):
+        super().set_block_size(block_size)
+        self._buffers(self.sample_rate, block_size)
+
+    def reset(self):
+        self.reverb_core.reset()
+
+    def process(self, block_size):
+        left = self.left_in.get_buffer()
+        right = self.right_in.get_buffer()
+        out_l = self.left_out.buffer
+        out_r = self.right_out.buffer
+        if left is None:
+            out_l[:] = 0.0
+            out_r[:] = 0.0
+            return
+        if right is None:
+            right = left
+        copy_into(out_l, left)
+        copy_into(out_r, right)
+        mix = self.params["reverb_mix"]
+        if mix <= 0.0:
+            self._running = False
+            return
+        if not self._running:
+            # the tanks stood still while the mix was 0: start them empty, not on an old tail
+            self.reverb_core.reset()
+            self._running = True
+        send = self._send
+        copy_into(send, left)
+        send += right
+        send *= 0.5
+        # wet only (mix 1.0), so each side keeps its own dry signal
+        self.reverb_core.render(send, self._wet_l, self._wet_r, mix=1.0)
+        dry = 1.0 - mix
+        out_l *= dry
+        out_r *= dry
+        self._wet_l *= mix
+        self._wet_r *= mix
+        out_l += self._wet_l
+        out_r += self._wet_r
+
+    # -- as a graph fragment ------------------------------------------------------------
+
+    def fragment(self, f):
+        """The send and the spring run in a switch of their own, off while the mix is 0, and
+        each side is then the dry signal through a mix at unity."""
+        import audiograph as ag
+
+        if not hasattr(ag, "SPRING"):
+            return False
+        self._ag = ag
+        self._fragment = f
+        g_spring = f.switch("spring", False)
+        dry_l = f.input(self.left_in)
+        dry_r = f.input(self.right_in)
+        if dry_r is None:
+            dry_r = dry_l
+        b_send = f.buffer()
+        b_wet_l = f.buffer()
+        b_wet_r = f.buffer()
+        self._n_send = f.add(ag.MIX, (dry_l, dry_r), b_send, group=g_spring)
+        f.set(self._n_send, 0, 0.5)
+        f.set(self._n_send, 1, 0.5)
+        self._n_spring = f.add(ag.SPRING, (b_send,), (b_wet_l, b_wet_r), group=g_spring)
+        f.set(self._n_spring, ag.SPRING_MIX, 1.0)
+        self._n_out = (
+            f.add(ag.MIX, (dry_l, b_wet_l), f.output(self.left_out)),
+            f.add(ag.MIX, (dry_r, b_wet_r), f.output(self.right_out)),
+        )
+        f.bind(("reverb_mix",), self._graph_mix)
+        f.on_reset(self._graph_reset)
+
+    def _graph_mix(self):
+        f = self._fragment
+        mix = self.params["reverb_mix"]
+        for node in self._n_out:
+            f.set(node, 0, 1.0 - mix)
+            f.set(node, 1, mix)
+        on = mix > 0.0
+        if on and not f.switches["spring"][1]:
+            f.reset(self._n_spring)  # start the tanks empty, not on an old tail
+        f.enable("spring", on)
+
+    def _graph_reset(self):
+        self._fragment.reset(self._n_spring)

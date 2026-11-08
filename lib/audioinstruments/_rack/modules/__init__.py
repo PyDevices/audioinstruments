@@ -54,6 +54,7 @@ _REGISTRY = (
     ("MonoSynthVoice", "MonoSynthVoice", "mono_synth.voice"),
     ("ParaphonicSynth", "ParaphonicSynth", "paraphonic_synth"),
     ("Patch2600", "Patch2600", "patch2600"),
+    ("Patch2600Spring", "Patch2600Spring", "patch2600"),
     ("PinMatrix3", "PinMatrix3", "pin_matrix3"),
     ("Poly106LFO", "Poly106LFO", "poly106.lfo"),
     ("Poly106Output", "Poly106Output", "poly106.output"),
