@@ -32,8 +32,20 @@ def test_import_vrack_loads_no_synth():
     import audioinstruments._rack
 
     assert _synths() == [], _synths()
-    assert "audioinstruments._rack.core.rack" in sys.modules
+    assert "audioinstruments._rack.core.rack" not in sys.modules
     assert audioinstruments._rack.Rack is not None
+    assert "audioinstruments._rack.core.rack" in sys.modules
+
+
+def test_soundfont_loads_no_rack_core():
+    # A SoundFont plays on audiosampler alone, so a board without ulab can
+    # play one: nothing on its path may import the rack's array code.
+    _purge()
+    import audioinstruments._rack.soundfont
+    import audioinstruments._rack.soundfont_drums
+
+    assert "audioinstruments._rack.core.signal" not in sys.modules
+    assert _synths() == [], _synths()
 
 
 def test_naming_one_class_loads_only_it():

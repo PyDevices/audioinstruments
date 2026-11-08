@@ -6,6 +6,7 @@
 __version__ = "0.1.0"
 
 from . import modules
+
 # The rack's core names load on first use too, so a SoundFont player that
 # never builds a rack does not import core.signal (and with it ulab or numpy).
 _CORE = {

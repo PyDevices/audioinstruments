@@ -55,7 +55,9 @@ def _build(name, sample_rate, channel_count, transport, options):
         # the rack's array code: a board without ulab can still play a bank.
         options.pop("engine", None)
         module = __import__("audioinstruments._rack." + name, None, None, ("create",))
-        return module.create(sample_rate, channel_count=channel_count, transport=transport, **options)
+        return module.create(
+            sample_rate, channel_count=channel_count, transport=transport, **options
+        )
     import audioinstruments._rack.adapter as adapter
 
     options["voice"] = name
