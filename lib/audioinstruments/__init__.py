@@ -50,6 +50,12 @@ def create(name, sample_rate, channel_count=2, transport=None, **options):
 
 
 def _build(name, sample_rate, channel_count, transport, options):
+    if name in SAMPLERS:
+        # A SoundFont plays on audiosampler alone, so it skips the adapter and
+        # the rack's array code: a board without ulab can still play a bank.
+        options.pop("engine", None)
+        module = __import__("audioinstruments._rack." + name, None, None, ("create",))
+        return module.create(sample_rate, channel_count=channel_count, transport=transport, **options)
     import audioinstruments._rack.adapter as adapter
 
     options["voice"] = name
