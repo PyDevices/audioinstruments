@@ -4,6 +4,11 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.2.dev0
+
+- Patch2600: the reverb knob works when the patch is played as a voice, on the shared spring.
+- Drum kits refuse a voice count other than their number of sounds.
+
 ## 0.5.1
 
 The final of the 0.5.1 pre-releases below. It requires audiodsp 0.6.13.
