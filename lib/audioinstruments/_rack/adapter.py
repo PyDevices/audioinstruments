@@ -301,6 +301,16 @@ def _positive_int(value, name):
     return value
 
 
+def _kit_voices(patch, sounds, count):
+    """Refuse a voice count on a drum kit other than its number of sounds."""
+    if sounds is not None and count != sounds:
+        raise ValueError(
+            "%s is a drum kit: its %d voices are its %d sounds, one each, so voices "
+            "must be %d (a sound that isn't playing costs nothing)"
+            % (patch.NAME, sounds, sounds, sounds)
+        )
+
+
 def _midi_value(value, name, high=127):
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError("%s must be an integer from 0 through %d" % (name, high))
@@ -445,7 +455,9 @@ class Instrument:
     ``retrigger``.
 
     A drum kit (a patch with ``PADS``, the ``(key, voice)`` pairs it answers)
-    has one voice per sound and ``voices`` is how many sounds it has. Each
+    has one voice per sound and ``voices`` is how many sounds it has, so it
+    refuses any other count, at ``create()`` and when set: fewer would silence
+    the sounds past it, and a sound that isn't playing costs nothing. Each
     other pad key from 36 to 51 sounds the nearest key the kit has, the
     lower on a tie, as ``soundfont_drums`` does. ``strict_pads=True`` turns
     that off, so the kit answers only its own keys; ``pad_map=`` (a dict or
@@ -495,11 +507,15 @@ class Instrument:
         self.patch = voice_patch(voice) if isinstance(voice, str) else voice
         self._pads = kit_pads(self.patch, pad_map, strict_pads)
         self._strict_pads = bool(strict_pads)
+        asked = voices
         if voices is None:
             voices = getattr(self.patch, "VOICES", 8)
             if output == "graph":
                 voices = min(voices, PUMP_VOICES)
         voices = _positive_int(voices, "voices")
+        self._kit_sounds = getattr(self.patch, "VOICES", None) if self._pads is not None else None
+        if asked is not None:
+            _kit_voices(self.patch, self._kit_sounds, voices)
         mono = bool(getattr(self.patch, "MONO", False))
         if mono and (voices > 1 or (max_voices or 1) > 1 or unison > 1):
             raise ValueError(
@@ -708,6 +724,7 @@ class Instrument:
         count = _positive_int(count, "voices")
         if self._mono and count != 1:
             raise ValueError("%s is monophonic: it has one voice" % self.patch.NAME)
+        _kit_voices(self.patch, self._kit_sounds, count)
         with self._lock:
             self._pool.voice_count = count
 

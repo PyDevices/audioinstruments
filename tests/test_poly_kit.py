@@ -196,6 +196,46 @@ def test_a_keyboard_instrument_reports_no_pads():
     inst.deinit()
 
 
+@pytest.mark.parametrize(
+    "name", ("rhythm808", "rhythm909", "rhythm606", "rhythm78", "electronic_drums5")
+)
+def test_a_kit_refuses_fewer_voices_than_it_has_sounds(name):
+    """A kit's voices are its sounds, so a cap below the count would silence pads."""
+    inst = adapter.create(48000, voice=name, output="pull")
+    try:
+        sounds = inst.voices
+        assert sounds == inst.patch.VOICES
+        with pytest.raises(ValueError, match="drum kit"):
+            inst.voices = 2
+        with pytest.raises(ValueError, match="drum kit"):
+            inst.voices = sounds + 1
+        assert inst.voices == sounds
+        inst.voices = sounds  # its own count is accepted
+    finally:
+        inst.deinit()
+    with pytest.raises(ValueError, match="drum kit"):
+        adapter.create(48000, voice=name, voices=4, output="pull")
+
+
+def test_every_pad_sounds_after_a_refused_cap():
+    from audioinstruments._rack.instruments.rhythm808 import PADS as KIT
+
+    inst = adapter.create(48000, voice="rhythm808", output="pull", buffer_frames=256)
+    try:
+        with pytest.raises(ValueError):
+            inst.voices = 2
+        for key in sorted(set(k for k, _ in KIT)):
+            inst.note_on(key, 110)
+            peak = 0
+            for b in range(8):
+                if b == 4:
+                    inst.note_off(key)
+                peak = max(peak, int(np.abs(np.frombuffer(inst._pull(), dtype=np.int16)).max()))
+            assert peak > 50, key
+    finally:
+        inst.deinit()
+
+
 def test_the_toy_drum_rings_down():
     rack, p, drums = kit()
     p.note_on(36, 100)
