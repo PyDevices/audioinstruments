@@ -5,3 +5,4 @@
 - No audio targets: never add a check that says "this should sound like X". Trait files (`tests/traits/`) compare an instrument with itself; accept with `python tools/traits.py <name> --accept`.
 - Nothing allocates in a block path; `tests/test_allocation.py` enforces it.
 - Everything else is in [CONTRIBUTING.md](CONTRIBUTING.md).
+- A release PR changes `VERSION` and `CHANGELOG.md`, then runs `python tools/make_faces.py` and commits the regenerated faces with them: every `lib/audioinstruments/*.py` face carries the version, and the publish workflow refuses a tag whose faces disagree.
