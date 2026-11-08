@@ -11,6 +11,9 @@ Planned work, in rough order:
 - Board timings for every instrument. `docs/performance.md` has five instruments
   measured on an ESP32-P4; the rest, and an S3 build, need the same run before
   we say which are playable on a microcontroller.
+- More notes before stealing on a board: PolyA6, Vocoder330, String Ensemble and Compact
+  Organ hold one to three on an ESP32-P4. Lower each voice's cost, and put back effects a
+  board lost, such as a voice for Vocoder330's patches with no mic.
 - A patch change that plugs other cables takes 160 to 775 ms on an ESP32-P4, while the
   screen and MIDI input wait. Find where that goes, and make it short enough to use mid-phrase.
 - Fast filter sweeps on the Poly80, Poly106 and Poly6: `BIQUAD_RAMP` closes the gap on the
