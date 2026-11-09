@@ -6,27 +6,41 @@
 __version__ = "0.1.0"
 
 from . import modules
-from .core.cable import Cable
-from .core.jack import InputJack, Jack, OutputJack, SignalType
-from .core.module import Module
-from .core.poly import Voice, VoiceAllocator, VoicePool
-from .core.rack import PATCH_FORMAT_VERSION, Rack, load_rack
-from .core.signal import (
-    BASE_FREQ_C4,
-    DEFAULT_BLOCK_SIZE,
-    DEFAULT_SAMPLE_RATE,
-    midi_note_to_pitch,
-    pitch_to_frequency,
-)
+
+# The rack's core names load on first use too, so a SoundFont player that
+# never builds a rack does not import core.signal (and with it ulab or numpy).
+_CORE = {
+    "Cable": "core.cable",
+    "InputJack": "core.jack",
+    "Jack": "core.jack",
+    "OutputJack": "core.jack",
+    "SignalType": "core.jack",
+    "Module": "core.module",
+    "Voice": "core.poly",
+    "VoiceAllocator": "core.poly",
+    "VoicePool": "core.poly",
+    "PATCH_FORMAT_VERSION": "core.rack",
+    "Rack": "core.rack",
+    "load_rack": "core.rack",
+    "BASE_FREQ_C4": "core.signal",
+    "DEFAULT_BLOCK_SIZE": "core.signal",
+    "DEFAULT_SAMPLE_RATE": "core.signal",
+    "midi_note_to_pitch": "core.signal",
+    "pitch_to_frequency": "core.signal",
+}
 
 # The synths load on first use: ``audioinstruments._rack.PinMatrix3`` imports ``pin_matrix3`` and
 # nothing else. ``audioinstruments._rack.modules`` holds the table.
 
 
 def __getattr__(name):
-    if name not in modules._LAZY:
+    path = _CORE.get(name)
+    if path is not None:
+        value = getattr(__import__("audioinstruments._rack." + path, None, None, (name,)), name)
+    elif name in modules._LAZY:
+        value = getattr(modules, name)
+    else:
         raise AttributeError("module 'audioinstruments._rack' has no attribute '%s'" % (name,))
-    value = getattr(modules, name)
     globals()[name] = value
     return value
 

@@ -4,6 +4,8 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- The SoundFont instruments no longer need ulab: `create("soundfont", ...)` goes straight to the sampler, and `audioinstruments._rack` loads its core names on first use. A board without ulab, such as a classic ESP32 build, can now play a General MIDI bank.
+
 ## 0.5.2.dev1
 
 The same changes as 0.5.2.dev0, whose packages never published.
