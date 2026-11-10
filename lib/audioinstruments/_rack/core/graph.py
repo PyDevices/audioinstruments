@@ -495,6 +495,7 @@ class _Sizer:
         self.nodes = 0
         self.log = []  # (group, inputs, output) of every node, in order
         self.calls = []  # every call to make on the graph, in order
+        self.values = {}  # (node, index) -> the last value set, which get() reads back
 
     def buffer(self):
         self.buffers += 1
@@ -509,9 +510,12 @@ class _Sizer:
 
     def set(self, node, index, value):
         self.calls.append((_SET, node, index, value))
+        self.values[(node, index)] = value
 
     def get(self, node, index):
-        return 0.0
+        # what the fragment set this compile; a value it never set reads 0.0, where
+        # the graph would give the node's default
+        return self.values.get((node, index), 0.0)
 
     def table(self, node, shape):
         self.calls.append((_TABLE, node, shape))
