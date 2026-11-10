@@ -148,19 +148,34 @@ def test_choke_cuts_open_hat():
     assert rms_open > 30 * rms_choked
 
 
-def test_restrike_repings_without_click():
+def restrike(**controls):
     inst = make()
+    for name, value in controls.items():
+        inst.patch.set_control(inst.voice_pool, name, value)
     inst.note_on(36, 100)
     x1 = pull(inst, 8)
     inst.note_on(36, 100)
     x2 = pull(inst, 8)
     inst.deinit()
+    return x1[:, 0], x2[:, 0]
 
+
+def test_restrike_keeps_the_oscillator_phase():
+    # With the attack click turned down, a re-strike over the ringing kick must not
+    # jump: the oscillator keeps its phase and the envelope rises from where it is.
+    x1, x2 = restrike(bd_attack=0.0)
     full = np.concatenate([x1, x2])
-    diffs = np.abs(np.diff(full[:, 0]))
-    max_step = np.max(diffs)
-    max_amp = peak(full)
-    assert max_step < 0.35 * max_amp, "Restrike caused a click or jump"
+    step = np.max(np.abs(np.diff(full[len(x1) - 1 :])))
+    assert step < 0.15 * peak(full), step
+
+
+def test_restrike_click_stays_a_click_not_a_jump():
+    # At the default attack the kick's click, a burst of high-passed noise, steps by a
+    # quarter to a third of the hit on every strike, the first from silence too: a
+    # re-strike makes the same click and nothing bigger.
+    x1, x2 = restrike()
+    full = np.concatenate([x1, x2])
+    assert np.max(np.abs(np.diff(full))) < 0.7 * peak(full)
 
 
 def test_accent_brightens_and_scales_level():

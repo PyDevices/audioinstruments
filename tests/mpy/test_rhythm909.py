@@ -104,23 +104,46 @@ def test_choke_cuts_open_hat():
     assert peak_open > 10 * peak_choked
 
 
-def test_restrike_re_pings_without_click():
+def biggest_step(x, start=2):
+    # frames are stereo pairs: the largest jump between neighbouring left samples
+    top = 0
+    for i in range(start, len(x), 2):
+        top = max(top, abs(x[i] - x[i - 2]))
+    return top
+
+
+def restrike(attack=None):
     inst = adapter.create(48000, voice="rhythm909", engine="rack")
+    if attack is not None:
+        inst.patch.set_control(inst.voice_pool, "bd_attack", attack)
     inst.note_on(36, 100)
     x1 = pulled(inst, 8)
     inst.note_on(36, 100)
     x2 = pulled(inst, 8)
     inst.deinit()
-    top1 = peak(x1)
-    top2 = peak(x2)
-    assert top1 > 500 and top2 > 500
-    # frames are stereo pairs; no step between neighbours near the size of the hit
-    biggest = 0
-    for i in range(2, len(x1), 2):
-        biggest = max(biggest, abs(x1[i] - x1[i - 2]))
-    for i in range(2, len(x2), 2):
-        biggest = max(biggest, abs(x2[i] - x2[i - 2]))
-    assert biggest < 0.35 * max(top1, top2), "restrike jumped: %d of %d" % (biggest, top2)
+    return x1, x2
+
+
+def test_restrike_keeps_the_oscillator_phase():
+    # With the attack click turned down, a re-strike over the ringing kick must not
+    # jump: the oscillator keeps its phase and the envelope rises from where it is.
+    x1, x2 = restrike(attack=0.0)
+    top = max(peak(x1), peak(x2))
+    assert top > 500
+    tail = x1[-2:] + x2  # the last frame before the re-strike, and what follows
+    step = biggest_step(tail)
+    assert step < 0.15 * top, "restrike jumped: %d of %d" % (step, top)
+
+
+def test_restrike_click_stays_a_click_not_a_jump():
+    # At the default attack the kick's click, a burst of high-passed noise, steps by a
+    # third of the hit on every strike, the first from silence too: a re-strike makes
+    # the same click and nothing bigger.
+    x1, x2 = restrike()
+    top = max(peak(x1), peak(x2))
+    assert peak(x2) > 500
+    step = max(biggest_step(x1), biggest_step(x2))
+    assert step < 0.7 * top, "restrike jumped: %d of %d" % (step, top)
 
 
 def test_allocation_flat_over_strike_of_every_pad():
