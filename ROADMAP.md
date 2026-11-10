@@ -44,7 +44,5 @@ on a virtual rack, rendered a block at a time on audiodsp.
 
 ## Tests and docs
 
-- The MicroPython tests in CI, on a unix build with audiodsp and ulab; today
-  they are run by hand before a merge.
 - The docs in the shared five sections: Get started, Guides, Reference, How it
   works and Changelog.
