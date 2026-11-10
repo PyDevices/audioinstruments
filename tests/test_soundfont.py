@@ -271,6 +271,115 @@ class SoundFontInstrumentTest(unittest.TestCase):
         self.inst.program_change(0)
         self.assertAlmostEqual(self.inst._player.cc_volume, 64 / 127.0, places=6)
 
+    # -- bend range and tuning ---------------------------------------------------
+
+    def _heard_hz(self, bend_range=None, tuning=None, bend=8192):
+        """The pitch of a fresh instrument's note 60, a twentieth of a second in."""
+        inst = adapter.create(SR, voice="soundfont", bank=self.path)
+        try:
+            if bend_range is not None:
+                inst.bend_range = bend_range
+            if tuning is not None:
+                inst.tuning = tuning
+            inst.pitch_bend(bend)
+            inst.note_on(60, 100)
+            heard = sf2_play.render(inst, 0.5, channel=0)[2400:]
+            shift = (bend - 8192) / 8191.0 * (bend_range or 2.0) + (tuning or 0.0)
+            return sf2_play.fundamental_hz(heard, SR, 234.0 * 2 ** (shift / 12.0), spread=0.04)[0]
+        finally:
+            inst.deinit()
+
+    def test_bend_range_and_tuning_start_at_two_and_zero(self):
+        self.assertEqual(self.inst.bend_range, 2.0)
+        self.assertEqual(self.inst.tuning, 0.0)
+
+    def test_bend_range_sets_how_far_the_bend_moves_a_note(self):
+        centre = self._heard_hz()
+        for semitones in (1, 2, 7, 12, 24):
+            got = self._heard_hz(bend_range=semitones, bend=16383) / centre
+            self.assertAlmostEqual(got, 2 ** (semitones / 12.0), delta=0.01, msg=semitones)
+        down = self._heard_hz(bend_range=12, bend=0) / centre
+        self.assertAlmostEqual(down, 0.5, delta=0.005)
+
+    def test_tuning_moves_every_note_by_semitones_and_cents(self):
+        centre = self._heard_hz()
+        for semitones in (-12, -0.5, 0.5, 5, 12):
+            got = self._heard_hz(tuning=semitones) / centre
+            self.assertAlmostEqual(got, 2 ** (semitones / 12.0), delta=0.01, msg=semitones)
+
+    def test_bend_range_and_tuning_move_a_note_already_sounding(self):
+        player = self.inst._player
+        self.inst.note_on(60, 100)
+        slot = player.held[(0, 60)][0]
+        voice = self.inst.output.voice[slot]
+        ratio = player.slots[slot][5]
+        self.inst.pitch_bend(16383)
+        self.inst.bend_range = 12
+        self.assertAlmostEqual(voice.pitch, ratio * 2.0, places=3)
+        self.inst.tuning = 5
+        self.assertAlmostEqual(voice.pitch, ratio * 2.0 * 2 ** (5 / 12.0), places=3)
+        self.inst.pitch_bend(8192)
+        self.assertAlmostEqual(voice.pitch, ratio * 2 ** (5 / 12.0), places=3)
+        self.inst.set_macro(3, 127)  # the Tune macro adds its own
+        self.assertAlmostEqual(
+            voice.pitch, ratio * 2 ** (5 / 12.0) * 2 ** ((63 / 127.0) * 2 / 12.0), places=3
+        )
+
+    def test_reset_puts_bend_range_and_tuning_back(self):
+        self.inst.bend_range = 12
+        self.inst.tuning = -3
+        self.assertEqual((self.inst.bend_range, self.inst.tuning), (12.0, -3.0))
+        self.inst.reset()
+        self.assertEqual((self.inst.bend_range, self.inst.tuning), (2.0, 0.0))
+        self.inst.pitch_bend(16383)
+        self.inst.note_on(60, 100)
+        player = self.inst._player
+        voice = self.inst.output.voice[player.held[(0, 60)][0]]
+        self.assertAlmostEqual(
+            voice.pitch, player.slots[player.held[(0, 60)][0]][5] * 2 ** (2 / 12.0), places=4
+        )
+
+    def test_bend_range_and_tuning_refuse_what_is_not_a_number_in_range(self):
+        for name, bad in (
+            ("bend_range", -1),
+            ("bend_range", 49),
+            ("bend_range", float("nan")),
+            ("bend_range", "12"),
+            ("bend_range", True),
+            ("tuning", 73),
+            ("tuning", -73),
+            ("tuning", None),
+        ):
+            with self.assertRaises(ValueError, msg=(name, bad)):
+                setattr(self.inst, name, bad)
+        self.assertEqual((self.inst.bend_range, self.inst.tuning), (2.0, 0.0))
+
+    def test_the_drum_kit_has_them_too(self):
+        self.kit.bend_range = 12
+        self.kit.tuning = 3
+        self.assertEqual((self.kit.bend_range, self.kit.tuning), (12.0, 3.0))
+
+    def test_two_instruments_on_one_pool_tune_only_their_own_notes(self):
+        voices = soundfont.Voices(SR, 2, voice_count=8)
+        a = adapter.create(SR, voice="soundfont", bank=self.path, voice_pool=voices)
+        b = adapter.create(SR, voice="soundfont", bank=self.path, voice_pool=voices)
+        try:
+            a.note_on(60, 100)
+            b.note_on(60, 100)
+            sa = a._player.held[(0, 60)][0]
+            sb = b._player.held[(0, 60)][0]
+            before = voices.output.voice[sb].pitch
+            a.tuning = 7
+            self.assertEqual(voices.output.voice[sb].pitch, before)
+            self.assertAlmostEqual(
+                voices.output.voice[sa].pitch, before * 2 ** (7 / 12.0), places=3
+            )
+            self.assertEqual(b.tuning, 0.0)
+        finally:
+            a.deinit()
+            b.deinit()
+            voices.deinit()
+
     def test_reset_puts_volume_and_expression_back(self):
         full = self._played_level(7, 127)
         self.inst.control_change(7, 10)

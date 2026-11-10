@@ -203,6 +203,14 @@ def _slab(nbytes):
 
 #: Semitones of pitch bend at full deflection, either way.
 BEND_RANGE = 2.0
+#: The most `bend_range` allows, and the most `tuning` allows either way, in
+#: semitones.
+MAX_BEND_RANGE = 48.0
+MAX_TUNING = 72.0
+# Parameter events past the macros: the player's bend range and tuning, in
+# semitones in the event's second value.
+_PARAM_BEND_RANGE = 1000
+_PARAM_TUNING = 1001
 
 _CC_BANK_MSB = 0
 _CC_BANK_LSB = 32
@@ -914,7 +922,10 @@ class _Player(object):
         self.attack_scale = 1.0
         self.release_scale = 1.0
         self.tune = 1.0
-        self.bend = 1.0
+        self.bend = 1.0  # the bend wheel and the tuning, as one pitch factor
+        self.bend_position = 0.0  # the wheel, -1..1
+        self.bend_range = BEND_RANGE
+        self.tuning = 0.0
         self.pan = 0.0
 
     # -- preset selection ---------------------------------------------------
@@ -1129,6 +1140,12 @@ class _Player(object):
             if slot is not None and slot[7] is self:
                 voices[i].pitch = slot[5] * factor
 
+    def retune(self):
+        """Work the wheel, its range and the tuning into one pitch factor and
+        move the notes sounding to it."""
+        self.bend = 2.0 ** ((self.bend_position * self.bend_range + self.tuning) / 12.0)
+        self.repitch()
+
     def repan(self):
         voices = self.pool.voice
         offset = self.pan
@@ -1161,9 +1178,15 @@ class _Player(object):
             elif data0 == PAN_MACRO:
                 self.pan = _bipolar(value0)
                 self.repan()
+            elif data0 == _PARAM_BEND_RANGE:
+                self.bend_range = value1
+                self.retune()
+            elif data0 == _PARAM_TUNING:
+                self.tuning = value1
+                self.retune()
         elif event_type == EVENT_PITCH_BEND:
-            self.bend = 2.0 ** (value1 * BEND_RANGE / 12.0)
-            self.repitch()
+            self.bend_position = value1
+            self.retune()
         elif event_type == EVENT_CONTROL_CHANGE:
             if data0 == _CC_BANK_MSB:
                 self.bank_msb = int(value0 * 127 + 0.5)
@@ -1240,6 +1263,37 @@ class SoundFontInstrument(Instrument):
             return
         super().control_change(controller, value, channel, sample_position)
 
+    @property
+    def bend_range(self):
+        """Semitones the pitch bend moves a note at full deflection, either
+        way: 2.0 until set, and 2.0 again after `reset()`. Notes sounding
+        and notes still to come follow it, so a sound module can set it from
+        Pitch Bend Sensitivity (RPN 0). Zero to 48."""
+        self._check_live()
+        return self._player.bend_range
+
+    @bend_range.setter
+    def bend_range(self, semitones):
+        self._check_live()
+        semitones = _semitones(semitones, "bend_range", 0.0, MAX_BEND_RANGE)
+        self._handle(EVENT_PARAMETER, 0, -1, _PARAM_BEND_RANGE, 0.0, semitones, 0)
+
+    @property
+    def tuning(self):
+        """Semitones every note is tuned up (or down, when negative), cents
+        included: 0.0 until set, and 0.0 again after `reset()`. It adds to
+        the bend and the Tune macro, and moves notes sounding too, so a
+        sound module can set it from Channel Fine and Coarse Tuning (RPN 1
+        and 2). Minus 72 to 72."""
+        self._check_live()
+        return self._player.tuning
+
+    @tuning.setter
+    def tuning(self, semitones):
+        self._check_live()
+        semitones = _semitones(semitones, "tuning", -MAX_TUNING, MAX_TUNING)
+        self._handle(EVENT_PARAMETER, 0, -1, _PARAM_TUNING, 0.0, semitones, 0)
+
     def program_change(self, index, channel=0, note_id=-1, sample_position=0):
         target = self._programs.get(index) if isinstance(index, int) else None
         if target is not None:
@@ -1253,6 +1307,8 @@ class SoundFontInstrument(Instrument):
         self._player.stop_all()
         self._player.bank_msb = self._player.bank_lsb = 0
         self._player.cc_volume = self._player.expression = self._player.controller_gain = 1.0
+        self.bend_range = BEND_RANGE
+        self.tuning = 0.0
         super().reset()
 
     @property
@@ -1293,6 +1349,12 @@ class SoundFontInstrument(Instrument):
         self._player.stop_all()
         self._output = None
         self._deinited = True
+
+
+def _semitones(value, name, low, high):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
+        raise ValueError("%s must be a number from %s to %s" % (name, low, high))
+    return float(value)
 
 
 def _sampler(sample_rate, channel_count, voice_count=MAX_VOICES):

@@ -4,6 +4,8 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+- The SoundFont instruments have `bend_range` (semitones, 2.0 by default) and `tuning` (semitones, 0.0 by default): a host can set how far the pitch bend moves a note, or tune every note, while it sounds. `reset()` puts them back.
+
 ## 0.5.2.dev2
 
 - The SoundFont instruments play Control Change 7 (Volume) and 11 (Expression), on the square law General MIDI modules use: a value of 64 is 12 dB down, and the two multiply. Both used to be dropped, so a part's volume had no effect except through the Volume macro. They start at 127, and `reset()` puts them back.
