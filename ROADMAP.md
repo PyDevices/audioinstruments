@@ -41,8 +41,3 @@ on a virtual rack, rendered a block at a time on audiodsp.
   the keys you hold (up, down, random, over several octaves), so any
   polyphonic instrument can arpeggiate.
 - A tempo that follows the host's transport in `audioinstruments._rack.adapter`.
-
-## Tests and docs
-
-- The MicroPython tests in CI, on a unix build with audiodsp and ulab; today
-  they are run by hand before a merge.

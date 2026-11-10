@@ -8,8 +8,10 @@ name: CI
 # names no earlier commit, or the runner can't find it, the push checks everything.
 # A manual run checks everything.
 #
-# MicroPython (tests/mpy) is not run here: it needs a build with ulab and audiodsp.
-# Run `micropython tests/mpy/run.py` before you merge.
+# MicroPython (tests/mpy) has its own job, `mpy`: it builds the unix port with
+# ulab and audiodsp and runs `micropython tests/mpy/run.py`. It runs when a change
+# touches lib/, tests/mpy/, tools/, examples/, manifest.py or this workflow, and
+# not for docs alone; a manual run always runs it.
 on:
   push:
     branches: [main]
@@ -82,3 +84,91 @@ jobs:
         run: |
           mapfile -t TESTS < <(python tools/ci_scope.py --from "$RUNNER_TEMP/scope.json" --get pytest)
           if [ "${#TESTS[@]}" -gt 0 ]; then python -m pytest -q "${TESTS[@]}"; fi
+
+  # The MicroPython half of the tests: the same rack on a unix MicroPython built
+  # with audiodsp and ulab, with the pins below. Documentation-only changes can't
+  # change the result, so they skip the build.
+  mpy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MICROPYTHON_REF: v1.29.0
+      ULAB_REF: 6.7.3
+      AUDIODSP_REF: v0.6.16.dev0
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          path: audioinstruments
+
+      - name: Scope
+        id: scope
+        working-directory: audioinstruments
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          run=true
+          if [ "$EVENT" = pull_request ] || { [ "$EVENT" = push ] && [ -n "${BASE//0/}" ] \
+              && git cat-file -e "$BASE^{commit}" 2>/dev/null; }; then
+            if git diff --name-only "$BASE" HEAD \
+                | grep -qE '^(lib/|tests/mpy/|tools/|examples/|manifest\.py$|\.github/workflows/ci\.yml$)'; then
+              run=true
+            else
+              run=false
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "MicroPython tests run: $run"
+
+      - uses: actions/checkout@v7
+        if: steps.scope.outputs.run == 'true'
+        with:
+          repository: PyDevices/audiodsp
+          ref: ${{ env.AUDIODSP_REF }}
+          path: modules/audiodsp
+
+      - uses: actions/checkout@v7
+        if: steps.scope.outputs.run == 'true'
+        with:
+          repository: v923z/micropython-ulab
+          ref: ${{ env.ULAB_REF }}
+          path: ulab-src
+
+      - uses: actions/checkout@v7
+        if: steps.scope.outputs.run == 'true'
+        with:
+          repository: micropython/micropython
+          ref: ${{ env.MICROPYTHON_REF }}
+          path: micropython
+
+      # The interpreter depends only on the three pins, so a change to the
+      # instruments reuses the build.
+      - name: Cache the interpreter
+        id: build-cache
+        if: steps.scope.outputs.run == 'true'
+        uses: actions/cache@v6
+        with:
+          path: micropython/ports/unix/build-standard/micropython
+          key: mpy-unix-${{ env.MICROPYTHON_REF }}-${{ env.ULAB_REF }}-${{ env.AUDIODSP_REF }}
+
+      # USER_C_MODULES is the parent folder: py.mk takes every */micropython.mk
+      # one level down, which is audiodsp and ulab.
+      - name: Build unix MicroPython with audiodsp and ulab
+        if: steps.scope.outputs.run == 'true' && steps.build-cache.outputs.cache-hit != 'true'
+        run: |
+          ln -s "$GITHUB_WORKSPACE/ulab-src/code" modules/ulab
+          (cd modules/audiodsp && ./scripts/fetch_deps.sh)
+          make -C micropython/mpy-cross -j2
+          make -C micropython/ports/unix submodules
+          make -C micropython/ports/unix -j2 USER_C_MODULES="$GITHUB_WORKSPACE/modules"
+
+      - name: Run tests/mpy
+        if: steps.scope.outputs.run == 'true'
+        working-directory: audioinstruments
+        run: |
+          MP="$GITHUB_WORKSPACE/micropython/ports/unix/build-standard/micropython"
+          "$MP" -c "import ulab, audiocore, audiograph; print('modules ok')"
+          # The unix port's default heap is too small for the instruments.
+          timeout 900 "$MP" -X heapsize=256M tests/mpy/run.py | tee "$RUNNER_TEMP/mpy.txt"
+          grep -Eq '^[0-9]+ tests, 0 failures$' "$RUNNER_TEMP/mpy.txt"

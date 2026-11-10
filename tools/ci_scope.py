@@ -45,8 +45,9 @@ How a file is mapped:
 - Everything is checked when ``pyproject.toml``, the workflow or this tool
   changed, when a file under ``lib/`` or ``tools/`` or ``tests/`` was
   deleted, or when a file there that is not python or a trait file changed.
-- ``tests/mpy/`` needs a MicroPython build with ulab and audiodsp, which CI
-  does not have: run ``micropython tests/mpy/run.py`` before you merge.
+- ``tests/mpy/`` is not pytest's: the ``mpy`` job in ci.yml builds a unix
+  MicroPython with ulab and audiodsp and runs ``micropython tests/mpy/run.py``,
+  and decides for itself whether the change reaches it.
 
 ``tests/test_ci_scope.py`` checks the reach of every instrument against what
 the interpreter really imports.
