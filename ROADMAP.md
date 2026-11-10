@@ -2,45 +2,49 @@
 
 audioinstruments is a set of playable instruments, each a patch of modules
 on a virtual rack, rendered a block at a time on audiodsp.
-Planned work, in rough order:
+
+## On a board
+
+- Board timings for every instrument. `docs/performance.md` times seven on an
+  ESP32-P4; the rest, and an S3 build, need the same run to show which are
+  playable on a microcontroller.
+- More notes before stealing: PolyA6, Vocoder330, String Ensemble and Compact
+  Organ hold one to three on an ESP32-P4. Lower each voice's cost, and give
+  back what a board lost, such as Vocoder330's patches with no mic.
+- Patch changes short enough to use mid-phrase. One that plugs other cables
+  takes 160 to 775 ms on an ESP32-P4, while the screen and MIDI input wait.
+- Live output with the block deadline measured: the conversion to PCM and the
+  device write in `examples/play_audio.py`, timed against the block budget
+  and written up in `docs/performance.md`.
+- `examples/hmi_board.py` on the audio pump, as `examples/hmi_instrument.py
+  --pump` already plays, so a busy screen doesn't eat the audio's time.
+
+## Sound
+
+- Fast filter sweeps on the Poly80, Poly106 and Poly6, using audiodsp's
+  `BIQUAD_RAMP`, which closes the gap on the StateVariableMono.
+- Feedback cables without the block delay, where a loop is short: modules in
+  a loop run at a smaller sub-block when all of them are Python cores, and
+  `rack.late_cables` says so.
+- `BiquadFilter` on `audiobiquad.Biquad`: the `synthio.Biquad` it runs on can
+  settle on a constant offset after a note instead of decaying to silence.
+
+## Playing and sequencing
+
+- Notes on their own frame with the graph on the audio pump, so `schedulable`
+  is True and a sequencer can time notes. It needs audiodsp's `audiograph`
+  setting a value at a frame inside a block.
+- More polyphony: a pool that grows past the voices it was built with, one
+  pool shared by several instruments, and notes queued on an
+  `audiopump.Events` for frame-exact sequencing.
+- An arpeggiator: a note source in front of a `VoicePool` that steps through
+  the keys you hold (up, down, random, over several octaves), so any
+  polyphonic instrument can arpeggiate.
+- A tempo that follows the host's transport in `audioinstruments._rack.adapter`.
+
+## Tests and docs
 
 - The MicroPython tests in CI, on a unix build with audiodsp and ulab; today
   they are run by hand before a merge.
 - The docs in the shared five sections: Get started, Guides, Reference, How it
   works and Changelog.
-- Board timings for every instrument. `docs/performance.md` has five instruments
-  measured on an ESP32-P4; the rest, and an S3 build, need the same run before
-  we say which are playable on a microcontroller.
-- More notes before stealing on a board: PolyA6, Vocoder330, String Ensemble and Compact
-  Organ hold one to three on an ESP32-P4. Lower each voice's cost, and put back effects a
-  board lost, such as a voice for Vocoder330's patches with no mic.
-- A patch change that plugs other cables takes 160 to 775 ms on an ESP32-P4, while the
-  screen and MIDI input wait. Find where that goes, and make it short enough to use mid-phrase.
-- Fast filter sweeps on the Poly80, Poly106 and Poly6: `BIQUAD_RAMP` closes the gap on the
-  StateVariableMono, and each of these wants its own listen before it moves.
-- Live output with the block deadline measured. `examples/play_audio.py`
-  already plays live through `board_config.pcm_out`; what's left is timing
-  the conversion to PCM and the device write against the block budget, and
-  writing it up in `docs/performance.md`.
-- Feedback cables without the block delay, where a loop is short: run the
-  modules inside a loop at a smaller sub-block when all of them are Python
-  cores, and say so in `rack.late_cables`.
-- `examples/hmi_board.py` on the audio pump. It renders on the interpreter's
-  thread, so a busy screen eats the audio's time; `examples/hmi_instrument.py
-  --pump` plays the graph on the pump's core instead, and this one should too.
-- Notes on their own frame with the graph on the audio pump. A note played in
-  a turn lands at the next block; with `audiograph` setting a value at a frame
-  inside a block, `schedulable` can be True and a sequencer can time notes.
-- Polyphony beyond the first cut: portamento between voices,
-  growing a pool past the voices it was built with, one pool shared by several
-  instruments, and notes queued on an `audiopump.Events` for frame-exact
-  sequencing.
-- An arpeggiator. A note source in front of a `VoicePool` that holds the keys you play
-  and steps through them as a pattern (up, down, random, over several octaves), so any
-  polyphonic instrument can arpeggiate; a voice patch has no hook on incoming notes today.
-- A tempo that follows the host's transport in `audioinstruments._rack.adapter`.
-- The trait tool for fixed-sound instruments: render a SoundFont preset
-  through the sampler with the same phrase and measure it the same way, so an
-  electric piano or a drum kit can be set beside a reference.
-- `BiquadFilter` on `audiobiquad.Biquad`: the `synthio.Biquad` it runs on can
-  settle on a constant offset after a note instead of decaying to silence.
