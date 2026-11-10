@@ -1276,9 +1276,11 @@ def test_docs_and_code_agree():
 
     from audioinstruments._rack.dsp import ensemble
 
-    text = Path("docs/instruments.md").read_text()
+    text = Path("docs/reference/instruments.md").read_text()
     section_match = re.search(r"## Playing the StringEnsemble.*?(?=\n## |\Z)", text, re.DOTALL)
-    assert section_match, "docs/instruments.md has no 'Playing the StringEnsemble' section"
+    assert section_match, (
+        "docs/reference/instruments.md has no 'Playing the StringEnsemble' section"
+    )
     section = section_match.group(0)
 
     # Every `NAME` (value) in the section.

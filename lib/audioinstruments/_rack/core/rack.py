@@ -48,7 +48,7 @@ class Rack:
     rendered. A patch with a loop cannot be ordered that way; the cable that
     closes the loop carries the source's previous block instead. Those
     cables are listed in ``late_cables`` after ``schedule()`` runs. See
-    docs/patching.md for what the one-block delay does to feedback patches.
+    docs/how-it-works/patching.md for what the one-block delay does to feedback patches.
     """
 
     def __init__(self, sample_rate=DEFAULT_SAMPLE_RATE, block_size=DEFAULT_BLOCK_SIZE):

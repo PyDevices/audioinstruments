@@ -107,6 +107,6 @@ on yours.
 
 ## A polyphonic instrument
 
-[polyphony.md](polyphony.md#what-it-costs) has what eight MonoOne voices cost
+[polyphony.md](../guides/polyphony.md#what-it-costs) has what eight MonoOne voices cost
 through `audioinstruments._rack.adapter`, at 64, 128 and 256 frames, on both interpreters.
 `examples/poly_bench.py` measures it on yours.

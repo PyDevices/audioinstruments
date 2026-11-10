@@ -1707,10 +1707,13 @@ def test_docs_and_code_agree():
     import re
 
     doc_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "instruments.md"
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "docs",
+        "reference",
+        "instruments.md",
     )
     if not os.path.exists(doc_path):
-        pytest.skip("docs/instruments.md not found")
+        pytest.skip("docs/reference/instruments.md not found")
 
     with open(doc_path, "r") as f:
         content = f.read()

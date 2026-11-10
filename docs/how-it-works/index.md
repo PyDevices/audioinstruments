@@ -1,7 +1,7 @@
 # Overview
 
 The whole tour: what is in the rack, how a patch is rendered, and where each part
-is documented. The [README](../README.md) has the short version.
+is documented. The [README](https://github.com/PyDevices/audioinstruments/blob/main/README.md) has the short version.
 
 Every instrument in audioinstruments is a patch on `audioinstruments._rack`, a virtual Eurorack
 modular synthesizer in Python. Twenty modules
@@ -13,7 +13,7 @@ MicroPython builds that carry audiodsp and ulab. On a build with
 graph and renders as one call a block, which is what plays in real time on
 an ESP32-P4. Every instrument built on the rack does this; only the
 SoundFont players, which are not racks, do not
-([docs/architecture.md](architecture.md#a-graph-fragment)).
+([docs/how-it-works/architecture.md](architecture.md#a-graph-fragment)).
 
 ```python
 from audioinstruments._rack import MidiCVModule, Modular100VCO, Modular100VCF, Modular100VCA, Modular100EnvLFO, Rack
@@ -57,7 +57,7 @@ inst.note_on(60, 100)
 inst.note_on(64, 100)
 ```
 
-[docs/polyphony.md](polyphony.md) has the details, what it costs and how
+[docs/guides/polyphony.md](../guides/polyphony.md) has the details, what it costs and how
 the steals were checked for clicks.
 
 ## The Poly106
@@ -74,7 +74,7 @@ inst.note_on(57, 100)
 ```
 
 `python examples/poly106_demo.py` plays a short piece on it into
-`wav_exports/poly106_demo.wav`. [docs/instruments.md](instruments.md)
+`wav_exports/poly106_demo.wav`. [docs/reference/instruments.md](../reference/instruments.md)
 has its controls, its cost, and how an instrument is built.
 
 ## SoundFonts, MIDI and a step sequencer
@@ -82,7 +82,7 @@ has its controls, its cost, and how an instrument is built.
 `voice="soundfont"` and `voice="soundfont_drums"` play a SoundFont 2 bank you
 supply: its melodic presets, and its kits with the pad keys 36 to 51 answering
 by nearest voice. A `MidiDispatcher` plays them from MIDI bytes or a Standard
-MIDI File, with the drums on channel 10. [docs/soundfont.md](soundfont.md)
+MIDI File, with the drums on channel 10. [docs/guides/soundfont.md](../guides/soundfont.md)
 has the options, and `python examples/soundfont_demo.py` plays a short phrase
 from a bank in `~/soundfonts/`.
 
@@ -90,7 +90,7 @@ from a bank in `~/soundfonts/`.
 
 `audioinstruments.panel.create("poly106", 48000)` wraps an instrument for a
 control panel: macros on the MIDI scale, patch names, bypass and reload, and
-a callback when a controller moves something. [docs/panel.md](panel.md) lists
+a callback when a controller moves something. [docs/guides/panel.md](../guides/panel.md) lists
 what it has.
 
 ## Loading only what you use
@@ -149,7 +149,7 @@ clocks patch anywhere: 1.0 is +10 V, Eurorack-level audio and bipolar CV are
 ±0.5, gates are 0 or 1, pitch is 1 V per octave at 0.1 per octave. An input
 with nothing plugged in reads its panel normal. The rack orders modules by
 their cables; a cable that closes a feedback loop carries its source's
-previous block. [docs/patching.md](patching.md) has the details and
+previous block. [docs/how-it-works/patching.md](patching.md) has the details and
 what the one-block delay does to self-FM and filter feedback.
 
 Linear filters, delays, reverbs, overdrive, the modal and string resonators,
@@ -158,12 +158,12 @@ C nodes through a small bridge; the VCO and the ladders need audiodsp 0.6.8
 and fall back to Python cores on an older one. The wave blender, the acid
 filter and a few other cores stay in Python because they need control inside
 the block or a model audiodsp does not have; the CV generators are vector
-code. [docs/audiodsp.md](audiodsp.md) says what
+code. [docs/how-it-works/audiodsp.md](audiodsp.md) says what
 is where and what the rack would still like from audiodsp. Nothing allocates in
-a block path, in the sense [docs/allocation.md](allocation.md) spells
+a block path, in the sense [docs/how-it-works/allocation.md](allocation.md) spells
 out for each interpreter, and the tests enforce it.
-[docs/performance.md](performance.md) has measured block times, and
-[docs/architecture.md](architecture.md) the layout of the code.
+[docs/how-it-works/performance.md](performance.md) has measured block times, and
+[docs/how-it-works/architecture.md](architecture.md) the layout of the code.
 
 ## Running it
 
@@ -202,8 +202,8 @@ controls do what they say, that the bridge to audiodsp runs in lockstep,
 and that no module allocates an array while processing a block. There are
 no audio targets: an instrument's trait file holds what its own sound
 measured when it was accepted, so a change that moves it shows up
-([instruments.md](instruments.md#traits)). [CONTRIBUTING.md](../CONTRIBUTING.md) has the repo's rules and
-[ROADMAP.md](../ROADMAP.md) what is planned.
+([instruments.md](../reference/instruments.md#traits)). [CONTRIBUTING.md](https://github.com/PyDevices/audioinstruments/blob/main/CONTRIBUTING.md) has the repo's rules and
+[ROADMAP.md](https://github.com/PyDevices/audioinstruments/blob/main/ROADMAP.md) what is planned.
 
 ## License
 

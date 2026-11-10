@@ -62,7 +62,7 @@ them.
 ndarray subclass reports every new array an operation creates) and
 `tests/mpy/test_alloc.py` checks the vector cores on MicroPython (bytes per
 block must not grow with the block size). Plant `tmp = src * 0.5` in a
-process path to see them fail. [docs/allocation.md](docs/allocation.md)
+process path to see them fail. [docs/how-it-works/allocation.md](docs/how-it-works/allocation.md)
 explains what can and cannot be allocation-free on each interpreter.
 
 ## audiodsp first, Python where it has to be
@@ -71,7 +71,7 @@ Where an audiodsp node does a module's job, use it through
 `core/bridge.py`. Keep Python only for what audiodsp cannot give: per-sample
 control (sync, linear FM, PWM, cutoff under a fast envelope), a model
 audiodsp lacks, or a feedback loop inside the module.
-[docs/audiodsp.md](docs/audiodsp.md) lists what is on which side and why.
+[docs/how-it-works/audiodsp.md](docs/how-it-works/audiodsp.md) lists what is on which side and why.
 Do not write a pure-Python copy of a node audiodsp has. Nothing under
 `lib/audioinstruments/_rack` imports the faces or `audioeffects`: the rack
 depends on audiodsp alone. The faces, `lib/audioinstruments/<name>.py`, are
@@ -105,12 +105,12 @@ A one-voice instrument with legato and portamento is a mono pool
 play its line on several voices (`mono=True, unison=N`), and `pool.mono` can
 be switched while it plays. Every voice has a `note` jack, its pitch without
 the bend, for a glide. It is all in
-[docs/polyphony.md](docs/polyphony.md#one-voice-mono-mode).
+[docs/guides/polyphony.md](docs/guides/polyphony.md#one-voice-mono-mode).
 
 ## Instruments
 
 An instrument in `adapter.ALL` follows the Poly106
-([docs/instruments.md](docs/instruments.md)): a family of modules, a voice
+([docs/reference/instruments.md](docs/reference/instruments.md)): a family of modules, a voice
 patch with its presets in `lib/audioinstruments/_rack/instruments/`, a built-in effect as a
 core in `dsp/`, a spec in `tools/traits.py` and a trait file, and tests on
 both interpreters. Its sound is built from the original's controls; there is
