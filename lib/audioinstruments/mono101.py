@@ -7,7 +7,7 @@
 NAME = "mono101"
 DISPLAY_NAME = "Mono101"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2.dev2"
+VERSION = "0.5.2.dev3"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

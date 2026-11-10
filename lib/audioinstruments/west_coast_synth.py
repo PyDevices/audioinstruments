@@ -7,7 +7,7 @@
 NAME = "west_coast_synth"
 DISPLAY_NAME = "WestCoastSynth"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2.dev2"
+VERSION = "0.5.2.dev3"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

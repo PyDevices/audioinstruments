@@ -4,6 +4,8 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.2.dev3
+
 - The SoundFont instruments have `bend_range` (semitones, 2.0 by default) and `tuning` (semitones, 0.0 by default): a host can set how far the pitch bend moves a note, or tune every note, while it sounds. `reset()` puts them back.
 
 ## 0.5.2.dev2
