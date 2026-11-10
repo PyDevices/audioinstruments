@@ -465,6 +465,10 @@ class Fragment:
     def changed(self, name):
         fns = self.binds.get(name)
         if fns:
+            gathered = self._c._gathered
+            if gathered is not None:
+                gathered.extend(fns)
+                return
             for fn in fns:
                 fn()
 
@@ -562,6 +566,7 @@ class CompiledRack:
         self.elapsed = 1
         self.rendered = 1
         self._turn = set()
+        self._gathered = None  # the binds a gather() has put off, in the order they fired
         self._build(groups, graph)
         self._prime()
 
@@ -1025,6 +1030,35 @@ class CompiledRack:
             self._depth -= 1
             if self._depth == 0:
                 self.graph.commit()
+
+    def gather(self):
+        """Put off the binds that a run of ``set_param`` calls fires until ``release()``,
+        then run each once. A patch change sets dozens of parameters, and a bind that
+        reads several of them would otherwise run once for each. Gathers nest; only
+        the outermost releases."""
+        if self._gathered is None:
+            self._gathered = []
+            self._gathers = 1
+        else:
+            self._gathers += 1
+
+    def release(self):
+        """Run the binds put off since ``gather()``, each once, in the order of the last
+        time each fired: the order in which they would have last run."""
+        self._gathers -= 1
+        if self._gathers:
+            return
+        fired = self._gathered
+        self._gathered = None
+        seen = set()
+        last = []
+        for i in range(len(fired) - 1, -1, -1):
+            fn = fired[i]
+            if fn not in seen:
+                seen.add(fn)
+                last.append(fn)
+        for i in range(len(last) - 1, -1, -1):
+            last[i]()
 
     def _heard(self):
         """Run the ``after_run`` hooks on the blocks rendered since they last ran, if any;
