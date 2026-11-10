@@ -26,8 +26,6 @@ on a virtual rack, rendered a block at a time on audiodsp.
 - Feedback cables without the block delay, where a loop is short: modules in
   a loop run at a smaller sub-block when all of them are Python cores, and
   `rack.late_cables` says so.
-- `BiquadFilter` on `audiobiquad.Biquad`: the `synthio.Biquad` it runs on can
-  settle on a constant offset after a note instead of decaying to silence.
 
 ## Playing and sequencing
 
