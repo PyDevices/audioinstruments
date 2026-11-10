@@ -78,6 +78,7 @@ class Duo20(Module):
     #: to 5 kHz (HPF) and 40 Hz to 12 kHz (LPF), and a CV of 0.1 moves a cutoff an
     #: octave: the MG, the sample and hold and the envelopes swing it by up to five octaves,
     #: so a patch that cables one in sets the cutoff to sit where that reach is musical.
+    #: A patch's ``volume`` leaves a two-note chord inside the voice mix's headroom.
     PRESETS = (
         ("Init", {}),
         (
@@ -101,7 +102,7 @@ class Duo20(Module):
                 "eg2_decay": 0.35,
                 "eg2_sustain": 0.88,
                 "eg2_release": 0.2,
-                "volume": 1.06,
+                "volume": 1.01,
             },
         ),
         (
@@ -192,7 +193,7 @@ class Duo20(Module):
                 "eg2_decay": 1.4,
                 "eg2_sustain": 0.0,
                 "eg2_release": 1.4,
-                "volume": 1.09,
+                "volume": 1.04,
             },
         ),
         (
@@ -214,7 +215,7 @@ class Duo20(Module):
                 "eg2_release": 0.14,
                 "vco1_level": 1.0,
                 "vco2_level": 1.0,
-                "volume": 1.05,
+                "volume": 1.02,
             },
         ),
         (
@@ -305,7 +306,7 @@ class Duo20(Module):
                 "eg2_attack": 0.01,
                 "eg2_sustain": 0.9,
                 "eg2_release": 0.3,
-                "volume": 1.07,
+                "volume": 1.02,
             },
         ),
         (

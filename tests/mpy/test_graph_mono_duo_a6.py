@@ -62,6 +62,9 @@ def test_every_patch_plays_and_parks_after():
             for note in (48, 60):
                 inst.note_on(note, 110)
             top = pulled(inst, 30)
+            if top <= 300:
+                # a pad or a wind swells over a second and more: hear the whole swell
+                top = max(top, pulled(inst, 440))
             assert 300 < top < 32767, (voice, patch, top)
             inst.all_notes_off()
             for _ in range(80):

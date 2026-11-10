@@ -208,12 +208,17 @@ def lfo_cycles(rate, seconds=3.0):
 
 
 def level_table():
-    """Each patch plays notes 48, 52, 55 and 60 for 2.5 s; returns (table, median)."""
-    inst = adapter.create(RATE, voice="polyxa", output="pull")
+    """Each patch plays notes 48, 52, 55 and 60 for 2.5 s; returns (table, median).
+
+    Each patch plays on an instrument of its own, so its level is its own: played one
+    after another, a patch hears what the last one left (a tail still releasing, the
+    voices the allocator turns to next), which moves the figure by up to 3 dB.
+    """
     levels = []
     w = int(RATE * 0.1)
     n_blocks = int(2.5 * RATE / BLOCK)
     for p in range(len(polyxa.PRESETS)):
+        inst = adapter.create(RATE, voice="polyxa", output="pull")
         inst.program_change(p)
         for n in (48, 52, 55, 60):
             inst.note_on(n, 100)
@@ -222,17 +227,13 @@ def level_table():
             inst.rack.step()
             _, data = audiocore.get_buffer(inst.output)
             chunks.append(np.frombuffer(bytes(data), dtype=np.int16))
-        inst.all_notes_off()
-        for _ in range(20):
-            inst.rack.step()
-            audiocore.get_buffer(inst.output)
+        inst.deinit()
         x = np.concatenate(chunks).reshape(-1, 2)
         s = (x[:, 0].astype(np.float64) ** 2 + x[:, 1].astype(np.float64) ** 2) * 0.5
         cs = np.cumsum(np.insert(s, 0, 0))
         w_means = (cs[w:] - cs[:-w]) / w
         max_rms = np.sqrt(np.max(w_means))
         levels.append(20.0 * np.log10(max_rms) if max_rms > 0 else -100.0)
-    inst.deinit()
     med = float(np.median(levels))
     table = [(i, polyxa.PRESETS[i][0], levels[i], levels[i] - med) for i in range(len(levels))]
     return table, med
