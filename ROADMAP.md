@@ -12,7 +12,8 @@ on a virtual rack, rendered a block at a time on audiodsp.
   Organ hold one to three on an ESP32-P4. Lower each voice's cost, and give
   back what a board lost, such as Vocoder330's patches with no mic.
 - Patch changes short enough to use mid-phrase. One that plugs other cables
-  takes 160 to 775 ms on an ESP32-P4, while the screen and MIDI input wait.
+  still takes 115 to 380 ms on an ESP32-P4 for most monosynths and the
+  Patch2600, while the screen and MIDI input wait.
 - Live output with the block deadline measured: the conversion to PCM and the
   device write in `examples/play_audio.py`, timed against the block budget
   and written up in `docs/how-it-works/performance.md`.

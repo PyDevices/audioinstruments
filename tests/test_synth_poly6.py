@@ -566,7 +566,8 @@ def test_effect_modes_controls_and_wire():
         left, right = outs[m]
         assert rms(left - right) > 0.1 * rms(left), m
 
-    # fx_intensity 0 is a wire: the voice mix, 256 frames late, in every mode
+    # fx_intensity 0 is a wire: the voice mix, 256 frames late, in every mode,
+    # once the 20 ms walk of the mix from the built value has landed
     for mode in ("chorus", "phase", "ensemble"):
         inst_wire = make()
         set_control(inst_wire, "effect", mode)
@@ -579,7 +580,8 @@ def test_effect_modes_controls_and_wire():
             mixes.append(inst_wire.voice_pool.mix.left_out.buffer.copy())
         out_sig = np.concatenate(outs_w)
         mix_sig = np.concatenate(mixes)
-        diff = out_sig[512:] - mix_sig[256:-256]
+        walk = 1024  # 20 ms at 48 kHz, in whole 128-frame blocks
+        diff = out_sig[512 + walk :] - mix_sig[256 + walk : -256]
         assert 20.0 * np.log10(rms(diff) + 1e-12) < -80.0, mode
 
 

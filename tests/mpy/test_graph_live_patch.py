@@ -56,3 +56,25 @@ def test_a_change_at_a_sample_position_lands_on_its_block():
         return
     lp = _lp()
     assert lp.boundary(2) == lp.boundary(1)
+
+
+def test_a_compile_runs_each_fragment_once():
+    import audioinstruments._rack.adapter as adapter
+
+    inst = adapter.create(48000, voice="poly6", engine="graph", output="pull", voices=2)
+    runs = {}
+    for module in inst.rack.modules:
+        fragment = getattr(module, "fragment", None)
+        if fragment is None:
+            continue
+
+        def counted(f, module=module, fragment=fragment):
+            runs[module.id] = runs.get(module.id, 0) + 1
+            return fragment(f)
+
+        module.fragment = counted
+    inst._recompile()
+    inst.deinit()
+    assert runs
+    for count in runs.values():
+        assert count == 1, runs

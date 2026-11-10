@@ -120,3 +120,11 @@ def test_a_module_that_runs_in_python_is_refused_and_the_patch_plays_on():
     finally:
         audiopump.shutdown()
         compiled.deinit()
+
+
+def test_a_swap_puts_collection_off_instead_of_collecting():
+    """A collection costs 100 ms and more on a board with a large heap. The swap turns
+    automatic collection off while the pump is parked, and back on after."""
+    collections, on = ps.collections()
+    assert collections == 0
+    assert on is False

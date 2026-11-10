@@ -313,6 +313,65 @@ def cost(voice, swaps=8):
     return nodes, total / swaps - held_ms, held_ms, max(held)
 
 
+class _WatchedGc:
+    """``gc`` as the swap sees it, counting collections."""
+
+    def __init__(self, gc):
+        self._gc = gc
+        self.collections = 0
+
+    def collect(self):
+        self.collections += 1
+        self._gc.collect()
+
+    def isenabled(self):
+        return self._gc.isenabled()
+
+    def enable(self):
+        self._gc.enable()
+
+    def disable(self):
+        self._gc.disable()
+
+
+def collections():
+    """A recompile of the Poly6 while the pump plays it. Returns ``(collections, on)``:
+    how many times the swap collected, and whether automatic collection was on while
+    the pump stood parked."""
+    import gc
+
+    import audioinstruments._rack.adapter as adapter
+
+    inst = adapter.create(48000, voice="poly6", output="graph")
+    pump = _Pump(inst.output, 0x7FFFFFFF, keep=False)
+    inst.note_on(60, 100)
+    for _ in range(4):
+        inst.fill()
+        pump.turn()
+    watched = _WatchedGc(gc)
+    park = graph_mod._park
+    on = []
+
+    def watched_park():
+        on.append(gc.isenabled())
+        return park()
+
+    graph_mod.gc = watched
+    graph_mod._park = watched_park
+    try:
+        with inst._lock:
+            inst._recompile()
+    finally:
+        graph_mod.gc = gc
+        graph_mod._park = park
+    after = gc.isenabled()
+    audiopump.shutdown()
+    inst.deinit()
+    if not after:
+        raise RuntimeError("the swap left automatic collection off")
+    return watched.collections, on[0]
+
+
 def main():
     first, at, _ = check()
     print("cable: swap at block %d, first differing block %s" % (at, first))
