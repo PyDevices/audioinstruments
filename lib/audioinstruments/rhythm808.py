@@ -7,7 +7,7 @@
 NAME = "rhythm808"
 DISPLAY_NAME = "Rhythm808"
 CATEGORIES = ("Drum",)
-VERSION = "0.5.2.dev1"
+VERSION = "0.5.2.dev2"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
