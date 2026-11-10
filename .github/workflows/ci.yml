@@ -90,7 +90,7 @@ jobs:
   # change the result, so they skip the build.
   mpy:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 15
     env:
       MICROPYTHON_REF: v1.29.0
       ULAB_REF: 6.7.3
