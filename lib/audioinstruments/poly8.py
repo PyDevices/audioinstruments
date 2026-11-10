@@ -7,7 +7,7 @@
 NAME = "poly8"
 DISPLAY_NAME = "Poly8"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2.dev2"
+VERSION = "0.5.2.dev3"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
