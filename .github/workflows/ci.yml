@@ -169,5 +169,6 @@ jobs:
         run: |
           MP="$GITHUB_WORKSPACE/micropython/ports/unix/build-standard/micropython"
           "$MP" -c "import ulab, audiocore, audiograph; print('modules ok')"
-          timeout 900 "$MP" tests/mpy/run.py | tee "$RUNNER_TEMP/mpy.txt"
+          # The unix port's default heap is too small for the instruments.
+          timeout 900 "$MP" -X heapsize=256M tests/mpy/run.py | tee "$RUNNER_TEMP/mpy.txt"
           grep -Eq '^[0-9]+ tests, 0 failures$' "$RUNNER_TEMP/mpy.txt"
