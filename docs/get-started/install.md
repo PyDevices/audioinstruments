@@ -18,9 +18,9 @@ uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
 git clone https://github.com/PyDevices/audioinstruments && cd audioinstruments
 ```
 
-The `--index-strategy unsafe-best-match` flag matters: TestPyPI holds an old
-release of `omnipython-audiodsp`, and without the flag uv installs that
-instead of the current release.
+The `--index-strategy unsafe-best-match` flag matters: uv looks in the extra
+index first, and PyPI holds only a placeholder for `omnipython-audiodsp`, so
+without the flag uv installs that instead of the current release.
 
 Run your programs from the checkout with `PYTHONPATH=lib`, so
 `import audioinstruments` finds the package.
