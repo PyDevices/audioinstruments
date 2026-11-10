@@ -46,7 +46,8 @@ What a fragment can say (every call is on ``f``):
   turns on and off: a sub-oscillator a patch has no use for is skipped.
 - ``before_run(fn)`` and ``after_run(fn)`` run every block around the graph
   call; the latter gets the mask of groups whose envelopes are sounding.
-  ``on_reset(fn)`` runs in place of the module's ``reset()``.
+  ``on_reset(fn)`` runs in place of the module's ``reset()``, and the
+  fragment's mixers then take their gains at once rather than ramp to them.
 - ``prime(fn)`` runs ``fn(run)`` once before the first block, ``run(mask)``
   rendering one block of some groups into nothing, for state a node has no
   parameter for (an oscillator's starting phase).
@@ -129,6 +130,14 @@ _DOUBLE = _F32[0] != 0.1
 
 ALWAYS = 255
 MAX_GROUPS = 32
+
+try:
+    import audiograph as _ag
+
+    #: Nodes whose only state is a gain ramp, reset with the module (see ``do_reset``).
+    _RAMPED = (_ag.MIX, _ag.PAN)
+except (ImportError, AttributeError):
+    _RAMPED = ()
 
 #: Share graph buffers between wires that are not live together. A test that
 #: reads a wire by its id after a run sets this False to keep every wire.
@@ -462,6 +471,14 @@ class Fragment:
     def do_reset(self):
         for fn in self.resets:
             fn()
+        # A mixer ramps a gain that moved over its next block. A parked voice runs no
+        # block, so a patch changed while it is parked would fade the old patch's gains
+        # into the first block of its next note, where the rack takes the new ones at
+        # once: unprime them, as the rack's reset() leaves nothing to ramp from.
+        graph = self._c.graph
+        for kind, node in zip(self.kinds, self.nodes):
+            if kind in _RAMPED:
+                graph.reset(node)
 
 
 class _Sizer:
