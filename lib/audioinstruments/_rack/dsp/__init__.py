@@ -9,7 +9,7 @@ SpringReverbCore, OverdriveCore, ModalResonatorCore, StringResonatorCore, the lo
 filters and the macro oscillator's chord and VA models. Cores in Python: the wave
 blender, the acid filter and nonlinear two-pole filters, the
 envelope and function generators, the sequencers, noise, sample and hold,
-glide and the granular engine. docs/audiodsp.md says why each is where it is.
+glide and the granular engine. docs/how-it-works/audiodsp.md says why each is where it is.
 """
 
 from .amplifier import AmplifierCore

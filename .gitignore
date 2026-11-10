@@ -17,3 +17,9 @@ wav_exports/
 
 # Design notes kept beside a checkout, not in it
 briefs/
+
+# Generated on every docs build
+docs/_build/
+docs/reference/index.rst
+docs/reference/audio*.rst
+.venv-*/

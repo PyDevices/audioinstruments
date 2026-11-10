@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 """Synthesizers, organs and electric pianos, each one a patch on a virtual rack.
 
-Each instrument is a module, ``audioinstruments.<name>``, exposing:
+Each instrument is a module, ``audioinstruments.<name>``, exposing::
 
     MACRO_LABELS  tuple of names, one per macro parameter
     MACRO_MODES   {index: "UNIPOLAR" | "BIPOLAR" | "TOGGLE"}

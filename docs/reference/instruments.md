@@ -2,7 +2,7 @@
 
 An instrument is a voice patch with its presets, ready to play from
 `audioinstruments._rack.adapter.create(48000, voice=name)`. Its name is in `adapter.ALL`, it
-answers the audio component contract ([polyphony.md](polyphony.md)), and its
+answers the audio component contract ([polyphony.md](../guides/polyphony.md)), and its
 sound is pinned by a trait file. The Poly106 is the first one, and the
 pattern the others follow.
 
@@ -50,7 +50,7 @@ bridge and add nothing to that.
 Wherever audiodsp has `audiograph` (CPython from audiodsp 0.6.9.dev4, and
 the MicroPython and CircuitPython builds), `create()` gives you the same
 instrument compiled to one C graph: every module of the patch declares its
-nodes as a graph fragment ([architecture.md](architecture.md#a-graph-fragment)),
+nodes as a graph fragment ([architecture.md](../how-it-works/architecture.md#a-graph-fragment)),
 the rack joins them along its cables, and one call renders a block. That is
 what holds real time on an ESP32-P4, where the rack's Python between the
 modules does not. `inst.engine` says which you got, `"graph"` or `"rack"`;
@@ -60,7 +60,7 @@ graph and raises where the build has no `audiograph`. Every instrument on the ra
 `engine`. The sections below describe the graph form of the instruments where
 it differs audibly from the rack's. A pool of more than 32 voices shares
 graph groups, two or three voices to a group, as long as its voices need no
-groups of their own ([polyphony.md](polyphony.md#how-many-voices-a-graph-holds));
+groups of their own ([polyphony.md](../guides/polyphony.md#how-many-voices-a-graph-holds));
 a voice patch with switches, like the Poly106's, still raises
 `TooManyGroups` under `engine="graph"` past what fits.
 
@@ -73,7 +73,7 @@ control. It differs where it was built to: the chorus runs at the block, so
 `inst.latency_samples` is 0; a steal fades over one block through the mixer's
 gain ramp. A voice parks by the rack's rule (30 ms of quiet). The voice takes the
 voice mix's gain and the output's scale into its VCA and rounds once, as the rack
-does ([architecture.md](architecture.md#rounding-once)): under a quiet ring its white floor is 0.48 counts rms
+does ([architecture.md](../how-it-works/architecture.md#rounding-once)): under a quiet ring its white floor is 0.48 counts rms
 against the rack's 0.89 (it was 0.89 with three roundings), so a quiet, dark note
 reads a lower spectral centroid than the rack's. Each voice scatters its
 oscillators' start phases before the first note, as the rack's do, and a cable
@@ -96,7 +96,7 @@ voice does not click.
 
 `examples/poly_bench.py poly106` renders 1024-frame buffers with six notes
 held (on the machine and interpreters
-[polyphony.md](polyphony.md#what-it-costs) names, 2026-10-21):
+[polyphony.md](../guides/polyphony.md#what-it-costs) names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
@@ -148,7 +148,7 @@ change what it sends, so B at 0 is a pure modulator. The envelope into A's
 pitch with sync on is the sync sweep; B at audio rate into A's pitch is FM;
 B in LO into A's width is a slow PWM that differs from voice to voice. The
 cutoff moves every sample on an audiodsp whose ladder node takes a cutoff
-input ([audiodsp.md](audiodsp.md)), so B at audio rate into the filter is
+input ([audiodsp.md](../how-it-works/audiodsp.md)), so B at audio rate into the filter is
 filter FM; on an older one it buzzes at the block rate.
 
 One **LFO** (0.1 Hz to 25 Hz, sawtooth, triangle and square, several summed)
@@ -160,8 +160,8 @@ full wheel), their widths (0.45) and the cutoff (two octaves).
 `glide` (5 ms to 5 s) slides each voice from its own last note, so a chord
 change slides every voice from wherever it was; the bend rides on top,
 unslid. `unison` stacks every voice on one note in mono mode
-([polyphony.md](polyphony.md#unison-in-mono-mode)); a sixth note in poly
-mode steals as [polyphony.md](polyphony.md#what-a-steal-sounds-like) describes. Three
+([polyphony.md](../guides/polyphony.md#unison-in-mono-mode)); a sixth note in poly
+mode steals as [polyphony.md](../guides/polyphony.md#what-a-steal-sounds-like) describes. Three
 controls are added: `slop`, which gives each voice its own tuning offset (up
 to 10 cents at 10), cutoff offset (a sixth of an octave) and a slow drift
 under 0.3 Hz, the same on every run, and `vel_vca` and `vel_vcf` for a
@@ -219,7 +219,7 @@ rounding of the wire. Where it differs, and why:
   a second node, which restarts the phase of every node it has, so the rack loses
   B's starting phase; the graph keeps it.
 - The voice takes the voice mix's gain and the output's scale into its VCA and
-  rounds once, as the rack does ([architecture.md](architecture.md#rounding-once)). Under a quiet
+  rounds once, as the rack does ([architecture.md](../how-it-works/architecture.md#rounding-once)). Under a quiet
   ring its white floor is the rack's, 0.23 and 0.29 counts rms on the FM Bell
   and Soft Keys against the rack's 0.23 and 0.29 (0.43 and 0.70 when it rounded three
   times). A dark note (a low key through a closed filter) has little above 1 kHz,
@@ -238,7 +238,7 @@ the rack on the same notes.
 ### What it costs
 
 `examples/poly_bench.py poly5` renders 1024-frame buffers with five notes held
-(on the machine and interpreters [polyphony.md](polyphony.md#what-it-costs)
+(on the machine and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs)
 names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
@@ -306,8 +306,8 @@ two depths add before they are squared.
 
 `key_assign` is `"poly"`, `"unison"` or `"chord"`. **Unison** plays every voice
 on one note in mono mode, with the note stack and legato that
-[polyphony.md](polyphony.md#unison-in-mono-mode) describes; in poly a seventh
-note steals as [polyphony.md](polyphony.md#what-a-steal-sounds-like) does.
+[polyphony.md](../guides/polyphony.md#unison-in-mono-mode) describes; in poly a seventh
+note steals as [polyphony.md](../guides/polyphony.md#what-a-steal-sounds-like) does.
 **Chord** is chord memory: one key plays the stored chord, which moves in
 parallel with the key, legato, with the mono line's stack. The chord is
 `chord`, up to six intervals in semitones from the key, `(0, 4, 7)` in a fresh
@@ -376,7 +376,7 @@ it there. Where it differs, and why:
   rack, and they come out a few percent apart.
 - The voice takes the voice mix's gain and the output's scale into its VCA (or
   its tremolo's, when the patch has one) and rounds once, as the rack does
-  ([architecture.md](architecture.md#rounding-once)). The effects are linear, so the scale passes
+  ([architecture.md](../how-it-works/architecture.md#rounding-once)). The effects are linear, so the scale passes
   through them. Under a quiet ring the white floor is 0.38 counts rms against the
   rack's 0.56 (0.71 when it rounded three times). A dark note's spectral centroid
   is as sensitive to that floor as a measure can be, so it reads a little apart
@@ -395,7 +395,7 @@ the rack on the same notes.
 
 `examples/poly_bench.py poly6` renders 1024-frame buffers with six notes held,
 in the fresh patch with its ensemble (on the machine and interpreters
-[polyphony.md](polyphony.md#what-it-costs) names, 2026-10-21):
+[polyphony.md](../guides/polyphony.md#what-it-costs) names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
@@ -457,7 +457,7 @@ louder (5 dB on a saw at cutoff 5). The cutoff takes the envelope you pick with
 either way), the key (`vcf_kybd` 10 is an octave per octave from C4, from the
 glided pitch) and the bender (`bend_vcf`, two octaves either way at a full
 bend). The cutoff moves every sample on an audiodsp whose ladder node takes a
-cutoff input ([audiodsp.md](audiodsp.md)); on an older one it steps once a
+cutoff input ([audiodsp.md](../how-it-works/audiodsp.md)); on an older one it steps once a
 block. The HPF's cutoff always steps once a block, which at 6 dB per octave
 and no resonance you do not hear.
 
@@ -481,8 +481,8 @@ rides on top unslid.
 last), `"poly2"` (a round robin over all eight voices, so releases ring until
 the turn comes round), `"unison"` (one note at a time on every voice) or
 `"solo"` (one note on one voice, the last key sounding). Unison, solo and what
-a ninth note does are in [polyphony.md](polyphony.md#unison-in-mono-mode) and
-[polyphony.md](polyphony.md#what-a-steal-sounds-like). Three controls are
+a ninth note does are in [polyphony.md](../guides/polyphony.md#unison-in-mono-mode) and
+[polyphony.md](../guides/polyphony.md#what-a-steal-sounds-like). Three controls are
 added: `slop`, which gives each voice its own tuning offset on each VCO (up to
 10 cents at 10), its own cutoff offset (a sixth of an octave) and a slow drift
 under 0.3 Hz, the same on every run, and `vel_vca` and `vel_vcf` for a velocity
@@ -500,7 +500,7 @@ so `inst.latency_samples` is 0.
 One thing differs from the original: its 12 dB slope does not self-oscillate,
 where this one does. The program memory, split and layer, the arpeggiator, the tape interface and the
 external inputs are not built; the arpeggiator is in the
-[roadmap](../ROADMAP.md).
+[roadmap](https://github.com/PyDevices/audioinstruments/blob/main/ROADMAP.md).
 
 `examples/poly8_demo.py` plays eleven of the patches with chords, a melody, an
 arpeggio and a bass line, writes `wav_exports/poly8_demo.wav`, and checks that
@@ -535,7 +535,7 @@ board's rounding. Where they differ, and why:
   round a fraction of a cent apart; Sync Lead's sync turns that into timing, and
   it is held to the rack's level and brightness.
 - The voice takes the voice mix's gain and the output's scale into its VCA and
-  rounds once, as the rack does ([architecture.md](architecture.md#rounding-once)): a held note's
+  rounds once, as the rack does ([architecture.md](../how-it-works/architecture.md#rounding-once)): a held note's
   white floor is 0.55 counts rms against the rack's 0.55 (0.83 when it rounded three
   times). A unison patch sums voices that each rounded, so its floor stays about
   twice the rack's (0.89 against 0.44). A voice parks on a whole 27 counts of the
@@ -551,7 +551,7 @@ board's rounding. Where they differ, and why:
 ### What it costs
 
 `examples/poly_bench.py poly8` renders 1024-frame buffers with eight notes held
-(on the machine and interpreters [polyphony.md](polyphony.md#what-it-costs)
+(on the machine and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs)
 names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
@@ -658,9 +658,9 @@ patch, 0.3 at 10, about 30 cents at the outer voices; it does nothing in
 `"poly"`. `portamento` is the time of one glide, from 5 ms to 5 s
 (`PORTA_RANGE`), in both modes. Every voice glides from its own last note, and
 both VCOs and the filter's key follow read the glided pitch. Unison, what a ninth
-note does and portamento are in [polyphony.md](polyphony.md#unison-in-mono-mode),
-[polyphony.md](polyphony.md#what-a-steal-sounds-like) and
-[polyphony.md](polyphony.md#portamento).
+note does and portamento are in [polyphony.md](../guides/polyphony.md#unison-in-mono-mode),
+[polyphony.md](../guides/polyphony.md#what-a-steal-sounds-like) and
+[polyphony.md](../guides/polyphony.md#portamento).
 
 Three controls are added: `slop`, which gives each voice its own tuning offset on
 each VCO (up to 10 cents at 10, `SLOP_PITCH`), its own cutoff offset (a sixth of
@@ -753,7 +753,7 @@ rounding. Where they differ, and why:
   round a fraction of a cent apart; Sync Lead's sync turns that into timing, and
   it is held to the rack's level and brightness.
 - The voice takes the voice mix's gain and the output's scale into its VCA and
-  rounds once, as the rack does ([architecture.md](architecture.md#rounding-once)).
+  rounds once, as the rack does ([architecture.md](../how-it-works/architecture.md#rounding-once)).
   The DC block after the voices is linear, so the scale passes through it. The
   unison patch sums voices that each rounded, so its floor stays above the rack's:
   0.94 counts rms against 0.73 (1.04 when it rounded three times).
@@ -764,7 +764,7 @@ rounding. Where they differ, and why:
 ### What it costs
 
 `examples/poly_bench.py polyxa` renders 1024-frame buffers with eight notes held
-(on the machine and interpreters [polyphony.md](polyphony.md#what-it-costs)
+(on the machine and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs)
 names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
@@ -811,7 +811,7 @@ The controls use the panel's own units: levels 0 to 100, bipolar amounts -100 to
 each patch is that list with a few controls changed. Pool controls (`kb_mode`,
 `unison`, `unison_detune`, `assign`) go to the voice pool and `bend_range` to the
 MIDI module; `distortion` and `dist_level` go to the output. For unison, mono mode
-and the order voices are given out in, see [polyphony.md](polyphony.md#unison-in-mono-mode).
+and the order voices are given out in, see [polyphony.md](../guides/polyphony.md#unison-in-mono-mode).
 
 Where the original's panel says something, the page quotes it: the *Andromeda A6
 Reference Manual*, version 1.40, Alesis, by the page numbers printed in it ([M]),
@@ -1069,7 +1069,7 @@ ADSR with the same ranges, then `level`, the channel's output [M p.18, 35].
 You play pressure with `inst.poly_pressure(note, value)`, and
 `inst.channel_pressure(value)` presses the whole keyboard; each voice reads the
 larger of its own key's pressure and the channel's. See
-[polyphony.md](polyphony.md) for how the pool carries it. The original senses
+[polyphony.md](../guides/polyphony.md) for how the pool carries it. The original senses
 the pressure under each key [M p.44], so pressing one note of a chord moves that
 note alone.
 
@@ -1179,7 +1179,7 @@ run, with a slow drift; at 0 every voice is exactly in tune. `ninth_key` is
 `"wait"` by default: with eight keys held a ninth sounds nothing, as on the
 original [M p.43], and `inst.refused` counts it. `"steal"` takes the oldest
 instead. `ninth_key` sets the pool's steal, so every patch overrides
-`create(steal=...)`. [polyphony.md](polyphony.md) has the pool, the order and
+`create(steal=...)`. [polyphony.md](../guides/polyphony.md) has the pool, the order and
 steal `"none"`.
 
 ### Routing table
@@ -1253,7 +1253,7 @@ the key is let go as a glide does; the original stops it unless SUSTAIN II is on
 ### What it costs
 
 `examples/poly_bench.py poly80` renders 1024-frame buffers with eight notes held
-(on the machine and interpreters [polyphony.md](polyphony.md#what-it-costs)
+(on the machine and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs)
 names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
@@ -1297,7 +1297,7 @@ VCO-2 the highest; one key alone plays on both, and a third key between them
 does nothing. Let go of the high key and VCO-2 moves to the highest of the keys
 still held, without restarting the envelopes. Both oscillators go through one
 filter and one VCA, as on the original [M p.18-19]. The one-voice pool that
-does this is in [polyphony.md](polyphony.md#one-voice-mono-mode).
+does this is in [polyphony.md](../guides/polyphony.md#one-voice-mono-mode).
 
 The patch always sets the `"duo"` key priority, so `create(priority=...)` has
 no effect. If you set `inst.priority = "last"` once it is playing, both VCOs
@@ -1490,7 +1490,7 @@ single voice does not click.
 ### What it costs
 
 `examples/poly_bench.py duosynth` renders 1024-frame buffers with two notes held
-(on the machine and interpreters [polyphony.md](polyphony.md#what-it-costs)
+(on the machine and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs)
 names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
@@ -1523,10 +1523,10 @@ render the same bytes. With two keys held at the default 128-frame block, a
 1024-frame buffer takes 0.32 ms on CPython (67x real time, against the rack's
 2.4 ms) and 0.57 ms on MicroPython (37x, against 1.4 ms). How the voice is put
 together is in
-[architecture.md](architecture.md#a-mono-line-and-a-gate-with-a-gap-in-it). Where they differ, and why:
+[architecture.md](../how-it-works/architecture.md#a-mono-line-and-a-gate-with-a-gap-in-it). Where they differ, and why:
 
 - The graph's LFO runs a few parts in 100,000 of its rate away from the rack's,
-  as the Mono101's does ([below](#the-graph-form-6)). Square Trill, an LFO or the
+  as the Mono101's does ([below](#the-mono101-graph-form)). Square Trill, an LFO or the
   wheel on a pitch, and the S&H on the LFO's clock are the rack's to 20 counts
   over a note of a tenth of a second, and the rack's level and brightness to
   0.01 dB and 1% over the line.
@@ -1542,7 +1542,7 @@ together is in
   is within 0.11 dB and 0.4%. S&H Steps is 0.1 dB and 12% brighter over a long
   note, which is inside the spread of the rack against itself with another noise
   seed (0.9 to 1.25). The pink noise is the MonoSynth's bank of one-poles
-  ([below](#the-graph-form-7)), within 0.2 dB of the rack's in every octave band
+  ([below](#the-monosynth-graph-form)), within 0.2 dB of the rack's in every octave band
   to 20 kHz.
 - After a rest a voice wakes with its free-running oscillators where they were
   left, and its drift where it stopped. Under the audio pump a park can fall a
@@ -1550,7 +1550,7 @@ together is in
   (Init, Duo Lead, Sync Lead, S&H Steps, Square Trill) can wake at another phase
   there.
 - The voice takes the voice mix's gain and the output's scale into its VCA and
-  rounds once, as the rack does ([architecture.md](architecture.md#rounding-once)):
+  rounds once, as the rack does ([architecture.md](../how-it-works/architecture.md#rounding-once)):
   a quiet tail's white floor is 0.9 of the rack's.
 
 ## Playing the StringEnsemble
@@ -1580,7 +1580,7 @@ build it with fewer: `adapter.create(48000, voice="string_ensemble",
 voices=16)`). A voice here is a key, not a synth voice: it holds the oscillators
 for that key's pitch and a switch, and nothing else. The shaping happens once,
 after the keys are added, so a chord is one sound with one envelope, as on the
-machines this follows. The voices are the pool's, so [polyphony.md](polyphony.md)
+machines this follows. The voices are the pool's, so [polyphony.md](../guides/polyphony.md)
 has the allocation, the voice count while it plays and the cost of a parked
 voice, which is nothing: forty-nine built and ten held costs ten keys.
 
@@ -1780,7 +1780,7 @@ checks that a stolen voice does not click.
 
 `examples/poly_bench.py string_ensemble` renders 1024-frame buffers with eight
 notes held, the most the script holds, of the 49 voices built (on the machine
-and interpreters [polyphony.md](polyphony.md#what-it-costs) names, 2026-10-21):
+and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs) names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
@@ -1835,7 +1835,7 @@ Each voice makes an 8' sawtooth at the key's pitch and a 4' an octave above it,
 the 4' hard-synced to the 8' so the two stay locked in phase. They are written
 to five mono buses (`strings`, `choir_a`, `choir_b`, `choir_c`, `carrier`) that
 the shared section filters once for the whole keyboard, which is why a chord
-costs the filters once and not once a key. [polyphony.md](polyphony.md#buses)
+costs the filters once and not once a key. [polyphony.md](../guides/polyphony.md#buses)
 has the buses, which the graph compiles to `MIX` chains. A voice writes a tone at `BUS_LEVEL` (0.5) so twelve keys that start
 together stay inside the 16-bit wire.
 
@@ -2092,7 +2092,7 @@ not click.
 
 `examples/poly_bench.py vocoder330` renders 1024-frame buffers with all twelve
 voices held on the Init patch (on the machine and interpreters
-[polyphony.md](polyphony.md#what-it-costs) names, 2026-10-21):
+[polyphony.md](../guides/polyphony.md#what-it-costs) names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
@@ -2186,7 +2186,7 @@ in 256-frame chunks. The output's shelves and vibrato add none.
 
 `examples/poly_bench.py electric_piano` renders 1024-frame buffers with all ten
 voices held on the Suitcase patch (on the machine and interpreters
-[polyphony.md](polyphony.md#what-it-costs) names, 2026-10-30):
+[polyphony.md](../guides/polyphony.md#what-it-costs) names, 2026-10-30):
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
@@ -2492,7 +2492,7 @@ the original changes a great deal.
 
 `examples/poly_bench.py clavichord` renders 1024-frame buffers (21 ms of
 audio) with all ten voices held on the Funk patch (on the machine and
-interpreters [polyphony.md](polyphony.md#what-it-costs) names, 2026-10-30):
+interpreters [polyphony.md](../guides/polyphony.md#what-it-costs) names, 2026-10-30):
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |
@@ -2653,7 +2653,7 @@ inst.retrigger = True        # every key pulses the trigger, not only the first
 ```
 
 The voice patch builds one voice, and everything about playing legato is
-already in the pool ([polyphony.md](polyphony.md#one-voice-mono-mode)):
+already in the pool ([polyphony.md](../guides/polyphony.md#one-voice-mono-mode)):
 
 - Patch `voice.pitch`, `voice.gate` and `voice.velocity` as for any voice. A
   second key moves the pitch and leaves the gate up, and letting go of the
@@ -2683,7 +2683,7 @@ has none; judge a mono instrument by the overlap of its phrase instead.
 
 The Mono101 is a one-voice bass and lead synth with one VCO, a sub-oscillator,
 a four-pole transistor ladder filter, one ADSR envelope, one free-running LFO
-and a constant-time portamento ([polyphony.md](polyphony.md#one-voice-mono-mode)).
+and a constant-time portamento ([polyphony.md](../guides/polyphony.md#one-voice-mono-mode)).
 
 ```python
 import audioinstruments._rack.adapter as adapter
@@ -2733,7 +2733,7 @@ mono101` checks the overlapping legato phrase for clicks. At the default
 about 14x real time on CPython (1.5 ms per 1024-frame buffer) and 10.6x on
 MicroPython (2.0 ms).
 
-#### The graph form
+#### The Mono101 graph form
 
 Wherever audiodsp has `audiograph` (CPython and the MicroPython and CircuitPython
 builds), `create()` gives you the Mono101 compiled to one C graph, as the Poly106
@@ -2748,7 +2748,7 @@ counts, 1.1 rms), and on Vibrato Lead to 19 counts on the line: `tests/test_grap
 holds them there, with the rack given the board's rounding, at block sizes of 64,
 128 and 256. How the graph plays a mono line, makes the gap a retriggered
 envelope needs, and keeps the glide as exact as the rack's is in
-[architecture.md](architecture.md#a-mono-line-and-a-gate-with-a-gap-in-it).
+[architecture.md](../how-it-works/architecture.md#a-mono-line-and-a-gate-with-a-gap-in-it).
 Where they differ, and why:
 
 - The Noise Snare, the Wind Sweep and a noise added to a patch have the rack's
@@ -2771,7 +2771,7 @@ Where they differ, and why:
   quiet, and the oscillators then wake at another phase. The patches here don't
   do it; a closed filter (a cutoff of 2 on the slider) can.
 - The voice takes the voice mix's gain and the output's scale into its VCA and
-  rounds once, as the rack does ([architecture.md](architecture.md#rounding-once)):
+  rounds once, as the rack does ([architecture.md](../how-it-works/architecture.md#rounding-once)):
   a quiet ring's white floor is 0.33 counts rms against the rack's 0.32 (0.93 when it
   rounded three times), and over the traits phrase Squelch Bass's worst difference
   fell from 8771 counts to 82 on PWM Strings, a park that now falls in the rack's block.
@@ -3003,7 +3003,7 @@ The MonoSynth is a one-voice bass and lead synth with three oscillators
 pink noise, an overdriving five-input mixer, a 24 dB/octave transistor ladder
 filter, a filter contour and a loudness contour sharing a decay switch, and
 constant-time glide
-([polyphony.md](polyphony.md#one-voice-mono-mode)). Creating it with
+([polyphony.md](../guides/polyphony.md#one-voice-mono-mode)). Creating it with
 `priority="low"` gives low-note priority and single-trigger legato phrasing, so
 holding an upper note while tapping a lower key trills between them without
 re-firing the contours.
@@ -3069,11 +3069,11 @@ mono_synth` checks the overlapping legato phrase for clicks. At the default
 about 11x real time on CPython (1.9 ms per 1024-frame buffer) and 12.5x on
 MicroPython (1.7 ms).
 
-#### The graph form
+#### The MonoSynth graph form
 
 Wherever audiodsp has `audiograph` with its `TANH` node (0.6.11.dev5 and later),
 `create()` gives you the MonoSynth compiled to one C graph, as the Mono101 is
-([above](#the-graph-form-6)); `engine="rack"` asks for the rack. Its two modules
+([above](#the-mono101-graph-form)); `engine="rack"` asks for the rack. Its two modules
 declare fragments: the voice and the MIDI module in the mono mode this instrument
 plays in. It has the Mono101's gate, gap and glide, the gap cut only when `legato`
 is up and the filter's contour was, and the same panel, patches and macros. Ten of
@@ -3084,7 +3084,7 @@ is the Mono101's, 64 counts and 6 rms, with the rack given the board's rounding,
 `tests/test_graph_monosynth.py` holds them there at block sizes of 64, 128 and 256.
 CPython and MicroPython render the same bytes, and the pump renders what `step()`
 does. How the graph plays a mono line and makes the gap is in
-[architecture.md](architecture.md#a-mono-line-and-a-gate-with-a-gap-in-it). What
+[architecture.md](../how-it-works/architecture.md#a-mono-line-and-a-gate-with-a-gap-in-it). What
 the MonoSynth added:
 
 - The mixer's saturation is `TANH`, an audiograph node that uses the graph's own
@@ -3115,7 +3115,7 @@ Where they differ, and why:
   rack's to 0.2 dB over a phrase and its brightness is 0.99 and 1.00 of the rack's
   over a note and over the held keys. Over the line it depends on the noise seed in
   both forms, 1.0 to 1.43 of another seed's, because one loud window's hiss decides it.
-- The voice rounds its output once, as the rack does ([architecture.md](architecture.md#rounding-once)).
+- The voice rounds its output once, as the rack does ([architecture.md](../how-it-works/architecture.md#rounding-once)).
   The voice mix's gain and the master's scale are folded into the VCA's gain (`graph_fold`), so the wire is
   rounded at the output's resolution and the mix and output nodes pass it at unity.
   Left as a chain of three gains, each rounded, the graph put a white floor of 0.7
@@ -3161,7 +3161,7 @@ the next pedal slides from there, even after a rest. The patch sets this itself
 has no effect. Set `inst.priority = "last"` once it is playing and the newest
 pedal sounds instead, and `inst.retrigger = True` restarts both contours on
 every pedal. The one-voice pool that does this is in
-[polyphony.md](polyphony.md#one-voice-mono-mode).
+[polyphony.md](../guides/polyphony.md#one-voice-mono-mode).
 
 Every MIDI note plays, not only the thirteen pedals. The pedals are MIDI 36 to
 48 at any footage.
@@ -3373,7 +3373,7 @@ clicks.
 #### What it costs
 
 `examples/poly_bench.py bass_pedals` renders 1024-frame buffers with one pedal held
-(on the machine and interpreters [polyphony.md](polyphony.md#what-it-costs)
+(on the machine and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs)
 names, 2026-10-21):
 
 | block | CPython ms | factor | MicroPython ms | factor |
@@ -3480,7 +3480,7 @@ writes `wav_exports/tonewheel3_demo.wav`, and checks each section's level.
 ### What it costs
 
 `examples/poly_bench.py tonewheel3` renders 1024-frame buffers with all 16 voices held
-(on the machine and interpreters [polyphony.md](polyphony.md#what-it-costs)
+(on the machine and interpreters [polyphony.md](../guides/polyphony.md#what-it-costs)
 names, 2026-10-30):
 
 | block | CPython ms | factor | MicroPython ms | factor |
@@ -3583,7 +3583,7 @@ turning `volume` down is all a cluster needs.
 
 `examples/poly_bench.py compact_organ` renders 1024-frame buffers on the
 fresh setting, 8' alone, with up to sixteen keys held (on the machine and
-interpreters [polyphony.md](polyphony.md#what-it-costs) names, 2026-10-30):
+interpreters [polyphony.md](../guides/polyphony.md#what-it-costs) names, 2026-10-30):
 
 | block | CPython ms | factor | MicroPython ms | factor |
 | ---: | ---: | ---: | ---: | ---: |

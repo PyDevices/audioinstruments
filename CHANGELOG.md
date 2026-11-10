@@ -103,13 +103,13 @@ The final of the 0.5.1 pre-releases below. It requires audiodsp 0.6.13.
 - `Fragment.fed(jack)`: a module can render an output in Python each block and
   feed it into the graph, as the Vocoder330's mic does. An attached graph
   refuses such a module.
-- `docs/performance.md` has block times for six instruments on an ESP32-P4.
+- `docs/how-it-works/performance.md` has block times for six instruments on an ESP32-P4.
 
 ## 0.5.1.dev0
 
 - `audioinstruments.panel`: wrap an instrument in the adapter a control panel
   edits through, with macros, patches, bypass, reload and MIDI changes that
-  reach the panel. See [docs/panel.md](docs/panel.md).
+  reach the panel. See [docs/guides/panel.md](https://github.com/PyDevices/audioinstruments/blob/main/docs/guides/panel.md).
 - `Semi32`: the sustain switch now holds at 0.9 instead of 0.70, which the
   exponential VCA put 15 dB under the attack. With the switch off nothing changes.
 - `mono_one`: the Init patch now holds a note at full level. Its amplifier

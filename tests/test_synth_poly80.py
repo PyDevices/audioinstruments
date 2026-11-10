@@ -1986,10 +1986,10 @@ def flatten(v):
 
 
 def test_behaviour_22_docs_and_code_agree():
-    with open(os.path.join(ROOT, "docs", "instruments.md"), encoding="utf-8") as f:
+    with open(os.path.join(ROOT, "docs", "reference", "instruments.md"), encoding="utf-8") as f:
         text = f.read()
     m = re.search(r"## Playing the Poly80\n(.*?)(?=\n## |\Z)", text, re.DOTALL)
-    assert m, "docs/instruments.md has no 'Playing the Poly80' section"
+    assert m, "docs/reference/instruments.md has no 'Playing the Poly80' section"
     found = re.findall(r"`([A-Z][A-Z0-9_]+)` \(([^)]+)\)", m.group(1))
     assert len({n for n, _ in found}) >= 40
     for name, shown in found:

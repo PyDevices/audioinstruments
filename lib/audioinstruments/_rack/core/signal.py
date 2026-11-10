@@ -16,7 +16,7 @@ block path. Each writes into a buffer the caller owns and none builds a new
 array: ``a * b`` on two arrays allocates a third, so it stays out of
 process(). Under ulab even ``dst[:] = src`` copies through a temporary; the
 float-to-int16 cast at the audiodsp bridge goes through audiodsp's
-``audiomath.cast_into`` instead, which does not. See docs/allocation.md for
+``audiomath.cast_into`` instead, which does not. See docs/how-it-works/allocation.md for
 what is and is not avoidable on each interpreter.
 """
 

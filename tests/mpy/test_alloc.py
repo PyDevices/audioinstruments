@@ -8,7 +8,7 @@ block cannot be allocation-free in Python; what can be required is that the
 bytes allocated per block are the same at 64 and at 1024 frames. A vector
 kernel or a C node meets that; a per-sample Python loop or an array
 temporary does not. The cores that still loop per sample (oscillators,
-ladders, the granular engine) are not on this list; docs/allocation.md says
+ladders, the granular engine) are not on this list; docs/how-it-works/allocation.md says
 which they are. The VCO and the ladders run on audiodsp nodes when the
 build has them, and those are checked here at 64 and 256 frames, the most a
 node hands out.
