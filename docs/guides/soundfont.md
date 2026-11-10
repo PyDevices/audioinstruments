@@ -63,6 +63,23 @@ Control Change 64 at 64 or more holds the notes you let go of until it drops
 below 64, then releases each with its own release envelope. Keys still held
 keep sounding. A key struck again while its note is held starts a new note.
 
+## Bend range and tuning
+
+The pitch bend moves a note two semitones at full deflection, either way. Set
+`bend_range` (in semitones, zero to 48) to change that, and `tuning` (in
+semitones, cents as decimals, minus 72 to 72) to tune every note up or down:
+
+```python
+inst.bend_range = 12
+inst.tuning = -0.5
+```
+
+Notes already sounding follow, and so do the ones still to come. `tuning`
+adds to the bend and to the Tune macro. `reset()` puts them back to 2.0 and
+0.0, and each instrument on a shared `Voices` has its own. A sound module
+sets them from the registered parameters Pitch Bend Sensitivity, Channel Fine
+Tuning and Channel Coarse Tuning.
+
 ## Drum kits
 
 `soundfont_drums` has one patch per kit in bank 128, named from the bank, and
