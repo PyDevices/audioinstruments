@@ -12,7 +12,8 @@ CPython, in a venv with audiodsp installed from TestPyPI:
 
     uv venv --seed --python 3.12 .venv
     uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
-        --extra-index-url https://pypi.org/simple/ omnipython-audiodsp pydevices pytest ruff numpy
+        --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
+        omnipython-audiodsp pydevices pytest ruff numpy
     .venv/bin/python -m pytest -q
 
 MicroPython, with a build that carries ulab, synthio and the audiodsp

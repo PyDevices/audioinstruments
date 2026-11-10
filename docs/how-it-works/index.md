@@ -171,7 +171,8 @@ CPython 3.12 or later with audiodsp from TestPyPI:
 
     uv venv --seed --python 3.12 .venv
     uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
-        --extra-index-url https://pypi.org/simple/ omnipython-audiodsp pydevices numpy
+        --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
+        omnipython-audiodsp pydevices numpy
     PYTHONPATH=lib .venv/bin/python examples/play_audio.py --no-live --wav
 
 That renders twenty short movements, one per instrument, into
