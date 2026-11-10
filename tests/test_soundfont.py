@@ -220,6 +220,69 @@ class SoundFontInstrumentTest(unittest.TestCase):
         self.inst.set_macro(2, 0)
         self.assertAlmostEqual(player.release_scale, 0.25, places=2)
 
+    # -- volume and expression -------------------------------------------------
+
+    def _played_level(self, controller, value):
+        """RMS of a fresh instrument's first 50 ms of a note after one
+        Control Change."""
+        inst = adapter.create(SR, voice="soundfont", bank=self.path)
+        try:
+            inst.control_change(controller, value)
+            inst.note_on(60, 100)
+            return sf2_play.rms(sf2_play.render(inst, 0.05))
+        finally:
+            inst.deinit()
+
+    def test_volume_and_expression_play_as_the_square_law(self):
+        for controller in (7, 11):
+            full = self._played_level(controller, 127)
+            self.assertGreater(full, 0.0005)
+            for value in (100, 64, 32):
+                got = self._played_level(controller, value) / full
+                self.assertAlmostEqual(
+                    got, (value / 127.0) ** 2, delta=0.02, msg=(controller, value)
+                )
+
+    def test_volume_and_expression_scale_a_note_already_sounding(self):
+        player = self.inst._player
+        self.inst.note_on(60, 100)
+        slot = player.held[(0, 60)][0]
+        voice = self.inst.output.voice[slot]
+        base = player.slots[slot][4] * player.volume * player.pool.gain
+        self.assertAlmostEqual(voice.level, base, places=6)
+        self.inst.control_change(7, 64)
+        self.assertAlmostEqual(voice.level, base * (64 / 127.0) ** 2, places=6)
+        self.inst.control_change(11, 32)
+        self.assertAlmostEqual(voice.level, base * (64 / 127.0 * 32 / 127.0) ** 2, places=6)
+        self.inst.control_change(7, 127)
+        self.assertAlmostEqual(voice.level, base * (32 / 127.0) ** 2, places=6)
+        self.inst.control_change(11, 0)
+        self.assertEqual(voice.level, 0.0)
+
+    def test_volume_is_kept_by_the_next_note_a_macro_and_a_program_change(self):
+        self.inst.control_change(7, 64)
+        player = self.inst._player
+        self.inst.note_on(60, 100)
+        voice = self.inst.output.voice[player.held[(0, 60)][0]]
+        want = player.slots[player.held[(0, 60)][0]][4] * player.pool.gain
+        self.assertAlmostEqual(voice.level, want * 100 / 127.0 * (64 / 127.0) ** 2, places=6)
+        self.inst.set_macro(0, 127)  # the Volume macro is a level of its own
+        self.assertAlmostEqual(voice.level, want * (64 / 127.0) ** 2, places=6)
+        self.inst.program_change(0)
+        self.assertAlmostEqual(self.inst._player.cc_volume, 64 / 127.0, places=6)
+
+    def test_reset_puts_volume_and_expression_back(self):
+        full = self._played_level(7, 127)
+        self.inst.control_change(7, 10)
+        self.inst.control_change(11, 20)
+        self.inst.note_on(60, 100)
+        self.assertLess(sf2_play.rms(sf2_play.render(self.inst, 0.05)), full * 0.02)
+        self.inst.reset()
+        self.inst.note_on(60, 100)
+        self.assertAlmostEqual(
+            sf2_play.rms(sf2_play.render(self.inst, 0.05)), full, delta=full * 0.02
+        )
+
     # -- pan ------------------------------------------------------------------
 
     PAN = soundfont.PAN_MACRO

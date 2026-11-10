@@ -49,9 +49,16 @@ bipolar too: 64 is centre, 0 hard left, 127 hard right. It is an offset
 added to each region's own pan, so a stereo pair keeps its spread around
 the new centre, clamped at the edges. Moving it re-pans the voices already
 sounding, with the engine's ramp, and Control Change 10 on the instrument
-drives it, as it does Bank Select; the other GM controllers are the
-host's. A program change puts every macro back to the patch's defaults,
-Pan at centre.
+drives it, as it does Bank Select.
+
+Control Change 7 (Volume) and 11 (Expression) scale every note, sounding or
+to come, by the square law General MIDI modules use: each is 0 to 127, its
+gain is its value over 127 squared, and the two multiply (40 log10 of the
+value over 127 in dB, each). Both start at 127, so an instrument no one sends
+them to plays as before, and the Volume macro is a separate level on top.
+`reset()` puts them back to 127. The other GM controllers are the host's.
+A program change puts every macro back to the patch's defaults, Pan at
+centre, and leaves Volume and Expression as they are.
 
 Thirty-two engine voices, one per region a note resolves to (a stereo pair
 is two). A new note with every voice busy steals the oldest releasing voice,
@@ -199,7 +206,9 @@ BEND_RANGE = 2.0
 
 _CC_BANK_MSB = 0
 _CC_BANK_LSB = 32
+_CC_VOLUME = 7
 _CC_PAN = 10
+_CC_EXPRESSION = 11
 _CC_SUSTAIN = 64
 
 
@@ -899,6 +908,9 @@ class _Player(object):
         self.bank_msb = 0
         self.bank_lsb = 0
         self.volume = DEFAULT_MACROS[0] / 127.0
+        self.cc_volume = 1.0  # Control Change 7 and 11, each 0..1
+        self.expression = 1.0
+        self.controller_gain = 1.0  # their square law, shared by every note
         self.attack_scale = 1.0
         self.release_scale = 1.0
         self.tune = 1.0
@@ -1014,7 +1026,7 @@ class _Player(object):
                 loop_start=loop_start,
                 loop_end=loop_end,
                 loop_mode=mode,
-                level=level * self.volume * pool.gain,
+                level=level * self.volume * self.controller_gain * pool.gain,
                 pan=_panned(region.pan, self.pan),
                 delay=region.delay,
                 attack=region.attack * self.attack_scale,
@@ -1108,7 +1120,7 @@ class _Player(object):
         voices = self.pool.voice
         for i, slot in enumerate(self.slots):
             if slot is not None and slot[7] is self and slot[2] != FADED:
-                voices[i].level = slot[4] * self.volume * self.pool.gain
+                voices[i].level = slot[4] * self.volume * self.controller_gain * self.pool.gain
 
     def repitch(self):
         voices = self.pool.voice
@@ -1159,6 +1171,14 @@ class _Player(object):
                 self.bank_lsb = int(value0 * 127 + 0.5)
             elif data0 == _CC_SUSTAIN:
                 self.sustain(channel, int(value0 * 127 + 0.5) >= 64)
+            elif data0 in (_CC_VOLUME, _CC_EXPRESSION):
+                if data0 == _CC_VOLUME:
+                    self.cc_volume = value0
+                else:
+                    self.expression = value0
+                gain = self.cc_volume * self.expression
+                self.controller_gain = gain * gain
+                self.relevel()
 
 
 class SoundFontInstrument(Instrument):
@@ -1209,7 +1229,8 @@ class SoundFontInstrument(Instrument):
 
     def control_change(self, controller, value, channel=0, sample_position=0):
         """Control Change 10 (Pan) moves the Pan macro, so the macro value
-        and the sound agree; the rest reach the player as they are.
+        and the sound agree; the rest reach the player as they are, which
+        plays 7 (Volume) and 11 (Expression) as the module docstring says.
 
         Control Change 64 (Sustain Pedal) at 64 or more holds the notes
         released on that channel until it drops below 64, then releases
@@ -1231,6 +1252,7 @@ class SoundFontInstrument(Instrument):
     def reset(self):
         self._player.stop_all()
         self._player.bank_msb = self._player.bank_lsb = 0
+        self._player.cc_volume = self._player.expression = self._player.controller_gain = 1.0
         super().reset()
 
     @property
