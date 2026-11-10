@@ -31,12 +31,11 @@ on a virtual rack, rendered a block at a time on audiodsp.
 
 ## Playing and sequencing
 
-- Notes on their own frame with the graph on the audio pump, so `schedulable`
-  is True and a sequencer can time notes. It needs audiodsp's `audiograph`
-  setting a value at a frame inside a block.
-- More polyphony: a pool that grows past the voices it was built with, one
-  pool shared by several instruments, and notes queued on an
-  `audiopump.Events` for frame-exact sequencing.
+- Notes timed on the audio clock with the graph on the audio pump: queued on
+  an `audiopump.Events`, a note starts at the next block (within 2.7 ms at 128
+  frames and 48 kHz), so `schedulable` is True and a sequencer keeps time.
+- More polyphony: a pool that grows past the voices it was built with, and
+  one pool shared by several instruments.
 - An arpeggiator: a note source in front of a `VoicePool` that steps through
   the keys you hold (up, down, random, over several octaves), so any
   polyphonic instrument can arpeggiate.
