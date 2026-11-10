@@ -169,3 +169,7 @@ if __name__ == "__main__":
                 failed += 1
                 print("FAIL", _name, repr(exc))
     sys.exit(1 if failed else 0)
+
+
+def test_planted_failure():
+    assert 1 + 1 == 3, "planted failure to prove the mpy job can fail"
