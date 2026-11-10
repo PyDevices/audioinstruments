@@ -59,3 +59,29 @@ def test_only_a_change_of_cables_compiles_the_graph_again():
     for module in inst.voice_pool.modules("synth"):
         assert module.filter_cv_in.cable is None
     inst.deinit()
+
+
+def test_a_patch_change_runs_each_graph_handler_once():
+    inst = adapter.create(48000, voice="patch2600", voices=2, engine="graph", output="graph")
+    calls = {}
+    for f in inst._compiled.fragments:
+        wrapped = {}
+        for fns in f.binds.values():
+            for i in range(len(fns)):
+                fn = fns[i]
+                if id(fn) not in wrapped:
+                    key = (f.module.id, id(fn))
+                    calls[key] = 0
+
+                    def counted(fn=fn, key=key):
+                        calls[key] += 1
+                        fn()
+
+                    wrapped[id(fn)] = counted
+                fns[i] = wrapped[id(fn)]
+    compiled = inst._compiled
+    inst.program_change(1)  # Fat Bass: knobs only, no cables
+    assert inst._compiled is compiled
+    assert sum(calls.values()) > 0
+    assert max(calls.values()) == 1, max(calls.values())
+    inst.deinit()

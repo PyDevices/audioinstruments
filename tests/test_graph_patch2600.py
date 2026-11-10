@@ -382,3 +382,39 @@ def test_the_voices_reverb_sounds_what_the_rack_reverb_sounds():
     assert np.abs(rack).max() > 1000.0
     assert diff.max() <= 120.0, diff.max()
     assert np.sqrt(np.mean(diff**2)) <= 25.0, np.sqrt(np.mean(diff**2))
+
+
+def _count_handlers(inst):
+    """Wrap every graph handler of every fragment; returns the call counts by handler."""
+    calls = {}
+    for f in inst._compiled.fragments:
+        wrapped = {}
+        for fns in f.binds.values():
+            for i, fn in enumerate(fns):
+                if id(fn) not in wrapped:
+                    key = (f.module.id, getattr(fn, "__name__", repr(fn)), id(fn))
+                    calls[key] = 0
+
+                    def counted(fn=fn, key=key):
+                        calls[key] += 1
+                        fn()
+
+                    wrapped[id(fn)] = counted
+                fns[i] = wrapped[id(fn)]
+    return calls
+
+
+@pytest.mark.parametrize("output", ("pull", "graph"))
+def test_a_patch_change_runs_each_graph_handler_once(output):
+    """A handler bound to many knobs (the VCOs' reads twenty-two) runs once for a patch
+    change, after the last knob, not once for every knob the patch sets."""
+    inst = adapter.create(48000, voice="patch2600", output=output, voices=2)
+    try:
+        calls = _count_handlers(inst)
+        compiled = inst._compiled
+        inst.program_change(1)  # Fat Bass: knobs only, no cables
+        assert inst._compiled is compiled
+        assert max(calls.values()) == 1, max(calls.items(), key=lambda kv: kv[1])
+        assert sum(calls.values()) > 0
+    finally:
+        inst.deinit()

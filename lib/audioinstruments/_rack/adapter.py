@@ -973,10 +973,7 @@ class Instrument:
         apply_patch = getattr(self.patch, "apply_patch", None)
         self.hold()
         try:
-            if apply_patch is not None:
-                self._at(sample_position, apply_patch, self._pool, index)
-            for macro_index, macro_value in enumerate(patch[1]):
-                self._at(sample_position, self._apply_macro, macro_index, float(macro_value))
+            self._at(sample_position, self._set_patch, apply_patch, index, patch[1])
             # after the knobs, so the graph is compiled once, with them where they will be
             if hasattr(self.patch, "plug_patch"):
                 self._at(sample_position, self._replug, index)
@@ -986,6 +983,21 @@ class Instrument:
         finally:
             self.commit()
         self._patch_index = index
+
+    def _set_patch(self, apply_patch, index, macros):
+        """Set patch ``index``'s parameters and macros. On a graph, each handler they
+        reach runs once, after the last of them, not once for every parameter."""
+        compiled = self._compiled
+        if compiled is not None:
+            compiled.gather()
+        try:
+            if apply_patch is not None:
+                apply_patch(self._pool, index)
+            for macro_index, macro_value in enumerate(macros):
+                self._apply_macro(macro_index, float(macro_value))
+        finally:
+            if compiled is not None:
+                compiled.release()
 
     def _replug(self, index):
         """Change to patch ``index``'s cables, if they differ; that swaps in a new graph."""
