@@ -8,7 +8,7 @@
       adapter.py create() and ALL: a polyphonic rack, or a SoundFont, as an audio component
       instruments/ whole instruments: a voice patch and its presets (poly106)
       soundfont.py, soundfont_drums.py, _sf2.py, _gm.py
-                 SoundFont instruments on audiosampler, with no rack (soundfont.md);
+                 SoundFont instruments on audiosampler, with no rack (guides/soundfont.md);
                  _component.py is the audio component contract they answer
       midi_dispatch.py, midi_cc.py, sequencer.py
                  MIDI by channel to instruments, a scaler for each Control
@@ -139,7 +139,7 @@ A graph has 32 groups, a voice with its switches takes one for each, and the
 Poly5's two make three: ten voices fit. A pool of more than 32 voices that
 needs no switch groups does fit: neighbouring voices share a group, two to a
 group (49 keys in 25), then three, until they do
-([polyphony.md](polyphony.md#how-many-voices-a-graph-holds)). `f.before_run(fn)`
+([polyphony.md](../guides/polyphony.md#how-many-voices-a-graph-holds)). `f.before_run(fn)`
 and `f.after_run(fn)` run every block around the graph call; the latter gets
 the mask of groups whose envelopes are still sounding (the voice mix parks by
 `f.peak(wire)` of a wire it `keep`s instead, the rack's rule, and `f.rendered`
@@ -220,7 +220,7 @@ change is refused and the old patch plays on. The same goes for a `fed` module.
 Every module of every instrument on the rack declares a fragment, so
 `create(name, 48000).engine` is `"graph"` for all of them; the SoundFont
 players are not racks. A pool's buses compile too
-([polyphony.md](polyphony.md#buses)). Among them: `PolyMidiCV` (poly and mono), `VoiceMix`, the voice, LFO
+([polyphony.md](../guides/polyphony.md#buses)). Among them: `PolyMidiCV` (poly and mono), `VoiceMix`, the voice, LFO
 and output section of the Poly106 and of the Poly6, the voice and LFO of the
 Poly5, the voice, noise and output of the PolyA6, the voice and LFO of the Poly8, the voice, LFO and output of the PolyXa, the voice and LFO of the Mono101, the voice of the MonoSynth, the voice, LFO and output of the DuoSynth, and the
 Duo20, HybridMono, WestCoastSynth and ModalResonator modules. The

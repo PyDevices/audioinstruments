@@ -11,7 +11,7 @@ on the pitch, and two foot-slider inputs: LOUDNESS (``expr``) and FILTER
 
 Sliders that run 0 to 10 reach the module as 0 to 1. ``tune`` and ``beat``
 take -5 to +5. Every depth below is a constant in this file, and
-``docs/instruments.md`` quotes each one by name.
+``docs/reference/instruments.md`` quotes each one by name.
 """
 
 import math

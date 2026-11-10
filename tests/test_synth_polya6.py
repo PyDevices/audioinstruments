@@ -2238,7 +2238,9 @@ def test_allocation_clean():
     assert len(EVENTS) == 0, f"Arrays created during block processing: {EVENTS}"
 
 
-DOCS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "instruments.md")
+DOCS = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "docs", "reference", "instruments.md"
+)
 SRC = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "..",
@@ -2254,7 +2256,7 @@ def test_docs_and_code_agree():
     with open(DOCS) as f:
         content = f.read()
     section_match = re.search(r"## Playing the PolyA6.*?(?=\n## |\Z)", content, re.DOTALL)
-    assert section_match, "docs/instruments.md has no 'Playing the PolyA6' section"
+    assert section_match, "docs/reference/instruments.md has no 'Playing the PolyA6' section"
     section = section_match.group(0)
     items = re.findall(r"`([A-Z][A-Z0-9_]+)`\s*\(([^)]+)\)", section)
     assert len(items) >= 20, "the routing table names too few constants"

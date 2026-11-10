@@ -5,7 +5,7 @@ on a virtual rack, rendered a block at a time on audiodsp.
 
 ## On a board
 
-- Board timings for every instrument. `docs/performance.md` times seven on an
+- Board timings for every instrument. `docs/how-it-works/performance.md` times seven on an
   ESP32-P4; the rest, and an S3 build, need the same run to show which are
   playable on a microcontroller.
 - More notes before stealing: PolyA6, Vocoder330, String Ensemble and Compact
@@ -15,7 +15,7 @@ on a virtual rack, rendered a block at a time on audiodsp.
   takes 160 to 775 ms on an ESP32-P4, while the screen and MIDI input wait.
 - Live output with the block deadline measured: the conversion to PCM and the
   device write in `examples/play_audio.py`, timed against the block budget
-  and written up in `docs/performance.md`.
+  and written up in `docs/how-it-works/performance.md`.
 - `examples/hmi_board.py` on the audio pump, as `examples/hmi_instrument.py
   --pump` already plays, so a busy screen doesn't eat the audio's time.
 
@@ -46,5 +46,3 @@ on a virtual rack, rendered a block at a time on audiodsp.
 
 - The MicroPython tests in CI, on a unix build with audiodsp and ulab; today
   they are run by hand before a merge.
-- The docs in the shared five sections: Get started, Guides, Reference, How it
-  works and Changelog.

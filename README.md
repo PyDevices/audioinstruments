@@ -9,7 +9,8 @@ You need Python 3.12 or later, numpy and audiodsp (from TestPyPI until its relea
 ```sh
 uv venv --seed --python 3.12 .venv
 uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
-    --extra-index-url https://pypi.org/simple/ omnipython-audiodsp numpy
+    --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
+    omnipython-audiodsp numpy
 git clone https://github.com/PyDevices/audioinstruments && cd audioinstruments
 ```
 
@@ -42,6 +43,6 @@ Run it with `PYTHONPATH=lib .venv/bin/python example.py`. It plays middle C on t
 5 4233
 ```
 
-[Docs](docs/overview.md) · [Examples](examples/) · [Roadmap](ROADMAP.md)
+[Docs](docs/index.md) · [Examples](examples/) · [Roadmap](ROADMAP.md)
 
 OmniPython is made by [PyDevices](https://pydevices.com).

@@ -12,7 +12,7 @@ for each of the twenty demo patches, measured as the median of five runs
 of 200 blocks after 50 blocks of warm-up. Then it times the VCO and the
 ladder on their own, in Python and on audiodsp's nodes where the build has
 them. Results depend on the machine and
-the interpreter; docs/performance.md records one set and says where it was
+the interpreter; docs/how-it-works/performance.md records one set and says where it was
 taken.
 """
 

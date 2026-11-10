@@ -402,7 +402,7 @@ inst.voices = 4
 `adapter.ALL` names the voices that need no patch of yours: `duo20`,
 `mono_one`, `state_variable_mono`, `patch2600` and `hybrid_mono`, each one module with its own
 macros, and `poly106`, a whole instrument with presets
-([instruments.md](instruments.md)). A module can declare its own patches in
+([instruments.md](../reference/instruments.md)). A module can declare its own patches in
 `PRESETS`: each is a name, the parameters it sets, and any cables it plugs
 between the module's jacks, and patch 0 is `("Init", {})`, the module as it
 comes. For anything else pass a `VoicePatch`: a
