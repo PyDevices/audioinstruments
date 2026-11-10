@@ -289,3 +289,28 @@ def test_a_loop_closed_on_the_wrong_cable_is_caught(monkeypatch):
     compiled = compile_rack(rack, scale=SCALE)
     monkeypatch.undo()
     assert not np.array_equal(graph_render(compiled, 6), rack_render(rack, 6))
+
+
+def test_a_compile_runs_each_fragment_once():
+    """The sizing pass records what the fragments do to the graph, and the record is
+    played onto the sized graph: a fragment runs once a compile, not once a pass."""
+    import audioinstruments._rack.adapter as adapter
+
+    inst = adapter.create(48000, voice="poly6", engine="graph", output="pull", voices=2)
+    try:
+        runs = {}
+        for module in inst.rack.modules:
+            fragment = getattr(module, "fragment", None)
+            if fragment is None:
+                continue
+
+            def counted(f, module=module, fragment=fragment):
+                runs[module.id] = runs.get(module.id, 0) + 1
+                return fragment(f)
+
+            module.fragment = counted
+        inst._recompile()
+        assert runs
+        assert set(runs.values()) == {1}, runs
+    finally:
+        inst.deinit()

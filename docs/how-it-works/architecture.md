@@ -193,10 +193,12 @@ fresh. The next `step()` renders the block the old graph would have, with the
 change in it. If the compile fails, the old graph is left as it was. An
 instrument does this for you: `connect()`, `disconnect()`, `add_module()` and
 `remove_module()` take a `sample_position` and swap the new graph in at the
-block it falls in. A swap costs the compile and little more: about 1.3 ms for
-the Poly6 (99 nodes) and 6.7 ms for the PolyA6 (676) on a desktop CPython,
-and 6 ms and 44 ms on the MicroPython unix port, with the handover itself
-under 0.4 ms and 1.5 ms.
+block it falls in. A swap costs the compile and little more: about 1.4 ms for
+the Poly6 (99 nodes) and 6.9 ms for the PolyA6 (676) on a desktop CPython,
+and 3.9 ms and 31 ms on the MicroPython unix port, with the handover itself
+under 0.3 ms and 0.9 ms. The compile runs each module's fragment once, and a
+patch change runs each control's handler once, however many of its
+parameters the patch and its macros set.
 
 A graph the audio pump plays (`attach()`) changes the same way, and the
 instrument's calls work unchanged; it needs an audiodsp with `Graph.swap`.
@@ -207,13 +209,17 @@ hears the new patch from its next block. Everything an instrument changes in
 one turn lands together, on the block after the turn, and `since` on the new
 rack is the frame it took over at. The stream stays byte-equal to a rack
 built with the change from that block on (`tools/pump_swap.py`). The pump
-stands parked for 0.05 to 0.4 ms on a desktop CPython and 0.3 to 1.5 ms on
+stands parked for 0.03 to 0.3 ms on a desktop CPython and 0.2 to 0.9 ms on
 the MicroPython unix port, from the 26-node Mono101 to the 676-node PolyA6;
-the compile, which it plays through, takes 0.5 to 7 ms and 1.6 to 54 ms.
-On an ESP32-P4 a patch change that plugs other cables takes 160 to 775 ms of the
-calling thread, from the Acid303 to the Patch2600: a held note plays on, with the
-odd underrun, while the screen and MIDI input wait for it, so change such a patch
-between phrases. A patch change with no cables to move takes 30 to 180 ms.
+the compile, which it plays through, takes 0.5 to 7 ms and 1.2 to 31 ms.
+Garbage collection is off while the pump stands parked, so a collection
+can't land in that window; should the heap run out there, the swap fails
+with `MemoryError` and the old patch plays on.
+On an ESP32-P4 a patch change that plugs other cables takes about 20 ms on the
+Acid303, 115 to 180 ms on most monosynths and 380 ms on the Patch2600 (570 ms at
+worst), of the calling thread: a held note plays on while the screen and MIDI
+input wait for it, so change the heavier patches between phrases. A patch change
+with no cables to move takes 2 to 50 ms, and about 115 ms on the PolyA6.
 A module that still runs in Python can't be added to an attached graph: the
 change is refused and the old patch plays on. The same goes for a `fed` module.
 

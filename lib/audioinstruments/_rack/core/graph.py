@@ -337,7 +337,7 @@ class Fragment:
         """A node in the module's group (or ``group``, from ``switch``). A node with two
         outputs (``PAN``) takes them as a pair, ``(left, right)``."""
         graph = self._c.graph
-        if type(output) is tuple and not isinstance(graph, (_Sizer, _Mapped)):
+        if type(output) is tuple and not isinstance(graph, _Sizer):
             output, arg = output  # the graph itself: the second output is the node's arg
         node = graph.add(kind, self.group if group is None else group, inputs, output, arg)
         self.nodes.append(node)
@@ -486,57 +486,70 @@ class Fragment:
 
 
 class _Sizer:
-    """Stands in for the graph on the first pass, to count buffers and nodes."""
+    """Stands in for the graph while the fragments run: counts buffers and nodes, and
+    records every call, for ``_replay`` to make on the graph once it is sized. A node
+    and a wire get the numbers the graph will give them, in the same order."""
 
     def __init__(self):
         self.buffers = 0
         self.nodes = 0
         self.log = []  # (group, inputs, output) of every node, in order
+        self.calls = []  # every call to make on the graph, in order
 
     def buffer(self):
         self.buffers += 1
         return self.buffers - 1
 
     def add(self, kind, group, inputs, output, arg=0.0):
-        self.log.append((group, tuple(inputs), output))
+        inputs = tuple(inputs)
+        self.log.append((group, inputs, output))
+        self.calls.append((_ADD, kind, group, inputs, output, arg))
         self.nodes += 1
         return self.nodes - 1
 
     def set(self, node, index, value):
-        pass
+        self.calls.append((_SET, node, index, value))
 
     def get(self, node, index):
         return 0.0
 
     def table(self, node, shape):
-        pass
+        self.calls.append((_TABLE, node, shape))
 
     def reset(self, node):
-        pass
+        self.calls.append((_RESET, node))
 
 
-class _Mapped:
-    """Stands in for the graph on the second pass: wires in, graph buffers out."""
+_ADD = 0
+_SET = 1
+_TABLE = 2
+_RESET = 3
 
-    def __init__(self, graph, phys):
-        self._g = graph
-        self._phys = phys
-        self._count = 0
-        self.set = graph.set
-        self.get = graph.get
-        self.table = graph.table
-        self.reset = graph.reset
 
-    def buffer(self):
-        self._count += 1
-        return self._count - 1
-
-    def add(self, kind, group, inputs, output, arg=0.0):
-        p = self._phys
-        ins = tuple(None if b is None else p[b] for b in inputs)
-        if type(output) is tuple:  # a PAN: its right side is its arg
-            return self._g.add(kind, group, ins, p[output[0]], p[output[1]])
-        return self._g.add(kind, group, ins, None if output is None else p[output], arg)
+def _replay(graph, calls, phys):
+    """Make the calls a ``_Sizer`` recorded on ``graph``, its wires on the graph buffers
+    ``phys`` gives them (each its own, when ``phys`` is None)."""
+    for call in calls:
+        op = call[0]
+        if op == _SET:
+            graph.set(call[1], call[2], call[3])
+        elif op == _ADD:
+            _, kind, group, inputs, output, arg = call
+            if phys is not None:
+                inputs = tuple(None if b is None else phys[b] for b in inputs)
+            if type(output) is tuple:  # a PAN: its right side is its arg
+                left, right = output
+                if phys is not None:
+                    left, right = phys[left], phys[right]
+                graph.add(kind, group, inputs, left, right)
+            else:
+                if phys is not None and output is not None:
+                    output = phys[output]
+                graph.add(kind, group, inputs, output, arg)
+        elif op == _TABLE:
+            graph.table(call[1], call[2])
+        else:
+            graph.reset(call[1])
 
 
 class CompiledRack:
@@ -576,11 +589,12 @@ class CompiledRack:
         rack = self.rack
         order = rack.order
         if graph is None:
-            # one pass to size the graph, a second to build it
+            # one pass to size the graph, which records what it would do to the graph, and
+            # then the record played onto the graph: the modules' fragments run once
             import audiograph as ag
 
-            sizer = self.graph = _Sizer()
             groups = self._fit(order, groups)
+            sizer = self.graph
             wires = sizer.buffers
             self.phys = None
             buffers = wires
@@ -596,6 +610,7 @@ class CompiledRack:
                 "buffers": max(1, buffers),
                 "nodes": max(1, sizer.nodes),
             }
+            calls = sizer.calls
             sizer = None
             try:
                 try:
@@ -612,13 +627,12 @@ class CompiledRack:
             self.phys = None
             self.buffer_count = self.wires = None
             self.shared = 1
+            self._compile(order, groups)
+            return
         real = self.graph
-        if self.phys is not None:
-            for _ in range(self.buffer_count):
-                real.buffer()
-            self.graph = _Mapped(real, self.phys)
-        self._compile(order, groups)
-        self.graph = real
+        for _ in range(self.buffer_count):
+            real.buffer()
+        _replay(real, calls, self.phys)
         if self.phys is not None:
             self._to_buffers(self.phys)
 
@@ -629,6 +643,7 @@ class CompiledRack:
         share = 1
         given = list(groups)
         while True:
+            self.graph = _Sizer()
             try:
                 self._compile(order, groups)
                 self.shared = share
@@ -1236,22 +1251,27 @@ class CompiledRack:
         if carry:
             plan = new._plan_state(self)
             new._set_controls(plan)
-        gc.collect()  # so a collection does not land while the pump stands still
-        resume = _park()
+        # A collection must not land while the pump stands still.
+        collecting = _put_off_collection()
         try:
-            if carry:
-                new._apply_state(self, plan, controls=False)
-            frame = g.sounding()[1]
-            g.swap(new.graph)
-        except BaseException:
+            resume = _park()
+            try:
+                if carry:
+                    new._apply_state(self, plan, controls=False)
+                frame = g.sounding()[1]
+                g.swap(new.graph)
+            except BaseException:
+                if resume is not None:
+                    resume()
+                if depth:
+                    g.hold()
+                new.graph.deinit()
+                raise
             if resume is not None:
                 resume()
-            if depth:
-                g.hold()
-            new.graph.deinit()
-            raise
-        if resume is not None:
-            resume()
+        finally:
+            if collecting:
+                gc.enable()
         spare = new.graph
         new.graph = g
         self.graph = spare
@@ -1368,6 +1388,17 @@ class CompiledRack:
             except AttributeError:
                 pass
         self.graph = None
+
+
+def _put_off_collection():
+    """Turn automatic collection off for the time the pump is parked, and say whether
+    it was on. The carry and the swap allocate a few hundred bytes, and the compile
+    before them has just made room or collected; collecting here as well took 100 ms
+    and more on a board with a large heap. Should the heap run out all the same, the
+    swap fails with ``MemoryError`` and the old patch plays on."""
+    collecting = gc.isenabled()
+    gc.disable()
+    return collecting
 
 
 def _park():

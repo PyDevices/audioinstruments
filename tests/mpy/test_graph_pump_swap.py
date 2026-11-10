@@ -57,3 +57,11 @@ def test_the_pump_keeps_pulling_the_same_graph():
         return
     nodes, compile_ms, held_ms, worst_ms = _ps().cost("poly6", swaps=2)
     assert nodes > 0 and compile_ms > 0 and 0 <= held_ms <= worst_ms
+
+
+def test_a_swap_puts_collection_off_instead_of_collecting():
+    if not HAVE:
+        return
+    collections, on = _ps().collections()
+    assert collections == 0, collections
+    assert on is False, on
