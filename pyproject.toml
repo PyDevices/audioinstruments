@@ -35,6 +35,11 @@ version = { file = "VERSION" }
 [tool.setuptools.packages.find]
 where = ["lib"]
 
+# catalog.json names every instrument's patches and macros for a DAW or MIDI
+# host; tools/make_faces.py writes it beside the faces.
+[tool.setuptools.package-data]
+audioinstruments = ["catalog.json"]
+
 [tool.ruff]
 target-version = "py39"
 line-length = 100

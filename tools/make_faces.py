@@ -12,6 +12,10 @@ out as literals (a host such as a plug-in scanner reads the file as text, and
 a frozen build reads it without importing the rack), and a ``create()`` that
 builds it. The class is the source: change ``MACRO_MODES``, ``PATCHES`` or
 ``DISPLAY_NAME`` there and run this again. ``_names.py`` lists them.
+
+It also writes ``catalog.json``, the same names as data: every instrument's
+patches and macros, and a drum machine's notes, for a DAW or MIDI host that
+shows them without loading the audio stack. The wheel carries it.
 """
 
 import json
@@ -181,10 +185,56 @@ def names_module(faces, metas):
     )
 
 
+def entry(name):
+    """One instrument in the catalog."""
+    meta, _, doc = source(name)
+    modes = dict(meta.MACRO_MODES)
+    drums = note_map(meta, doc)
+    kind = "sampler" if name in adapter.SAMPLERS else "drums" if drums else "melodic"
+    out = {
+        "name": meta.NAME,
+        "display_name": getattr(meta, "DISPLAY_NAME", None) or meta.NAME,
+        "kind": kind,
+        "categories": list(getattr(meta, "CATEGORIES", ("Synth",))),
+        "summary": summary(doc),
+        "macros": [{"label": label, "mode": modes[i]} for i, label in enumerate(meta.MACRO_LABELS)],
+        "patches": [
+            {"index": i, "name": p[0], "values": [int(v) for v in p[1]]}
+            for i, p in sorted(meta.PATCHES.items())
+        ],
+    }
+    if drums:
+        out["notes"] = [{"key": k, "name": v} for k, v in drums]
+    return out
+
+
+def catalog(names):
+    """``catalog.json``: every instrument's names, as data."""
+
+    # One line a macro, a patch and a note, so a diff shows the patch that changed.
+    def one(value):
+        return json.dumps(value, ensure_ascii=False)
+
+    def item(e):
+        fields = []
+        for key, value in e.items():
+            if isinstance(value, list) and value and isinstance(value[0], dict):
+                rows = ",\n".join("    " + one(v) for v in value)
+                fields.append('   "%s": [\n%s\n   ]' % (key, rows))
+            else:
+                fields.append('   "%s": %s' % (key, one(value)))
+        return "  {\n%s\n  }" % ",\n".join(fields)
+
+    return '{\n "format": 1,\n "package": "audioinstruments",\n "instruments": [\n%s\n ]\n}\n' % (
+        ",\n".join(item(entry(n)) for n in names)
+    )
+
+
 def wanted():
     names = list(adapter.ALL)
     files = {"%s.py" % n: face(n) for n in names}
     files["_names.py"] = names_module(names, {n: source(n)[::2] for n in names})
+    files["catalog.json"] = catalog(names)
     return files
 
 

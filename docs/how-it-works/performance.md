@@ -71,39 +71,36 @@ bytecode is slower on everything else. Both gain from the oscillator and
 ladder nodes listed in [audiodsp.md](audiodsp.md), which these tables
 predate.
 
-## On an ESP32-P4
+## On a board
 
-Each instrument below is compiled to one `audiograph` graph
-([architecture.md](architecture.md#a-graph-fragment)) and rendered by one call
-a block. Measured on an ESP32-P4 DEV-KIT with audiodsp 0.6.13.dev7 at 48 kHz
-and 128-frame blocks, so the budget is 2667 µs a block, with the voice governor
-off. The figures are the median µs per block with 1, 6 and 10 notes held, and
-the share of the budget in brackets.
+[boards.md](../reference/boards.md) has every instrument on one board of each
+chip family: how many notes it holds inside the block, and what is left over.
+The figures behind it, per board and per note count, are in
+[board-timings.csv](../reference/board-timings.csv).
 
-| Instrument | 1 note | 6 notes | 10 notes |
-| --- | ---: | ---: | ---: |
-| `combo_organ` | 674 (25%) | 1531 (57%) | 2268 (85%) |
-| `electric_grand70` | 737 (28%) | 2036 (76%) | 3143 (118%) |
-| `tonewheel3` | 1481 (56%) | 2970 (111%) | 4269 (160%) |
-| `compact_organ` | 1392 (52%) | 3101 (116%) | 4588 (172%) |
-| `string_ensemble` | 2040 (76%) | 3384 (127%) | 4835 (181%) |
-| `vocoder330` | 1727 (65%) | 3483 (131%) | 4996 (187%) |
-| `polya6` | 2265 (85%) | 6407 (240%) | 10869 (408%) |
+Each instrument is compiled to one `audiograph` graph
+([architecture.md](architecture.md#a-graph-fragment)) and the pump renders it
+with one call a block. The run builds the instrument with
+`adapter.create(48000, voice=name, block_size=128)`, its own number of voices
+(up to the pump's 24), holds 1, 6 and then 10 notes (a drum machine strikes
+its pads again every eight blocks), warms up for 30 blocks and takes the
+median of the next 120. The budget is 2667 µs a block at 48 kHz, with the
+voice governor off.
 
-Over 100% a block takes longer than the audio it makes. The voice governor
-caps the voices there; it was off for these runs. `combo_organ`, `compact_organ` and
-`string_ensemble` have their pump's pool of 24 voices, and `string_ensemble`'s first
-key sounds two of them. `vocoder330` has its mic off. At ten notes only
-`combo_organ` is inside the budget, and at six `combo_organ` and
-`electric_grand70` are. The `poly80` takes about 2300 µs with one note and 8600
-with six.
+The time that counts is the graph's own, because that is what the pump
+renders. On the ESP32, S3 and P4 it renders on the second core, so the Python
+around it (the instrument's control side, the app, the screen) runs beside it
+and doesn't count. On a single-core chip such as the STM32H747 or the RP2350
+it shares the core, so whatever the budget has left is also all the app gets.
+The Python side is light for most instruments. `poly80`, `state_variable_mono`
+and `west_coast_synth` run the most of it: through `step()` on the P4, 7 to 21
+ms of Python for each block at six notes, more than the block lasts.
 
-These figures are the compiled graph alone, which renders on its own core. The
-Python around it runs on the other core, so it doesn't count here, but it decides
-how quickly the app answers while notes are held.
-
-The other instruments are not timed here. `examples/poly_bench.py` times one
-on yours.
+What sets the order is voices times what each voice runs. The organs, pianos
+and drum machines share most of their sound between voices, so ten notes
+cost two to four times one. A synth voice runs its own oscillators, filter
+and envelopes, so it costs about the same per note however many you hold, and
+`polya6` and `poly80` run the most per voice.
 
 ## A polyphonic instrument
 

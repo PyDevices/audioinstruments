@@ -5,9 +5,6 @@ on a virtual rack, rendered a block at a time on audiodsp.
 
 ## On a board
 
-- Board timings for every instrument. `docs/how-it-works/performance.md` times seven on an
-  ESP32-P4; the rest, and an S3 build, need the same run to show which are
-  playable on a microcontroller.
 - More notes before stealing: PolyA6, Vocoder330, String Ensemble and Compact
   Organ hold one to three on an ESP32-P4. Lower each voice's cost, and give
   back what a board lost, such as Vocoder330's patches with no mic.
