@@ -34,6 +34,8 @@ guides/panel
 
 reference/index
 reference/instruments
+reference/boards
+reference/catalog
 ```
 
 ```{toctree}
