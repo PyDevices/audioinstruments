@@ -4,6 +4,12 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.2.dev4
+
+- A patch change on a graph instrument is faster: each graph handler runs once per change instead of once a knob, each fragment compiles once, and no collection runs while the pump is parked. On an ESP32-P4 a cable change on the Patch2600 drops from about 880 ms to 380 ms, on the Duo20 from 460 to 180 ms and on the Acid303 from 180 to 20 ms. Renders are byte-equal to before.
+- Every wheel carries `audioinstruments/catalog.json`: each instrument's names, kind, categories, macros, patches and kit keys, for a DAW or MIDI host. `tools/make_faces.py` writes it beside the faces.
+- The docs say which instrument plays on which chip, with timings from one board of each family.
+
 ## 0.5.2.dev3
 
 - The SoundFont instruments have `bend_range` (semitones, 2.0 by default) and `tuning` (semitones, 0.0 by default): a host can set how far the pitch bend moves a note, or tune every note, while it sounds. `reset()` puts them back.

@@ -7,7 +7,7 @@
 NAME = "hybrid_mono"
 DISPLAY_NAME = "HybridMono"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2.dev3"
+VERSION = "0.5.2.dev4"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
