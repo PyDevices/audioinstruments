@@ -94,6 +94,9 @@ def _seed(text):
 
 _LFOS = (0, 1)
 
+#: What `PolyA6Voice.set_param` reads for a parameter not set yet.
+_UNSET = object()
+
 #: Each LFO's parameters: its rate, what restarts it and its fade in.
 _LFO_PARAMS = (
     ("lfo1_rate", "lfo1_trigger", "lfo1_delay"),
@@ -385,10 +388,26 @@ class PolyA6Voice(Module):
         ):
             core.reset()
 
-    def set_param(self, name, value):
+    def _clamped(self, name, value):
         spec = self._param_specs.get(name)
         if spec is not None and isinstance(value, (int, float)) and not isinstance(value, bool):
             value = max(spec["min"], min(spec["max"], float(value)))
+        return value
+
+    def holds(self, name, value):
+        """True when `set_param(name, value)` would change nothing: the value
+        is the one in force already. A patch sets all 95 controls on every
+        voice and changes about 16 of them, so the rest can be skipped."""
+        value = self._clamped(name, value)
+        old = self.params.get(name, _UNSET)
+        return old is not _UNSET and type(old) is type(value) and old == value
+
+    def set_param(self, name, value):
+        value = self._clamped(name, value)
+        old = self.params.get(name, _UNSET)
+        if old is not _UNSET and type(old) is type(value) and old == value:
+            # Nothing new for a handler to read.
+            return
         self.params[name] = value
         self.on_param(name, value)
         if self._fragment is not None:

@@ -219,7 +219,9 @@ On an ESP32-P4 a patch change that plugs other cables takes about 20 ms on the
 Acid303, 115 to 180 ms on most monosynths and 380 ms on the Patch2600 (570 ms at
 worst), of the calling thread: a held note plays on while the screen and MIDI
 input wait for it, so change the heavier patches between phrases. A patch change
-with no cables to move takes 2 to 50 ms, and about 115 ms on the PolyA6.
+with no cables to move takes 2 to 50 ms, and about 115 ms on the PolyA6 as
+it was before it skipped the controls a patch leaves alone; that change cut its
+patch change from 9.1 to about 3.4 ms on the MicroPython unix port.
 A module that still runs in Python can't be added to an attached graph: the
 change is refused and the old patch plays on. The same goes for a `fed` module.
 

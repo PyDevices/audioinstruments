@@ -434,7 +434,8 @@ class PolyA6(VoicePatch):
             self.midi.set_param("bend_range", float(value))
         elif name in ("distortion", "dist_level"):
             self.output.set_param(name, value)
-        else:
+        elif not pool.voices[0].modules["voice"].holds(name, value):
+            # Every voice is set together, so the first holds what all hold.
             pool.set_param("voice", name, value)
 
     def apply_patch(self, pool, index):
