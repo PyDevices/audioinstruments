@@ -29,7 +29,4 @@ on a virtual rack, rendered a block at a time on audiodsp.
 
 - More polyphony: a pool that grows past the voices it was built with, and
   one pool shared by several instruments.
-- An arpeggiator: a note source in front of a `VoicePool` that steps through
-  the keys you hold (up, down, random, over several octaves), so any
-  polyphonic instrument can arpeggiate.
 - A tempo that follows the host's transport in `audioinstruments._rack.adapter`.

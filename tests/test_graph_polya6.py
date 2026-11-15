@@ -1128,3 +1128,33 @@ def test_sixteen_voices_keep_a_group_each_and_the_distortion_its_own():
         assert inst._pool.voices[15].members[0]._extras_on is True
     finally:
         inst.deinit()
+
+
+def test_a_patch_change_sets_only_the_controls_that_differ(monkeypatch):
+    """A patch names all 95 voice controls and changes about 16 of them, and
+    each control set on a voice costs a call into all sixteen voices. A
+    patch change touches the voices only for what differs, and the render
+    is the same as setting everything."""
+    from audioinstruments._rack.instruments import polya6 as instrument
+
+    calls = []
+    real = PolyA6Voice.set_param
+
+    def counted(self, name, value):
+        calls.append(name)
+        return real(self, name, value)
+
+    monkeypatch.setattr(PolyA6Voice, "set_param", counted)
+    inst = adapter.create(48000, voice="polya6")
+    voices = len(inst.voice_pool.voices)
+    for a, b in ((0, 1), (1, 7), (7, 0)):
+        inst.program_change(a)
+        before = instrument.settings(a)
+        after = instrument.settings(b)
+        differ = [name for name in after if after[name] != before.get(name)]
+        del calls[:]
+        inst.program_change(b)
+        # The macros reach the voices too, so allow those beside the patch's own.
+        assert len(set(calls)) <= len(differ) + len(instrument.MACROS), (a, b)
+        assert len(calls) <= voices * (len(differ) + len(instrument.MACROS)), (a, b)
+        assert len(calls) < voices * len(after) // 2, (a, b, len(calls))

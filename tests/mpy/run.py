@@ -76,6 +76,7 @@ MODULES = (
     "test_electronic_drums5",
     "test_face",
     "test_panel",
+    "test_arpeggiator",
 )
 
 
