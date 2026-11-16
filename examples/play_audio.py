@@ -668,7 +668,7 @@ def build_movement(number):
 
 
 def open_pcm():
-    """A live output through the pydevices audio stack, or None."""
+    """A live output through the omnipython audio stack, or None."""
     try:
         import board_config
         from audiodev import AudioFormat

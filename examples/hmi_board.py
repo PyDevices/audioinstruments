@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 """The rack on a board, open to front panels over Wi-Fi, with its own screen.
 
-    mpftp run examples/hmi_board.py -d COM55          # starts and returns
+    mcuctl run examples/hmi_board.py -d COM55          # starts and returns
 
 Builds play_audio's movement 4 (Modular55: two VCOs, the ladder, the
 envelope, the VCA) without importing the other nineteen instruments, plays

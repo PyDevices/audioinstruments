@@ -5,10 +5,10 @@
 """Sphinx configuration for the audioinstruments documentation.
 
 Everything shared by the PyDevices documentation projects (theme, top bar,
-Markdown and docstring setup, the reference map) comes from pydevices-docs.
+Markdown and docstring setup, the reference map) comes from omnipython-docs.
 """
 
-from pydevices_docs import configure
+from omnipython_docs import configure
 
 settings = configure(
     "audioinstruments", __file__,

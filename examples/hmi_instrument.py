@@ -5,7 +5,7 @@
 
     micropython examples/hmi_instrument.py                      # poly6, port 9000, live audio
     python examples/hmi_instrument.py --demo poly106_demo --no-live --seconds 60 --screen
-    mpftp run examples/hmi_instrument.py -d COM55               # on a board, with its screen
+    mcuctl run examples/hmi_instrument.py -d COM55               # on a board, with its screen
     micropython examples/hmi_instrument.py --pump --patch-every 30 --seconds 1800
 
 The demo module (``poly6_demo`` by default) supplies the instrument's name
