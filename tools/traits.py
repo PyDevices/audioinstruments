@@ -456,7 +456,7 @@ SPECS = {
 }
 
 #: Phrases for a reference that has no instrument spec of its own yet: the
-#: same keys as a spec, without ``patches``. A Phase 2 instrument copies the
+#: same keys as a spec, without ``patches``. An instrument added later copies the
 #: phrase of its family into its spec, so its reference can be measured with
 #: exactly the notes it is measured with.
 PHRASES = {

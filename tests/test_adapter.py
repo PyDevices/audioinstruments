@@ -54,7 +54,7 @@ def peak(x):
 
 
 def check_contract(inst):
-    """The structural checks audiocomponents' tools/validate_api.py makes of an instrument."""
+    """The structural checks of the audio component contract for an instrument."""
     for name in COMMON_METHODS + INSTRUMENT_METHODS:
         assert callable(getattr(inst, name, None)), name
     for name in PROPERTIES:

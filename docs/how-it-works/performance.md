@@ -4,15 +4,22 @@ How long one block takes, measured, and where the time goes. Nothing on
 this page is an audio measurement; it is CPU time per block, 64 frames
 unless a table says otherwise, the budget for which is 1333 µs at 48 kHz.
 
+## The desktop the figures come from
+
+Every desktop figure in these docs, on this page and on each
+[instrument's page](../reference/instruments.md), was measured on one machine:
+an Intel Core Ultra 7 155H under WSL2, with CPython 3.12.3 and numpy 2.5.4, and
+the unix port of MicroPython (1.29.0 for the movement table below, a 1.30
+preview for the polyphonic figures) with ulab and audiodsp compiled in. Run to
+run a factor moves by about 15%. They say nothing about any board;
+[Boards](../reference/boards.md) does.
+
 ## Measured block times
 
 `tests/mpy/bench.py` builds each of the twenty demo movements, fires its
 events, warms up for 50 blocks and takes the median of five runs of 200
-blocks. These numbers are from one machine, an Intel Core Ultra 7 155H
-under WSL2, on 2026-10-19, with CPython 3.12.3 and numpy 2.5.4, and with
-the unix port of MicroPython 1.29.0 (the `bin/micropython` of a PyDevices
-checkout, with ulab and audiodsp 0.6.7 compiled in). They say nothing about
-any board.
+blocks, on [the desktop above](#the-desktop-the-figures-come-from) with
+audiodsp 0.6.7.
 
 These tables predate the oscillator and ladder nodes. The VCO and the four
 ladders now run on audiodsp's `audiooscillator.Oscillator` and
@@ -104,6 +111,36 @@ and envelopes, so it costs about the same per note however many you hold, and
 
 ## A polyphonic instrument
 
-[polyphony.md](../guides/polyphony.md#what-it-costs) has what eight MonoOne voices cost
-through `audioinstruments._rack.adapter`, at 64, 128 and 256 frames, on both interpreters.
-`examples/poly_bench.py` measures it on yours.
+`examples/poly_bench.py` renders buffers of 1024 frames with 0, 1, 2, 4 and
+8 notes held on an eight-voice MonoOne instrument, the way `output` does, and
+prints the time per buffer and the real-time factor (seconds of audio per
+second of work).
+
+| block | notes | CPython ms | factor | MicroPython ms | factor |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 64 | 0 | 0.6 | 35 | 1.5 | 14 |
+| 64 | 4 | 13.7 | 1.6 | 8.2 | 2.6 |
+| 64 | 8 | 27.4 | 0.8 | 13.9 | 1.5 |
+| 128 | 0 | 0.3 | 77 | 0.9 | 23 |
+| 128 | 4 | 7.5 | 2.8 | 4.8 | 4.5 |
+| 128 | 8 | 14.5 | 1.5 | 8.5 | 2.5 |
+| 256 | 0 | 0.1 | 163 | 0.6 | 33 |
+| 256 | 4 | 4.2 | 5.2 | 3.9 | 5.5 |
+| 256 | 8 | 7.7 | 2.8 | 5.2 | 4.1 |
+
+A block's cost is mostly per call, not per frame, so a larger block is
+cheaper: eight MonoOne voices fall just short of real time at 64 frames on
+CPython and run at about 1.5 times real time at 128, the adapter's default.
+A larger block also moves controls less often and lengthens a steal, which
+takes three blocks
+([What a steal sounds like](../guides/polyphony.md#what-a-steal-sounds-like)).
+The rows with no notes held are the cost of the pool itself, with every voice
+parked.
+
+Putting the render inside the pull adds nothing you can measure. Timing a
+1024-frame buffer with nothing playing, `audiocore.get_buffer(inst.output)`
+and calling the render directly differ by less than the run-to-run noise
+(about 20 µs on CPython), and so do rendering into the ring and pulling the
+ring on MicroPython. The cost is the rack.
+
+Each instrument's own figures are on [its page](../reference/instruments.md).

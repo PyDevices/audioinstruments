@@ -40,58 +40,16 @@ for _ in range(100):
     rack.step()  # rack.output_buffer_left holds 64 floats; ±0.5 is ±5 V
 ```
 
-## Playing chords
+## Playing chords, and the instruments
 
-`VoicePool` copies a voice patch N times, gives each note a free copy (it
-steals one without a click when none is free), and sums the copies into a
-section that exists once. `audioinstruments._rack.adapter` wraps the pool as an audio
-component with `note_on()`, `set_macro()`, a settable `voices` and an `output`
-that `audio_out.play()` takes:
-
-```python
-import audioinstruments._rack.adapter as adapter
-
-inst = adapter.create(48000, voice="mono_one", voices=8)
-audio_out.play(inst.output)
-inst.note_on(60, 100)
-inst.note_on(64, 100)
-```
-
-[docs/guides/polyphony.md](../guides/polyphony.md) has the details, what it costs and how
-the steals were checked for clicks.
-
-## The Poly106
-
-`voice="poly106"` is a whole instrument: a six-voice poly synth inspired by
-the Roland Juno-106, with its DCO, filter, envelope, LFO, HPF and chorus,
-and twelve patches from pads and strings to brass, bass and leads:
-
-```python
-inst = adapter.create(48000, voice="poly106")
-audio_out.play(inst.output)
-inst.program_change(1)   # Warm Pad
-inst.note_on(57, 100)
-```
-
-`python examples/poly106_demo.py` plays a short piece on it into
-`wav_exports/poly106_demo.wav`. [docs/reference/instruments.md](../reference/instruments.md)
-has its controls, its cost, and how an instrument is built.
-
-## SoundFonts, MIDI and a step sequencer
-
-`voice="soundfont"` and `voice="soundfont_drums"` play a SoundFont 2 bank you
-supply: its melodic presets, and its kits with the pad keys 36 to 51 answering
-by nearest voice. A `MidiDispatcher` plays them from MIDI bytes or a Standard
-MIDI File, with the drums on channel 10. [docs/guides/soundfont.md](../guides/soundfont.md)
-has the options, and `python examples/soundfont_demo.py` plays a short phrase
-from a bank in `~/soundfonts/`.
-
-## A control panel
-
-`audioinstruments.panel.create("poly106", 48000)` wraps an instrument for a
-control panel: macros on the MIDI scale, patch names, bypass and reload, and
-a callback when a controller moves something. [docs/guides/panel.md](../guides/panel.md) lists
-what it has.
+`VoicePool` copies a voice patch once per note and sums the copies into a
+section that exists once, and `audioinstruments._rack.adapter` wraps the pool
+as an audio component ([Polyphony](../guides/polyphony.md)). Every instrument
+in the [reference](../reference/instruments.md) is such a pool with its
+presets. A SoundFont bank you supply plays through `audiosampler` instead, with
+no rack ([Play a SoundFont](../guides/soundfont.md)), and
+`audioinstruments.panel` wraps any of them for a control panel
+([Panel](../guides/panel.md)).
 
 ## Loading only what you use
 
@@ -165,14 +123,10 @@ out for each interpreter, and the tests enforce it.
 [docs/how-it-works/performance.md](performance.md) has measured block times, and
 [docs/how-it-works/architecture.md](architecture.md) the layout of the code.
 
-## Running it
+## Running the demos
 
-CPython 3.12 or later with audiodsp from TestPyPI:
+With audiodsp installed ([Install](../get-started/install.md)):
 
-    uv venv --seed --python 3.12 .venv
-    uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
-        --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
-        omnipython-audiodsp omnipython numpy
     PYTHONPATH=lib .venv/bin/python examples/play_audio.py --no-live --wav
 
 That renders twenty short movements, one per instrument, into
@@ -195,17 +149,12 @@ a rack's modules and cables, and turn knobs and patch cables on the rack.
 
 ## Tests
 
-    .venv/bin/python -m pytest -q        # CPython
-    micropython tests/mpy/run.py        # MicroPython
-
 The tests check that signals are present, finite and in range, that
 controls do what they say, that the bridge to audiodsp runs in lockstep,
 and that no module allocates an array while processing a block. There are
 no audio targets: an instrument's trait file holds what its own sound
-measured when it was accepted, so a change that moves it shows up
-([instruments.md](../reference/instruments.md#traits)). [CONTRIBUTING.md](https://github.com/PyDevices/audioinstruments/blob/main/CONTRIBUTING.md) has the repo's rules and
-[ROADMAP.md](https://github.com/PyDevices/audioinstruments/blob/main/ROADMAP.md) what is planned.
-
-## License
-
-MIT.
+measured when it was accepted, so a change that moves it shows up.
+[CONTRIBUTING.md](https://github.com/PyDevices/audioinstruments/blob/main/CONTRIBUTING.md)
+says how to run them and has the repo's rules, and
+[ROADMAP.md](https://github.com/PyDevices/audioinstruments/blob/main/ROADMAP.md)
+what is planned.

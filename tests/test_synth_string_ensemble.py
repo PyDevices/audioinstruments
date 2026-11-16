@@ -1276,10 +1276,10 @@ def test_docs_and_code_agree():
 
     from audioinstruments._rack.dsp import ensemble
 
-    text = Path("docs/reference/instruments.md").read_text()
-    section_match = re.search(r"## Playing the StringEnsemble.*?(?=\n## |\Z)", text, re.DOTALL)
+    text = Path("docs/reference/instruments/string_ensemble.md").read_text()
+    section_match = re.search(r"# StringEnsemble\n.*", text, re.DOTALL)
     assert section_match, (
-        "docs/reference/instruments.md has no 'Playing the StringEnsemble' section"
+        "docs/reference/instruments/string_ensemble.md has no StringEnsemble heading"
     )
     section = section_match.group(0)
 

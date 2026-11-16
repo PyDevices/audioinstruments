@@ -7,7 +7,7 @@ instrument stays quiet, level and clean.
 ``CONTROLS`` has a row for every name in ``SETTINGS``: the controls to set first, the keys played,
 the two values and what to measure. One test renders each row at both values and asserts the two
 renders differ plainly and neither is silent. ``test_route_<rule>`` is the test of a routing rule of
-the same name in docs/reference/instruments.md.
+the same name in docs/reference/instruments/vocoder330.md.
 
 Each test fails with its fault planted; the pull request lists them.
 """
@@ -1558,9 +1558,9 @@ def test_docs_and_code_agree():
     from audioinstruments._rack.modules.vocoder330 import filters
 
     root = Path(__file__).resolve().parent.parent
-    text = (root / "docs" / "reference" / "instruments.md").read_text()
-    match = re.search(r"## Playing the Vocoder330.*?(?=\n## |\Z)", text, re.DOTALL)
-    assert match, "docs/reference/instruments.md has no 'Playing the Vocoder330' section"
+    text = (root / "docs" / "reference" / "instruments" / "vocoder330.md").read_text()
+    match = re.search(r"# Vocoder330\n.*", text, re.DOTALL)
+    assert match, "docs/reference/instruments/vocoder330.md has no Vocoder330 heading"
     section = match.group(0)
     entries = re.findall(r"`([A-Z][A-Z0-9_]+)` \(([^)]+)\)", section)
     assert len(entries) >= 60, "only %d constants quoted" % len(entries)
@@ -1590,7 +1590,7 @@ def test_docs_and_code_agree():
             "%s is defined and never used" % name
         )
     # the routing table has a row for each rule, and the tests it names exist
-    table = section[section.index("### Routing table") :]
+    table = section[section.index("## Routing table") :]
     this_file = Path(__file__).read_text()
     for rule in RULES:
         assert "| `%s` |" % rule in table, rule

@@ -110,12 +110,14 @@ the bend, for a glide. It is all in
 
 ## Instruments
 
-An instrument in `adapter.ALL` follows the Poly106
-([docs/reference/instruments.md](docs/reference/instruments.md)): a family of modules, a voice
+An instrument in `adapter.ALL` follows the Poly106: a family of modules, a voice
 patch with its presets in `lib/audioinstruments/_rack/instruments/`, a built-in effect as a
 core in `dsp/`, a spec in `tools/traits.py` and a trait file, and tests on
 both interpreters. Its sound is built from the original's controls; there is
-nothing to match.
+nothing to match. [docs/dev/build-an-instrument.md](docs/dev/build-an-instrument.md)
+has the pattern, [docs/dev/traits.md](docs/dev/traits.md) how a sound is pinned,
+and each instrument's user page goes in `docs/reference/instruments/`, listed in
+[docs/reference/instruments.md](docs/reference/instruments.md).
 
 ## Keep the panels
 

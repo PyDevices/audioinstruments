@@ -135,11 +135,8 @@ round again.
 turns on and off: the Poly106 and Poly6 voices put their sub-oscillator and
 noise behind switches, the Poly6's output section its three effects, and the
 Poly5 voice each of its oscillators, so a patch without them does not run them.
-A graph has 32 groups, a voice with its switches takes one for each, and the
-Poly5's two make three: ten voices fit. A pool of more than 32 voices that
-needs no switch groups does fit: neighbouring voices share a group, two to a
-group (49 keys in 25), then three, until they do
-([polyphony.md](../guides/polyphony.md#how-many-voices-a-graph-holds)). `f.before_run(fn)`
+Each switch takes one of the graph's 32 groups
+([How many voices a graph holds](../guides/polyphony.md#how-many-voices-a-graph-holds)). `f.before_run(fn)`
 and `f.after_run(fn)` run every block around the graph call; the latter gets
 the mask of groups whose envelopes are still sounding (the voice mix parks by
 `f.peak(wire)` of a wire it `keep`s instead, the rack's rule, and `f.rendered`
@@ -415,9 +412,8 @@ scalars and writes into blocks the caller owns. Cores come in three kinds:
   the VCA, the wavefolder. `dsp/blocks.py` holds the pieces: `EdgeDetector`
   finds the first rising and falling edge of a gate in a block,
   `exp_segment` and `linear_segment` render a span of a one-pole or a ramp.
-- **On audiodsp**, through `core/bridge.py`: linear filters, delays,
-  reverbs, overdrive, the modal and string resonators, MacroOscillator's chord and VA
-  models, and from audiodsp 0.6.8 the VCO and the ladders. [audiodsp.md](audiodsp.md) says which and why.
+- **On audiodsp**, through `core/bridge.py`: [The rack and audiodsp](audiodsp.md)
+  lists which cores and why.
 
 ## The demos
 
