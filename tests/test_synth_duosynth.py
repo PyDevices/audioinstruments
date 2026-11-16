@@ -1710,22 +1710,23 @@ def test_docs_and_code_agree():
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "docs",
         "reference",
-        "instruments.md",
+        "instruments",
+        "duosynth.md",
     )
     if not os.path.exists(doc_path):
-        pytest.skip("docs/reference/instruments.md not found")
+        pytest.skip("docs/reference/instruments/duosynth.md not found")
 
     with open(doc_path, "r") as f:
         content = f.read()
 
-    section_match = re.search(r"## Playing the DuoSynth.*?(?=\n## |\Z)", content, re.DOTALL)
+    section_match = re.search(r"# DuoSynth\n.*", content, re.DOTALL)
     if not section_match:
-        pytest.skip("Playing the DuoSynth section not found")
+        pytest.skip("DuoSynth heading not found")
     section = section_match.group(0)
 
     # find every `NAME` (value)
     matches = re.findall(r"`([A-Z0-9_]+)`\s*\(([^)]+)\)", section)
-    assert len(matches) > 0, "No constants found in Playing the DuoSynth"
+    assert len(matches) > 0, "No constants found on the DuoSynth page"
 
     with open(duosynth_voice.__file__, "r") as vf:
         voice_src = vf.read()

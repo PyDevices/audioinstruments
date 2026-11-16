@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: MIT
 """A polyphonic rack as an audio component.
 
-``create()`` returns an ``Instrument``: the object audiocomponents'
-instruments are, so a host written for those can drive this one. MIDI goes
-in through ``note_on()``, ``note_off()``, ``pitch_bend()`` and
+``create()`` returns an ``Instrument``: an audio component, the contract
+audioeffects' effects answer too, so a host written for one drives the other.
+MIDI goes in through ``note_on()``, ``note_off()``, ``pitch_bend()`` and
 ``control_change()``, which feed a ``PolyMidiCV``; the voices run in a rack;
 and ``output`` is something audiodsp can pull, so ``audio_out.play(inst.output)``
 and a plugin's sidecar take it as they take any other instrument.

@@ -26,7 +26,10 @@ settings = configure(
     ],
     version_file="../VERSION",
 )
+# docs/dev is for contributors and is not part of the site.
+settings["exclude_patterns"].append("dev")
+
 globals().update(settings)
 
-# instruments.md links to level-4 headings ("The Mono101 graph form").
+# The instrument pages link to one another's subsection headings.
 myst_heading_anchors = 4

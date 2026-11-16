@@ -40,13 +40,13 @@ temporary is 1 KB and an int16 one 512 B). A tracemalloc snapshot cannot do
 this job: a temporary is freed before the step ends and never shows in a
 snapshot. audiodsp's CPython shims make plain arrays and bytes of their own
 when they hand a block back; those are not traced. Plant `tmp = src * 0.5`
-in a `process()` and the test names the line: on 2026-10-19 the plant in
-the VCA core failed eight modules with "1024 B at dsp/amplifier.py:33".
+in a `process()` and the test names the line: the plant in the VCA core
+fails eight modules with "1024 B at dsp/amplifier.py:33".
 
 **MicroPython.** Nothing written in Python is allocation-free here, so the
 rule has to be stated differently. Measured on the unix build of
-MicroPython 1.29 with ulab (the one in `bin/micropython` of a PyDevices
-checkout; the ESP32 ports share the object representation):
+MicroPython 1.29 with ulab and audiodsp compiled in (the ESP32 ports share
+the object representation):
 
 - every float operation boxes a float (`a * b + 1.0`: a MemoryError under
   `micropython.heap_lock()`), and a 64-sample Python loop over a float
@@ -92,6 +92,5 @@ mixers, wavefolder and every audiodsp bridge, is vector or C and flat.
 ## Where the numbers came from
 
 The MicroPython figures are from `micropython.heap_lock()` and
-`gc.mem_alloc()` deltas on `bin/micropython` (MicroPython 1.29.0, unix port,
-ulab) on 2026-10-19. The CPython behaviour is from the traced-block test on
+`gc.mem_alloc()` deltas on the unix port of MicroPython 1.29.0 with ulab. The CPython behaviour is from the traced-block test on
 numpy 2.5. Neither has been measured on a board.

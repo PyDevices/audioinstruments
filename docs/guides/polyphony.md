@@ -380,7 +380,7 @@ skipped by `Rack.step()`, which is how parking works.
 ## An audio component
 
 `audioinstruments._rack.adapter.create(sample_rate, channel_count=2, transport=None, **options)`
-returns an `Instrument` with the surface audiocomponents' instruments have:
+returns an `Instrument`, an audio component with this surface:
 `output`, `sample_rate`, `channel_count`, `latency_samples` (0),
 `tail_samples` (None), `capabilities`, `patch_index`, `note_on()`,
 `note_off()`, `all_notes_off()`, `pitch_bend()`, `control_change()`,
@@ -435,45 +435,9 @@ buffers (6 by default, 32 ms at 256 frames); that is the delay between a note
 and its sound. `fill()` does nothing on CPython, so one loop serves both.
 `output="pull"` and `output="ring"` choose by hand.
 
-audiopump has one context. A `pull()` while a player has the pump running
-replaces the context and stops the player, and the bridge to the audiodsp
-nodes used `pull()` for every node in the rack. It now checks
-`audiopump.running()` and takes `audiocore.get_buffer()` when a pump is
-playing, which allocates a buffer per pull. Without that, a pump playing the rack
-stopped on its first block: `audio_out` fell back to pulling on the
-interpreter thread, and on MicroPython the output went silent.
+A pump can play the rack too: the bridge to the audiodsp nodes pulls them so
+that it doesn't stop a pump that is running
+([The rack and audiodsp](../how-it-works/audiodsp.md#how-the-two-fit-together)).
 
-## What it costs
-
-`examples/poly_bench.py` renders buffers of 1024 frames with 0, 1, 2, 4 and
-8 notes held on an eight-voice MonoOne instrument, the way `output` does, and
-prints the time per buffer and the real-time factor (seconds of audio per
-second of work). The machine is an Intel Core Ultra 7 155H under WSL2 on
-2026-10-20, CPython 3.12.3 with numpy 2.5.4, and the unix port of a MicroPython
-1.30 preview (the `bin/micropython` of a PyDevices checkout, with ulab and audiodsp
-compiled in). Run to run the factor moves by about 15%.
-
-| block | notes | CPython ms | factor | MicroPython ms | factor |
-| ---: | ---: | ---: | ---: | ---: | ---: |
-| 64 | 0 | 0.6 | 35 | 1.5 | 14 |
-| 64 | 4 | 13.7 | 1.6 | 8.2 | 2.6 |
-| 64 | 8 | 27.4 | 0.8 | 13.9 | 1.5 |
-| 128 | 0 | 0.3 | 77 | 0.9 | 23 |
-| 128 | 4 | 7.5 | 2.8 | 4.8 | 4.5 |
-| 128 | 8 | 14.5 | 1.5 | 8.5 | 2.5 |
-| 256 | 0 | 0.1 | 163 | 0.6 | 33 |
-| 256 | 4 | 4.2 | 5.2 | 3.9 | 5.5 |
-| 256 | 8 | 7.7 | 2.8 | 5.2 | 4.1 |
-
-A block's cost is mostly per call, not per frame, so a larger block is
-cheaper: eight MonoOne voices fall just short of real time at 64 frames on
-CPython and run at about 1.5 times real time at 128, the adapter's default.
-A larger block also moves controls less often and lengthens a steal, which
-takes three blocks. The rows with no notes held are the cost of the pool
-itself, with every voice parked.
-
-Putting the render inside the pull adds nothing you can measure. Timing a
-1024-frame buffer with nothing playing, `audiocore.get_buffer(inst.output)`
-and calling the render directly differ by less than the run-to-run noise
-(about 20 µs on CPython), and so do rendering into the ring and pulling the
-ring on MicroPython. The cost is the rack.
+What a pool costs at each block size, on both interpreters, is in
+[Performance](../how-it-works/performance.md#a-polyphonic-instrument).

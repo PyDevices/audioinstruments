@@ -1,7 +1,7 @@
 # The rack and audiodsp
 
-the rack depends on [audiodsp](https://github.com/PyDevices/audiodsp), the
-PyDevices port of CircuitPython's audio nodes plus its own, and on nothing
+The rack depends on [audiodsp](https://github.com/PyDevices/audiodsp), a
+port of CircuitPython's audio nodes plus nodes of its own, and on nothing
 else beyond numpy or ulab. This page says what the rack runs on audiodsp, what
 it keeps in Python and why, and what it would still like audiodsp to have.
 Everything here was checked against audiodsp 0.6.7 on CPython 3.12 and on
@@ -20,6 +20,9 @@ in, pulls one block from the last node and converts back. With every node's
 buffer set to one block, each pull consumes exactly the block written
 before it, so the chain is in lockstep with the rack. On MicroPython the
 pull goes through `audiopump.pull` and `drain` and allocates nothing.
+audiopump has one context, so a `pull()` while a player has the pump running
+would replace it and stop the player: while `audiopump.running()`, the bridge
+takes `audiocore.get_buffer()` instead, which allocates a buffer per pull.
 
 Two things decide what can live on audiodsp:
 
@@ -95,9 +98,9 @@ for it.
 
 ## Prior art
 
-[audiocomponents](https://github.com/PyDevices/audiocomponents) builds
-instruments and effects on the same nodes and was read for technique, not
-imported: its West Coast instrument drives a vactrol-style gate from a synthio
+The archived [audiocomponents](https://github.com/PyDevices/audiocomponents)
+built instruments and effects on the same nodes and was read for technique, not
+imported: its West Coast instrument drove a vactrol-style gate from a synthio
 envelope and a one-shot LFO; its chorus and vibrato model a clocked
 bucket-brigade line, which is where `BBDDelayCore`'s use of `Echo`'s
 `freq_shift` comes from; `acoustickit` is a modal synthesizer like ModalResonator's

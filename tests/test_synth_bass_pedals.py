@@ -1307,12 +1307,13 @@ def test_docs_and_code_agree():
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "docs",
         "reference",
-        "instruments.md",
+        "instruments",
+        "bass_pedals.md",
     )
     with open(doc_path) as f:
         content = f.read()
-    found = re.search(r"### Playing the BassPedals.*?(?=\n### |\n## |\Z)", content, re.DOTALL)
-    assert found, "docs/reference/instruments.md has no 'Playing the BassPedals' section"
+    found = re.search(r"# BassPedals\n.*", content, re.DOTALL)
+    assert found, "docs/reference/instruments/bass_pedals.md has no BassPedals heading"
     section = found.group(0)
     # every `NAME` (value) the section quotes
     matches = re.findall(r"`([A-Z][A-Z0-9_]+)` \(([^)]+)\)", section)
