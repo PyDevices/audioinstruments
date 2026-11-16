@@ -7,7 +7,7 @@
 NAME = "combo_organ"
 DISPLAY_NAME = "ComboOrgan"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2.dev4"
+VERSION = "0.5.2.dev5"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
