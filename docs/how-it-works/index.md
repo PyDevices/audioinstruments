@@ -172,7 +172,7 @@ CPython 3.12 or later with audiodsp from TestPyPI:
     uv venv --seed --python 3.12 .venv
     uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
         --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
-        omnipython-audiodsp pydevices numpy
+        omnipython-audiodsp omnipython numpy
     PYTHONPATH=lib .venv/bin/python examples/play_audio.py --no-live --wav
 
 That renders twenty short movements, one per instrument, into
@@ -184,7 +184,7 @@ under a MicroPython build with audiodsp and ulab compiled in:
     MICROPYPATH=lib micropython examples/play_audio.py --no-live --wav
 
 Without `--no-live` the script tries `board_config.pcm_out` from the
-pydevices package for live output and falls back to WAV files when that is
+omnipython package for live output and falls back to WAV files when that is
 not available. `examples/headless_synth.py` is a smaller starting point, and
 `examples/patch2600_demo.py` plays the Patch2600's twelve patches. `examples/hmi_instrument.py` plays an
 instrument's demo phrase with the rack open to front panels over hmilink

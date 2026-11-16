@@ -26,7 +26,7 @@ if "examples" not in sys.path:
 
 # On a desktop the panel is 1280x720 at scale 1 unless the environment says
 # otherwise; the desktop board_config reads these when it is imported.
-for _k, _v in (("PYDEVICES_WIDTH", "1280"), ("PYDEVICES_HEIGHT", "720"), ("PYDEVICES_SCALE", "1")):
+for _k, _v in (("OMNIPYTHON_WIDTH", "1280"), ("OMNIPYTHON_HEIGHT", "720"), ("OMNIPYTHON_SCALE", "1")):
     if hasattr(os, "environ") and _k not in os.environ:
         os.environ[_k] = _v
 

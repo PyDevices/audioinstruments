@@ -32,5 +32,5 @@ jobs:
 
   tag:
     needs: validate
-    uses: PyDevices/.github/.github/workflows/reusable-tag-on-release-merge.yml@publishing-v6
+    uses: PyDevices/.github/.github/workflows/reusable-tag-on-release-merge.yml@publishing-v26
     secrets: inherit
