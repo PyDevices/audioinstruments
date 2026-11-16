@@ -42,6 +42,7 @@ from .core.signal import BRIDGE_SCALE, ULAB, create_buffer, np
 
 try:
     from _thread import allocate_lock as _allocate_lock
+    from _thread import get_ident as _get_ident
 except ImportError:  # a build without threads
     _allocate_lock = None
 
@@ -122,9 +123,69 @@ class _NoLock:
     def __exit__(self, *exc):
         return False
 
+    def mine(self):
+        return False
+
+    def run(self, fn, *args):
+        fn(*args)
+
+
+class _Lock:
+    """The adapter's lock, safe against a callback on the thread that holds it.
+
+    A scheduled callback (a timer's ``fill()``, a governor setting
+    ``voices``) can run on the thread that is part way through a note call,
+    between two of its bytecodes. A plain lock would wait for itself there
+    forever. This one lets its own thread in again, and `run` holds a change
+    that arrives that way until the outer call lets go, so a note or a voice
+    count never lands half way through another.
+    """
+
+    def __init__(self):
+        self._lock = _allocate_lock()
+        self._owner = None
+        self._depth = 0
+        self._later = []
+
+    def __enter__(self):
+        me = _get_ident()
+        if self._owner != me:
+            self._lock.acquire()
+            self._owner = me
+        self._depth += 1
+        return self
+
+    def __exit__(self, *exc):
+        if self._depth == 1:
+            later = self._later
+            try:
+                while later:
+                    fn, args = later.pop(0)
+                    fn(*args)
+            finally:
+                del later[:]
+                self._owner = None
+                self._depth = 0
+                self._lock.release()
+        else:
+            self._depth -= 1
+        return False
+
+    def mine(self):
+        """True when this thread holds the lock: the caller is a callback inside it."""
+        return self._depth > 0 and self._owner == _get_ident()
+
+    def run(self, fn, *args):
+        """``fn(*args)`` under the lock, or when the outer call lets go if this thread holds it."""
+        if self.mine():
+            self._later.append((fn, args))
+            return
+        with self:
+            fn(*args)
+
 
 def _lock():
-    return _allocate_lock() if _allocate_lock is not None else _NoLock()
+    return _Lock() if _allocate_lock is not None else _NoLock()
 
 
 class VoicePatch:
@@ -766,8 +827,7 @@ class Instrument:
         if self._mono and count != 1:
             raise ValueError("%s is monophonic: it has one voice" % self.patch.NAME)
         _kit_voices(self.patch, self._kit_sounds, count)
-        with self._lock:
-            self._pool.voice_count = count
+        self._lock.run(setattr, self._pool, "voice_count", count)
 
     @property
     def priority(self):
@@ -778,8 +838,7 @@ class Instrument:
     @priority.setter
     def priority(self, priority):
         self._check_live()
-        with self._lock:
-            self._pool.priority = priority
+        self._lock.run(setattr, self._pool, "priority", priority)
 
     @property
     def retrigger(self):
@@ -790,8 +849,7 @@ class Instrument:
     @retrigger.setter
     def retrigger(self, on):
         self._check_live()
-        with self._lock:
-            self._pool.retrigger = on
+        self._lock.run(setattr, self._pool, "retrigger", on)
 
     @property
     def pads(self):
@@ -834,14 +892,16 @@ class Instrument:
 
     def _at(self, sample_position, fn, *args):
         """Run ``fn(*args)`` now, or at the block that frame ``sample_position`` falls in."""
-        with self._lock:
-            if sample_position == 0:
-                if self._attached:
-                    self._compiled.settle()
-                fn(*args)
-            else:
-                self._event_seq += 1
-                self._events.append([sample_position, self._event_seq, fn, args])
+        self._lock.run(self._at_locked, sample_position, fn, args)
+
+    def _at_locked(self, sample_position, fn, args):
+        if sample_position == 0:
+            if self._attached:
+                self._compiled.settle()
+            fn(*args)
+        else:
+            self._event_seq += 1
+            self._events.append([sample_position, self._event_seq, fn, args])
 
     def note_on(self, pitch, velocity=127, detune=0.0, channel=0, note_id=-1, sample_position=0):
         """Play ``pitch`` at ``velocity`` (0-127). A zero velocity releases."""
@@ -1166,6 +1226,9 @@ class Instrument:
         module's docstring) and returns how many blocks the graph has moved on.
         """
         self._check_live()
+        if self._lock.mine():
+            # A timer's turn inside a note call on this thread: the next turn does it.
+            return 0
         if self._attached:
             with self._lock:
                 blocks = self._compiled.control(self._run_events if self._events else None)
