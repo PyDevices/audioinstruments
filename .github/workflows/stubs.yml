@@ -36,5 +36,5 @@ jobs:
       # the compiled modules and its own stubs.
       - run: >
           python -m pip install mypy
-          "omnipython-audiodsp>=0.6.16.dev6" numpy
+          "omnipython-audiodsp>=0.6.11" numpy
       - run: python tools/check_stubs.py

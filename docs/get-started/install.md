@@ -6,19 +6,15 @@ repository for now.
 
 ## On a desktop (CPython)
 
-You need numpy and audiodsp, a pre-release on PyPI. The package is
+You need numpy and audiodsp. The package is
 called `omnipython-audiodsp` and you import `audiocore`, `audiofilters` and the
 other modules it provides:
 
 ```sh
 uv venv --seed --python 3.12 .venv
-uv pip install --python .venv/bin/python "omnipython-audiodsp>=0.6.16.dev6" numpy
+uv pip install --python .venv/bin/python omnipython-audiodsp numpy
 git clone https://github.com/PyDevices/audioinstruments && cd audioinstruments
 ```
-
-The version floor matters: naming a pre-release lets the installer take
-pre-releases of audiodsp, and of nothing else, where otherwise it would settle
-for the `0.0.1` placeholder.
 
 Run your programs from the checkout with `PYTHONPATH=lib`, so
 `import audioinstruments` finds the package.

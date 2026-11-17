@@ -11,8 +11,8 @@ rack and its kernels in `_rack/core/`. These are the rules of the repo.
 CPython, in a venv with audiodsp installed from PyPI:
 
     uv venv --seed --python 3.12 .venv
-    uv pip install --python .venv/bin/python "omnipython-audiodsp>=0.6.16.dev6" \
-        "omnipython>=0.8.0.dev25" pytest pytest-xdist ruff numpy
+    uv pip install --python .venv/bin/python \
+        omnipython-audiodsp omnipython pytest pytest-xdist ruff numpy
     .venv/bin/python -m pytest -q -n auto
 
 `-n auto` spreads the tests over every core; the whole suite takes a few

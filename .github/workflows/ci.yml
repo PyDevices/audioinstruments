@@ -62,13 +62,12 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      # audiodsp's current releases are pre-releases; naming a dev release in
-      # the requirement lets pip take pre-releases of it, and of nothing else.
+      # The floor keeps pip off the 0.0.1 placeholder that once held the name.
       - name: Install
         if: steps.scope.outputs.nothing != 'true'
         run: |
           python -m pip install -q \
-            "omnipython-audiodsp>=0.6.16.dev6" numpy pytest pytest-xdist ruff==0.17.1
+            "omnipython-audiodsp>=0.6.11" numpy pytest pytest-xdist ruff==0.17.1
           python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy|pytest|pytest-xdist|ruff) "
 
       - name: Lint

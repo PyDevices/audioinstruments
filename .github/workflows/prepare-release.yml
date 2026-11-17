@@ -85,11 +85,11 @@ jobs:
           python-version: "3.12"
 
       # The same install as ci.yml: tools/make_faces.py imports the rack, which
-      # needs audiodsp (a pre-release on PyPI) and numpy.
+      # needs audiodsp and numpy.
       - name: Install
         run: |
           python -m pip install -q \
-            "omnipython-audiodsp>=0.6.16.dev6" numpy
+            "omnipython-audiodsp>=0.6.11" numpy
           python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy) "
 
       - name: Set the version (dry run only; the release branch already has it)
