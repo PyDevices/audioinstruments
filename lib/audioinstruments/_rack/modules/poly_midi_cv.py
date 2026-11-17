@@ -483,7 +483,10 @@ class PolyMidiCV(MidiCVModule):
             self._graph_mono_block(bend)
         else:
             self._graph_glide()
-            self._poly_block()
+            # A steal's gate has to be seen low by a rendered block before it rises, so
+            # its phases move on only when the pump has rendered one since the last turn.
+            if self._fragment.blocks > 0:
+                self._poly_block()
             self._graph_voices(bend)
         # Everything below holds one value a block for as long as a note lasts, so each is
         # compared here, without a call or a new float, and set when it moved.
@@ -641,9 +644,11 @@ class PolyMidiCV(MidiCVModule):
         phase = self._phase
         gate = self._gate_active
         detune = alloc.detune / 120.0
+        moved = self._fragment.blocks > 0
         for i in range(self.max_voices):
             if phase[i] != IDLE:
-                self._advance(i)
+                if moved:
+                    self._advance(i)
                 self._graph_write(i, bend)
                 continue
             if i >= k:
