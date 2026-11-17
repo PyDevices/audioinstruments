@@ -1,0 +1,10 @@
+# Differences stubtest is told to accept, one regular expression a line.
+# audioinstruments._rack is the virtual rack the instruments are built on. The stubs
+# cover the modules an instrument's own API reaches (adapter, soundfont,
+# soundfont_drums, arpeggiator, sequencer, midi_dispatch, midi_cc, _component); the
+# rack's own modules and cables are internal and not typed, so the package's lazy
+# `__getattr__` names, `__all__` and the unstubbed subpackages are accepted here.
+audioinstruments\._rack\.__all__
+audioinstruments\._rack\.[A-Z][A-Za-z0-9_]*
+audioinstruments\._rack\.(load_rack|midi_note_to_pitch|pitch_to_frequency)
+audioinstruments\._rack\.(core|dsp|hmi|instruments|modules)(\..*)?

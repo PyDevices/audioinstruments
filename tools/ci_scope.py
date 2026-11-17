@@ -44,7 +44,8 @@ How a file is mapped:
   removed or edited, or any other change in the file, is the old rule.
 - Everything is checked when ``pyproject.toml``, the workflow or this tool
   changed, when a file under ``lib/`` or ``tools/`` or ``tests/`` was
-  deleted, or when a file there that is not python or a trait file changed.
+  deleted, or when a file there that is not python, a type stub or a trait file
+  changed. A stub is read by tools/check_stubs.py and its Stubs workflow, not by the tests.
 - ``tests/mpy/`` is not pytest's: the ``mpy`` job in ci.yml builds a unix
   MicroPython with ulab and audiodsp and runs ``micropython tests/mpy/run.py``,
   and decides for itself whether the change reaches it.
@@ -444,7 +445,7 @@ def scope(root, changed, deleted=(), force_full=False, before=None):
         if rel.startswith(("lib/", "tests/", "tools/")) and not _is_mpy(rel):
             reasons.append("%s was deleted" % rel)
     for rel in changed:
-        data = not rel.endswith(".py") and not rel.startswith(TRAITS_DIR + "/")
+        data = not rel.endswith((".py", ".pyi")) and not rel.startswith(TRAITS_DIR + "/")
         if rel.startswith(("lib/", "tests/", "tools/")) and not _is_mpy(rel) and data:
             reasons.append("%s is data the tests may read" % rel)
 

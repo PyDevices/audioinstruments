@@ -178,6 +178,13 @@ def test_docs_and_examples_check_little(repo):
     assert out["pytest"] == [] and out["instruments"] == []
 
 
+def test_a_type_stub_checks_no_code(repo):
+    out = ci_scope.scope(
+        repo, ["lib/audioinstruments/_rack/adapter.pyi", "lib/audioinstruments/poly106.pyi"]
+    )
+    assert out["nothing"] and not out["full"]
+
+
 def _new_instrument(tmp_path, registry_row='("Gamma", "Gamma", "gamma")'):
     """Add instrument ``c``, its module ``Gamma`` and their rows, as a branch would.
 

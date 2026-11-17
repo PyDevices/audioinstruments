@@ -6,3 +6,4 @@
 - Nothing allocates in a block path; `tests/test_allocation.py` enforces it.
 - Everything else is in [CONTRIBUTING.md](CONTRIBUTING.md).
 - A release PR changes `VERSION` and `CHANGELOG.md`, then runs `python tools/make_faces.py` and commits the regenerated faces with them: every `lib/audioinstruments/*.py` face carries the version, and the publish workflow refuses a tag whose faces disagree.
+- The `.pyi` files beside each module are the package's type stubs, written by hand to match the signatures; the instrument faces' stubs share one shape. When you change a signature or add a public name, change its stub, and run `python tools/check_stubs.py` (mypy, stubtest, a sample that must pass and one that must fail). `tools/make_faces.py` does not write them.
