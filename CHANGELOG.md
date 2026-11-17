@@ -2,6 +2,10 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.3.dev2 (2026-11-17)
+
+- SoundFont: a preset is worked out when it is selected, not by its first note (#123)
+
 ## v0.5.3.dev1 (2026-11-17)
 
 - Drum machines: a pad struck again is heard when two fill() turns have no block between (#120)
