@@ -7,7 +7,7 @@
 NAME = "state_variable_mono"
 DISPLAY_NAME = "StateVariableMono"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2"
+VERSION = "0.5.3.dev1"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

@@ -7,7 +7,7 @@
 NAME = "vocoder330"
 DISPLAY_NAME = "Vocoder330"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2"
+VERSION = "0.5.3.dev1"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
