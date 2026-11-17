@@ -62,14 +62,13 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      # audiodsp 0.6.11 is on TestPyPI until its release; naming a dev release
-      # in the requirement lets pip take pre-releases of it, and of nothing else.
+      # An exact pin: audiodsp's newest release on PyPI, so pip never settles
+      # for the 0.0.1 placeholder that once held the name.
       - name: Install
         if: steps.scope.outputs.nothing != 'true'
         run: |
-          python -m pip install -q -i https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            "omnipython-audiodsp>=0.6.13.dev8" numpy pytest pytest-xdist ruff==0.17.1
+          python -m pip install -q \
+            "omnipython-audiodsp==0.6.16.dev6" numpy pytest pytest-xdist ruff==0.17.1
           python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy|pytest|pytest-xdist|ruff) "
 
       - name: Lint

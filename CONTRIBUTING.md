@@ -8,11 +8,10 @@ rack and its kernels in `_rack/core/`. These are the rules of the repo.
 
 ## Run the tests
 
-CPython, in a venv with audiodsp installed from TestPyPI:
+CPython, in a venv with audiodsp installed from PyPI:
 
     uv venv --seed --python 3.12 .venv
-    uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
-        --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
+    uv pip install --python .venv/bin/python \
         omnipython-audiodsp omnipython pytest pytest-xdist ruff numpy
     .venv/bin/python -m pytest -q -n auto
 
@@ -161,5 +160,5 @@ commit subjects since the last tag, and regenerates the faces with
 `tools/make_faces.py` so every one carries the new version. It stops if the
 regeneration would change anything in a face but that version line, so change
 an instrument's metadata and run `python tools/make_faces.py` in the pull
-request that changes it. The merge tags `vX.Y.Z` and publishes to TestPyPI; a
-final also goes to MIP and, once approved, to PyPI.
+request that changes it. The merge tags `vX.Y.Z` and publishes to PyPI; a
+final also goes to MIP.
