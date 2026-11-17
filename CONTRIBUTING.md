@@ -13,8 +13,11 @@ CPython, in a venv with audiodsp installed from TestPyPI:
     uv venv --seed --python 3.12 .venv
     uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
         --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
-        omnipython-audiodsp omnipython pytest ruff numpy
-    .venv/bin/python -m pytest -q
+        omnipython-audiodsp omnipython pytest pytest-xdist ruff numpy
+    .venv/bin/python -m pytest -q -n auto
+
+`-n auto` spreads the tests over every core; the whole suite takes a few
+minutes that way, against a quarter of an hour or more on one.
 
 MicroPython, with a build that carries ulab, synthio and the audiodsp
 modules (`help('modules')` should list `audiofilters`, `audioladder`,
