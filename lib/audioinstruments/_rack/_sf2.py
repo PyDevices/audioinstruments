@@ -545,6 +545,22 @@ class SoundFont(object):
         p = self._find_preset(bank, program)
         return None if p is None else p[2]
 
+    def resolve(self, bank, program):
+        """Work out a preset's zones now, so its first note doesn't have to.
+
+        A bank opened with ``index=False`` leaves each preset until it is
+        first asked for, and on a microcontroller a large bank's piano
+        takes long enough to hear as a late note. Returns False for a
+        preset the bank does not have.
+        """
+        key = (bank, program)
+        if key not in self._index:
+            try:
+                self._index_preset(key)
+            except KeyError:
+                return False
+        return True
+
     def regions(self, bank, program, key, velocity=100):
         """The regions that sound for `key` at `velocity` on a preset.
 

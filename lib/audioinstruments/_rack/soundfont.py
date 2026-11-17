@@ -175,7 +175,7 @@ CACHE_BYTES = (64 if sys.implementation.name == "cpython" else 8) * 1048576
 #: it doesn't: the zones of a 300-preset bank are tens of thousands of small
 #: objects that, built together with the temporaries beside them, leave the
 #: heap in pieces too small for the next instrument's voice table. A preset
-#: resolves on its first note instead.
+#: resolves when a program change selects it, or on its first note.
 INDEX_AT_OPEN = sys.implementation.name == "cpython"
 
 #: The size of each of the arena's buffers, or the bank's largest sample
@@ -938,6 +938,11 @@ class _Player(object):
             bank_number = self.default_bank
         self.bank_number = bank_number
         self.program = program
+        # The preset's zones are worked out here, not by its first note: on
+        # a board that is hundreds of milliseconds for a large bank's piano.
+        resolve = getattr(bank.font, "resolve", None)
+        if resolve is not None:
+            resolve(bank_number, program)
 
     def requested_bank(self):
         """The bank the last Bank Select asked for: the default bank until

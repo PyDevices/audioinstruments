@@ -6,8 +6,8 @@
 
 Resolving every preset when a bank opened left a MicroPython heap in pieces
 too small for the next instrument's voice table (issue 34). A bank now
-resolves a preset on its first note there. The first test runs everywhere;
-the second needs a MicroPython with `audiosampler` (set `VRACK_MICROPYTHON`)
+resolves a preset when a program change selects it there, or on its first
+note. The first two tests run everywhere; the last needs a MicroPython with `audiosampler` (set `VRACK_MICROPYTHON`)
 and skips without one.
 """
 
@@ -99,6 +99,34 @@ class LazyIndexTest(unittest.TestCase):
                 soundfont.INDEX_AT_OPEN = old
                 soundfont._OPEN.clear()
         self.assertEqual(digests[0], digests[1])
+
+    def test_a_program_resolves_when_selected_not_on_its_first_note(self):
+        folder = tempfile.mkdtemp(prefix="sf34")
+        self.addCleanup(shutil.rmtree, folder, True)
+        path = os.path.join(folder, "tiny.sf2")
+        sf2_builder.tiny_bank().write(path)
+        soundfont._OPEN.clear()
+        old = soundfont.INDEX_AT_OPEN
+        soundfont.INDEX_AT_OPEN = False
+        try:
+            font = soundfont.open_bank(path).font
+            self.assertEqual(font._index, {})
+            inst = soundfont.create(SR, bank=path)  # starts on its first program
+            self.assertEqual(sorted(font._index), [(0, 0)])
+            other = [p for p in inst.patches if p and font.resolve(0, p)]
+            if other:
+                del font._index[(0, other[0])]
+                inst.program_change(other[0])
+                self.assertIn((0, other[0]), font._index)
+                inst.program_change(0)
+            kept = font._index[(0, 0)]
+            inst.note_on(60, 100)
+            self.assertIs(font._index[(0, 0)], kept)
+            self.assertGreater(sf2_play.peak(sf2_play.render(inst, 0.2)), 0.0005)
+            inst.deinit()
+        finally:
+            soundfont.INDEX_AT_OPEN = old
+            soundfont._OPEN.clear()
 
 
 SCRIPT = """

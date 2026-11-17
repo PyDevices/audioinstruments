@@ -220,6 +220,18 @@ class SoundFontTest(unittest.TestCase):
         b = [(r.sample.name, r.start, r.cents) for r in self.bank.regions(0, 0, 60, 40)]
         self.assertEqual(a, b)
 
+    def test_resolve_does_a_presets_work_before_its_first_note(self):
+        with sf2.SoundFont(self.path, index=False) as lazy:
+            self.assertTrue(lazy.resolve(0, 0))
+            self.assertEqual(sorted(lazy._index), [(0, 0)])
+            kept = lazy._index[(0, 0)]
+            a = [(r.sample.name, r.start, r.cents) for r in lazy.regions(0, 0, 60, 40)]
+            self.assertIs(lazy._index[(0, 0)], kept)
+            self.assertFalse(lazy.resolve(0, 127))
+            self.assertEqual(sorted(lazy._index), [(0, 0)])
+        b = [(r.sample.name, r.start, r.cents) for r in self.bank.regions(0, 0, 60, 40)]
+        self.assertEqual(a, b)
+
     def test_modulators_are_noticed_not_applied(self):
         path = os.path.join(self.tmp, "mods.sf2")
         sf2_builder.tiny_bank(modulators=[sf2_builder.VELOCITY_TO_ATTENUATION]).write(path)
