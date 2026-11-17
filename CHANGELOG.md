@@ -2,6 +2,11 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.3.dev1 (2026-11-17)
+
+- Drum machines: a pad struck again is heard when two fill() turns have no block between (#120)
+- CI: audiodsp 0.6.16, the final release on PyPI (#118)
+
 ## v0.5.2 (2026-11-17)
 
 - Install: audiodsp comes from PyPI (#116)
