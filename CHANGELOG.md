@@ -2,6 +2,12 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.2.dev7 (2026-11-17)
+
+- Publishing: pre-releases reach PyPI as well as finals (#114)
+- CI: the tests run on every core, a full run in about ten minutes (#113)
+- Prepare release: the release PR carries the regenerated faces (#112)
+
 ## 0.5.2.dev6
 
 - The package ships type stubs, so editors and type checkers see real types for every instrument and the rack.
