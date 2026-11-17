@@ -36,9 +36,11 @@ version = { file = "VERSION" }
 where = ["lib"]
 
 # catalog.json names every instrument's patches and macros for a DAW or MIDI
-# host; tools/make_faces.py writes it beside the faces.
+# host; tools/make_faces.py writes it beside the faces. The .pyi stubs and
+# py.typed are what let an editor and a type checker see the package's types
+# (PEP 561).
 [tool.setuptools.package-data]
-audioinstruments = ["catalog.json"]
+audioinstruments = ["catalog.json", "py.typed", "*.pyi", "_rack/*.pyi"]
 
 [tool.ruff]
 target-version = "py39"

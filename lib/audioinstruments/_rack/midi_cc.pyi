@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+from collections.abc import Callable
+
+BANK_SELECT: int
+MODULATION_WHEEL: int
+BREATH_CONTROLLER: int
+FOOT_CONTROLLER: int
+PORTAMENTO_TIME: int
+DATA_ENTRY_MSB: int
+CHANNEL_VOLUME: int
+BALANCE: int
+PAN: int
+EXPRESSION: int
+EFFECT_CONTROL_1: int
+EFFECT_CONTROL_2: int
+GENERAL_PURPOSE_1: int
+GENERAL_PURPOSE_2: int
+GENERAL_PURPOSE_3: int
+GENERAL_PURPOSE_4: int
+DAMPER_PEDAL: int
+PORTAMENTO_ON_OFF: int
+SOSTENUTO: int
+SOFT_PEDAL: int
+LEGATO_FOOTSWITCH: int
+HOLD_2: int
+SOUND_VARIATION: int
+TIMBRE: int
+RELEASE_TIME: int
+ATTACK_TIME: int
+BRIGHTNESS: int
+DECAY_TIME: int
+VIBRATO_RATE: int
+VIBRATO_DEPTH: int
+VIBRATO_DELAY: int
+SOUND_CONTROLLER_10: int
+GENERAL_PURPOSE_5: int
+GENERAL_PURPOSE_6: int
+GENERAL_PURPOSE_7: int
+GENERAL_PURPOSE_8: int
+PORTAMENTO_CONTROL: int
+HIGH_RESOLUTION_VELOCITY_PREFIX: int
+REVERB_SEND: int
+TREMOLO_DEPTH: int
+CHORUS_SEND: int
+DETUNE_DEPTH: int
+PHASER_DEPTH: int
+DATA_INCREMENT: int
+DATA_DECREMENT: int
+NRPN_LSB: int
+NRPN_MSB: int
+RPN_LSB: int
+RPN_MSB: int
+ALL_SOUND_OFF: int
+RESET_ALL_CONTROLLERS: int
+LOCAL_CONTROL: int
+ALL_NOTES_OFF: int
+OMNI_MODE_OFF: int
+OMNI_MODE_ON: int
+MONO_MODE_ON: int
+POLY_MODE_ON: int
+cc_scale: dict[int, Callable[[float], float]]
+PITCH_BEND_SENSITIVITY: tuple[int, ...]
+CHANNEL_FINE_TUNING: tuple[int, ...]
+CHANNEL_COARSE_TUNING: tuple[int, ...]
+TUNING_PROGRAM_CHANGE: tuple[int, ...]
+TUNING_BANK_SELECT: tuple[int, ...]
+MODULATION_DEPTH_RANGE: tuple[int, ...]
+MPE_CONFIGURATION: tuple[int, ...]
+RPN_NULL: tuple[int, ...]
+rpn_scale: dict[tuple[int, ...], Callable[[float], float]]
+cc_name: dict[int, str]
+rpn_name: dict[tuple[int, ...], str]

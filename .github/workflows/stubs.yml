@@ -1,0 +1,41 @@
+# The package's type stubs: mypy reads every .pyi, and stubtest imports the package
+# under CPython and fails when a stub and the code disagree about a name or a signature.
+# A sample a user would write must pass, and one with a planted error must fail. Runs
+# when a stub, the code it describes or this file changes. About a minute.
+name: Stubs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'tools/check_stubs.py'
+      - 'tools/stubs/**'
+      - '.github/workflows/stubs.yml'
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'tools/check_stubs.py'
+      - 'tools/stubs/**'
+      - '.github/workflows/stubs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stubs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      # stubtest imports the package, which needs audiodsp; its published wheel carries
+      # the compiled modules and its own stubs.
+      - run: >
+          python -m pip install mypy
+          -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/
+          "omnipython-audiodsp>=0.6.13.dev8" numpy
+      - run: python tools/check_stubs.py
