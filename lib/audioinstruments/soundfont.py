@@ -7,7 +7,7 @@
 NAME = "soundfont"
 DISPLAY_NAME = "SoundFont"
 CATEGORIES = ("Sampler",)
-VERSION = "0.5.2.dev5"
+VERSION = "0.5.2.dev6"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

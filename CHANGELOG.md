@@ -4,6 +4,14 @@ All notable changes to `audioinstruments` are recorded here.
 
 ## Unreleased
 
+## 0.5.2.dev6
+
+- The package ships type stubs, so editors and type checkers see real types for every instrument and the rack.
+- The docs have a page per instrument and an index to find them.
+- The distribution is named `omnipython-audioinstruments`, and the `PYDEVICES_*` settings are now `OMNIPYTHON_*`, with no fallback to the old names. 0.5.2.dev5 carried this rename, its docs and the two fixes below, and its changelog entry was never written.
+- A note played outside a callback no longer hangs with `fill()` on MicroPython: a scheduled `fill()` or voice-count change that lands between two steps of a note call now waits its turn instead of waiting for itself forever.
+- An arpeggiator, and PolyA6 patch changes that set only what differs.
+
 ## 0.5.2.dev4
 
 - A patch change on a graph instrument is faster: each graph handler runs once per change instead of once a knob, each fragment compiles once, and no collection runs while the pump is parked. On an ESP32-P4 a cable change on the Patch2600 drops from about 880 ms to 380 ms, on the Duo20 from 460 to 180 ms and on the Acid303 from 180 to 20 ms. Renders are byte-equal to before.
