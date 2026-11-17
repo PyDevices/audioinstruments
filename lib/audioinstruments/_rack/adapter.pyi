@@ -21,9 +21,6 @@ class _Playable(Protocol):
     def note_off(self, pitch: int, /) -> object: ...
     def all_notes_off(self) -> object: ...
 
-_AnyInstrument = Instrument | SoundFontInstrument
-"""What `create` returns: the rack instrument, or the SoundFont sampler."""
-
 _Transport = Callable[[], tuple[bool, float, float, int, int]]
 """Reads the host's transport as `(playing, position, bpm, numerator, denominator)`."""
 
@@ -301,6 +298,9 @@ class Instrument:
         """Take ``module`` and its cables out of the rack while the instrument plays."""
     def fill(self) -> int:
         """Top the ring up with rendered audio; returns the buffers written."""
+
+_AnyInstrument = Instrument | SoundFontInstrument
+"""What `create` returns: the rack instrument, or the SoundFont sampler."""
 
 def create(
     sample_rate: int,
