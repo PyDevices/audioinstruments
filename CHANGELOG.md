@@ -2,6 +2,10 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.2 (2026-11-17)
+
+- Install: audiodsp comes from PyPI (#116)
+
 ## v0.5.2.dev7 (2026-11-17)
 
 - Publishing: pre-releases reach PyPI as well as finals (#114)
