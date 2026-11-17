@@ -173,6 +173,9 @@ def test_the_traits_tool_checks_every_instrument(repo):
 
 def test_docs_and_examples_check_little(repo):
     assert ci_scope.scope(repo, ["README.md", "docs/x.md", "ROADMAP.md"])["nothing"]
+    # A release or docs workflow, and the script it runs, are not read by the tests.
+    release = [".github/workflows/prepare-release.yml", ".github/scripts/check_release_faces.py"]
+    assert ci_scope.scope(repo, release)["nothing"]
     out = ci_scope.scope(repo, ["examples/demo.py"])
     assert out["lint"] == ["examples/demo.py"]
     assert out["pytest"] == [] and out["instruments"] == []

@@ -1,0 +1,129 @@
+# Open a release PR: VERSION, CHANGELOG and the regenerated instrument faces.
+# The shared workflow writes VERSION and CHANGELOG.md and opens the PR; the
+# `faces` job then runs tools/make_faces.py on the PR's branch and commits the
+# result, after checking that the only thing that changed in the faces is
+# their VERSION line (.github/scripts/check_release_faces.py). Merging tags and
+# publishes.
+#
+# The version is required here, unlike in the sibling repositories, because the
+# faces job has to find the PR's branch, release/vX.Y.Z.
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version X.Y.Z[{a|b|rc}N|.devN], above the latest tag
+        required: true
+        type: string
+      dry_run:
+        description: Check the version, regenerate the faces and run the guard on main; open no PR and push nothing
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: The version is a release and above the latest
+        env:
+          V: ${{ inputs.version }}
+        run: |
+          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+|\.dev[0-9]+)?$ ]]; then
+            echo "Bad version '$V': want X.Y.Z[{a|b|rc}N|.devN]" >&2; exit 1
+          fi
+          python3 -m pip install -q packaging
+          python3 - <<'PY'
+          import os, subprocess, sys
+          from packaging.version import Version
+
+          new = Version(os.environ["V"])
+          tags = subprocess.run(
+              ["git", "tag", "--list", "v[0-9]*"], check=True, capture_output=True, text=True
+          ).stdout.split()
+          latest = max((Version(t[1:]) for t in tags), default=None)
+          if latest is not None and new <= latest:
+              sys.exit("Version %s is not above the latest tag, v%s" % (new, latest))
+          print("%s is above v%s" % (new, latest))
+          PY
+
+  release-pr:
+    needs: validate
+    if: ${{ !inputs.dry_run }}
+    uses: PyDevices/.github/.github/workflows/reusable-prepare-release-pr.yml@publishing-v28
+    with:
+      version: ${{ inputs.version }}
+    secrets: inherit
+
+  faces:
+    needs: [validate, release-pr]
+    # A dry run skips release-pr, so this runs on main and pushes nothing.
+    if: ${{ !cancelled() && needs.validate.result == 'success' && (inputs.dry_run || needs.release-pr.result == 'success') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint App token
+        id: app-token
+        if: ${{ !inputs.dry_run }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.PYDEVICES_APP_ID }}
+          private-key: ${{ secrets.PYDEVICES_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.dry_run && github.ref || format('release/v{0}', inputs.version) }}
+          token: ${{ steps.app-token.outputs.token || github.token }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # The same install as ci.yml: tools/make_faces.py imports the rack, which
+      # needs audiodsp (a pre-release on TestPyPI) and numpy.
+      - name: Install
+        run: |
+          python -m pip install -q -i https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            "omnipython-audiodsp>=0.6.13.dev8" numpy
+          python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy) "
+
+      - name: Set the version (dry run only; the release branch already has it)
+        if: ${{ inputs.dry_run }}
+        env:
+          V: ${{ inputs.version }}
+        run: printf '%s\n' "$V" > VERSION
+
+      - name: The release branch says the version
+        env:
+          V: ${{ inputs.version }}
+        run: test "$(tr -d '[:space:]' < VERSION)" = "$V"
+
+      - name: Regenerate the faces
+        run: python tools/make_faces.py
+
+      - name: Check that only the faces' VERSION lines changed
+        env:
+          V: ${{ inputs.version }}
+        run: python .github/scripts/check_release_faces.py "$V"
+
+      - name: Commit the faces
+        if: ${{ !inputs.dry_run }}
+        env:
+          V: ${{ inputs.version }}
+        run: |
+          git config user.name "pydevices-release-automation[bot]"
+          git config user.email "pydevices-release-automation[bot]@users.noreply.github.com"
+          git add lib/audioinstruments
+          git commit -m "Release $V: the faces carry the version"
+          git push origin "HEAD:release/v$V"
+          python tools/make_faces.py --check
+
+      - name: Show the change (dry run)
+        if: ${{ inputs.dry_run }}
+        run: git diff --stat | tail -5

@@ -150,7 +150,13 @@ using the rack: second person, short paragraphs, say where a number came from.
 
 ## Releasing
 
-A release is one pull request: set `VERSION` (`X.Y.Z`, or `X.Y.ZrcN` /
-`X.Y.Z.devN` for a pre-release), run `python tools/make_faces.py` so every
-face carries the new version, and merge it. The merge tags `vX.Y.Z` and
-publishes to TestPyPI; a final also goes to MIP and, once approved, to PyPI.
+A release is one pull request, and a workflow opens it. Dispatch Prepare release
+from the Actions tab, or with `gh workflow run prepare-release.yml -f version=X.Y.Z`
+(`X.Y.ZrcN` or `X.Y.Z.devN` for a pre-release; it must be above the latest tag).
+The pull request sets `VERSION`, adds a `CHANGELOG.md` section built from the
+commit subjects since the last tag, and regenerates the faces with
+`tools/make_faces.py` so every one carries the new version. It stops if the
+regeneration would change anything in a face but that version line, so change
+an instrument's metadata and run `python tools/make_faces.py` in the pull
+request that changes it. The merge tags `vX.Y.Z` and publishes to TestPyPI; a
+final also goes to MIP and, once approved, to PyPI.

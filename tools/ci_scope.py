@@ -42,7 +42,7 @@ How a file is mapped:
   reaches what the new rows name: the instrument, the modules, its trait
   check, and the tests that go through every module or instrument. A row
   removed or edited, or any other change in the file, is the old rule.
-- Everything is checked when ``pyproject.toml``, the workflow or this tool
+- Everything is checked when ``pyproject.toml``, ``ci.yml`` or this tool
   changed, when a file under ``lib/`` or ``tools/`` or ``tests/`` was
   deleted, or when a file there that is not python, a type stub or a trait file
   changed. A stub is read by tools/check_stubs.py and its Stubs workflow, not by the tests.
@@ -69,8 +69,15 @@ LINT_DIRS = ("lib", "tests", "examples", "tools")
 #: Source whose imports are followed.
 GRAPH_DIRS = ("lib", "tests", "tools", "examples")
 #: A change to any of these checks the whole repo.
-FULL_FILES = ("pyproject.toml", "tools/ci_scope.py", "tests/test_ci_scope.py")
-FULL_PREFIXES = (".github/",)
+FULL_FILES = (
+    "pyproject.toml",
+    "tools/ci_scope.py",
+    "tests/test_ci_scope.py",
+    ".github/workflows/ci.yml",
+)
+#: The other workflows (release, docs, stubs, style) and the scripts they call
+#: run on their own and are not read by the tests, so they check nothing here.
+FULL_PREFIXES = ()
 #: A change to any of these is a change to the shared core: every test runs
 #: and every instrument is checked, whatever imports what.
 SHARED_PREFIXES = ("lib/audioinstruments/_rack/core/",)
