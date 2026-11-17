@@ -4,13 +4,11 @@ OmniPython's audioinstruments is a set of playable synthesizers, organs and elec
 
 ## Install
 
-You need Python 3.12 or later, numpy and audiodsp (from TestPyPI until its release):
+You need Python 3.12 or later, numpy and audiodsp, a pre-release on PyPI:
 
 ```sh
 uv venv --seed --python 3.12 .venv
-uv pip install --python .venv/bin/python -i https://test.pypi.org/simple/ \
-    --extra-index-url https://pypi.org/simple/ --index-strategy unsafe-best-match \
-    omnipython-audiodsp numpy
+uv pip install --python .venv/bin/python "omnipython-audiodsp>=0.6.16.dev6" numpy
 git clone https://github.com/PyDevices/audioinstruments && cd audioinstruments
 ```
 
