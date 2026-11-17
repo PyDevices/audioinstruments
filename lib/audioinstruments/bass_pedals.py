@@ -7,7 +7,7 @@
 NAME = "bass_pedals"
 DISPLAY_NAME = "Bass Pedals"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.2.dev7"
+VERSION = "0.5.2"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
