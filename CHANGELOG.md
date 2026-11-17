@@ -2,8 +2,6 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
-## Unreleased
-
 ## 0.5.2.dev6
 
 - The package ships type stubs, so editors and type checkers see real types for every instrument and the rack.
