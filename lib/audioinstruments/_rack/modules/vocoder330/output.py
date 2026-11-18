@@ -48,7 +48,7 @@ from ...dsp.ensemble import (
     _Sweep,
     sweep_table,
 )
-from .filters import DCTracker, clear_filter
+from .filters import clear_filter
 
 #: The strings' tone control is a 12 dB per octave low-pass, 800 Hz to 12 kHz, exponential.
 TONE_MIN_HZ = 800.0
@@ -201,7 +201,6 @@ class Vocoder330Output(Module):
         self.align = AlignCore(sr, n, extra_frames=centre)
         self.align_mic = AlignCore(sr, n, extra_frames=LATENCY_FRAMES + centre)
         self.ensemble = ensemble_core(sr, n)
-        self.choir_dc = DCTracker(len(CHOIR_FILTERS_HZ), n, sr)
         self._dc_bridges = []
         for _ in range(2):
             node = audiobiquad.AllPass(
@@ -229,7 +228,6 @@ class Vocoder330Output(Module):
         clear_filter(self.tone)
         for f in self.choir_filters:
             clear_filter(f)
-        self.choir_dc.clear()
         for bridge in self._dc_bridges:
             bridge.reset()
         for core in (
@@ -294,12 +292,10 @@ class Vocoder330Output(Module):
                 else:
                     src = self._abc
                 self.choir_filters[j].process(src, self._band)
-                self.choir_dc.remove(j, self._band)
                 add(out, self._band)
                 self._cleared[j] = False
             elif not self._cleared[j]:
-                clear_filter(self.choir_filters[j])  # idle: no stale offset for the next chord
-                self.choir_dc.clear(j)
+                clear_filter(self.choir_filters[j])  # idle: no stale state for the next chord
                 self._cleared[j] = True
         for j in range(len(CHOIR_FEEDS)):
             need[j] = used[j]

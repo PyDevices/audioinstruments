@@ -11,11 +11,9 @@ What is held, and what each bound is for:
 
 * The strings and the keys (pitch swoop and tuning) match to a few counts: the wires are
   16-bit and the ensemble's sweeps start where the rack's do.
-* The rack's choir and vocoder filters are the ported 16-bit ``synthio.Biquad``, which
-  settles on an offset a tracker (``DCTracker``) takes out a block at a time. The tracker
-  also takes the block mean out of a low band's signal, about 3 % of a 200 Hz band, which
-  the graph's float ``BIQUAD`` keeps. ``rack_without_tracker`` switches the tracker off to
-  hold the graph to the rest; the tests that leave it on bound the difference.
+* The rack's choir and vocoder filters are ``synthio.Biquad`` in audiodsp's widened
+  arithmetic, which settles to zero rather than on an offset, so the rack takes none out and
+  the graph's float ``BIQUAD`` is held to the same bytes as everything else.
 * A change of vibrato depth reaches the rack's delay line with its 256-frame chunk, and
   the graph's with the block. A depth that holds still matches; one that moves does not
   to the same count, so those stretches have a bound of their own.
@@ -37,7 +35,6 @@ import pytest
 from audioinstruments._rack.dsp.ensemble import LATENCY_FRAMES
 from audioinstruments._rack.instruments.vocoder330 import attach_mic
 from audioinstruments._rack.modules.vocoder330 import bank as bank_module
-from audioinstruments._rack.modules.vocoder330 import filters as filters_module
 from audioinstruments._rack.modules.vocoder330 import keys as keys_module
 from audioinstruments._rack.modules.vocoder330 import output as output_module
 from audioinstruments._rack.modules.vocoder330 import voice as voice_module
@@ -70,12 +67,6 @@ def _rounded(dst_i16, src, tmp):
 @pytest.fixture(autouse=True)
 def board_rounding(monkeypatch):
     monkeypatch.setattr(bridge, "to_int16", _rounded)
-
-
-@pytest.fixture
-def rack_without_tracker(monkeypatch):
-    """The rack's offset tracker off: the graph's float filters have no offset to track."""
-    monkeypatch.setattr(filters_module.DCTracker, "remove", lambda self, index, buf: None)
 
 
 # -- phrases ----------------------------------------------------------------------------
@@ -285,26 +276,21 @@ def test_a_dense_chord_matches_the_rack(keys, voices):
 
 
 @pytest.mark.parametrize("patch", (3, 4, 5, 6, 7))
-def test_the_choir_matches_the_rack_without_its_offset_tracker(rack_without_tracker, patch):
+def test_the_choir_matches_the_rack(patch):
     worst, rms, level = stats(patch, chord())
     assert level > 100.0
     # the vibrato's depth moves while a key is held, and the rack's line takes it a chunk late
     assert rms <= 60.0 and worst <= 900.0, (patch, worst, rms)
 
 
-def test_the_choir_holds_still_to_a_few_counts(rack_without_tracker):
+def test_the_choir_holds_still_to_a_few_counts():
     controls = {"vib_depth": 0.0}
     worst, rms, level = stats(3, chord(), controls)
     assert level > 100.0 and worst <= 40.0 and rms <= 2.0, (worst, rms)
 
 
-def test_the_rack_tracker_takes_a_little_of_the_choir():
-    worst, rms, level = stats(3, chord(), {"vib_depth": 0.0})
-    assert worst <= 250.0 and rms <= 0.025 * level, (worst, rms, level)
-
-
 @pytest.mark.parametrize("block", (64, 128, 256))
-def test_a_steady_vibrato_matches(rack_without_tracker, block):
+def test_a_steady_vibrato_matches(block):
     # the graph's sweep starts where the rack's is at every block size
     controls = {"vib_depth": 4.0, "vib_delay": 0.0, "voice_ensemble": False}
     diff, rack = compare(3, chord(), controls, block=block)
@@ -319,29 +305,24 @@ VOCODER = {"vib_depth": 0.0, "vocoder_ensemble": False}
 
 
 @pytest.mark.parametrize("patch", (8, 9, 10))
-def test_the_vocoder_matches_the_rack_without_its_offset_tracker(rack_without_tracker, patch):
+def test_the_vocoder_matches_the_rack(patch):
     worst, rms, level = stats(patch, chord())
     assert level > 100.0
     assert rms <= 60.0 and worst <= 1400.0, (patch, worst, rms)
 
 
-def test_the_bank_holds_to_a_few_counts(rack_without_tracker):
+def test_the_bank_holds_to_a_few_counts():
     worst, rms, level = stats(8, chord())
     assert level > 100.0 and worst <= 12.0 and rms <= 2.0, (worst, rms)
 
 
-def test_the_rack_tracker_takes_a_little_of_the_vocoder():
-    worst, rms, level = stats(8, chord())
-    assert worst <= 250.0 and rms <= 0.025 * level, (worst, rms, level)
-
-
-def test_the_hold_freezes_the_spectrum_as_on_the_rack(rack_without_tracker):
+def test_the_hold_freezes_the_spectrum_as_on_the_rack():
     changes = {100: {"vocoder_hold": True}}
     worst, rms, level = stats(8, chord(), changes=changes)
     assert level > 100.0 and worst <= 12.0 and rms <= 2.0, (worst, rms)
 
 
-def test_the_consonants_come_through_with_a_key_down(rack_without_tracker):
+def test_the_consonants_come_through_with_a_key_down():
     worst, rms, level = stats(8, chord(), {"vocoder_tone": 10.0})
     assert level > 100.0 and worst <= 12.0 and rms <= 2.0, (worst, rms)
 
@@ -357,7 +338,7 @@ def test_a_known_sample_through_the_mic_matches_the_direct_path():
     assert level > 500.0 and worst <= 8.0 and rms <= 1.5, (worst, rms, level)
 
 
-def test_a_known_sample_drives_the_bank_as_on_the_rack(rack_without_tracker):
+def test_a_known_sample_drives_the_bank_as_on_the_rack():
     controls = {"mic_source": "input", "mic_level": 4.0}
     worst, rms, level = stats(8, chord(), controls, mic=True)
     assert level > 100.0 and worst <= 12.0 and rms <= 2.0, (worst, rms)
@@ -494,7 +475,6 @@ FAULTS = [
     "what,cls,name,after,patch,controls,mic", FAULTS, ids=[f[0] for f in FAULTS]
 )
 def test_a_planted_fault_is_seen(monkeypatch, what, cls, name, after, patch, controls, mic):
-    monkeypatch.setattr(filters_module.DCTracker, "remove", lambda self, index, buf: None)
     _wrap(monkeypatch, cls, name, after)
     worst, rms, level = stats(patch, chord(), controls, mic=mic)
     assert worst > 40.0 or rms > 2.5, (what, worst, rms)
