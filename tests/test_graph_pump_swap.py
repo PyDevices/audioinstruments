@@ -28,6 +28,12 @@ def test_a_cable_plugged_while_the_pump_plays_renders_what_a_rack_built_with_it_
     assert lp.first_difference(ps.reference(at), ps.reference(0, cable=False)) == at
 
 
+def test_a_batch_lands_with_the_swap_when_the_pump_renders_up_to_the_park():
+    first, at, refused = ps.check(busy=True)
+    assert refused is None
+    assert first is None, (first, at)
+
+
 @pytest.mark.parametrize("fault", ["dropped", "late"])
 def test_each_planted_fault_is_caught(fault):
     first, at, refused = ps.check(fault)

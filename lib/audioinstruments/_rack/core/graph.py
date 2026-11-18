@@ -1186,9 +1186,10 @@ class CompiledRack:
         graphs trade patches (``Graph.swap``), so whatever pulls the graph
         goes on pulling the same object and hears the new patch from the next
         block. The pump is parked only for the carry and the swap. A batch
-        held with ``hold()`` lands on the old graph's last block, as the
-        changes before the recompile would have, and the hold carries over to
-        the new graph. ``since`` on the new rack is the frame it took over at.
+        held with ``hold()`` goes in while the pump is parked, so all of it is
+        first heard with the new patch, on one block, however long the compile
+        took, and the hold carries over to the new graph. ``since`` on the new
+        rack is the frame it took over at.
         It needs an audiograph with ``Graph.swap``.
         """
         if self.graph is None:
@@ -1244,8 +1245,6 @@ class CompiledRack:
         """
         g = self.graph
         depth = self._depth
-        if depth:
-            g.commit()  # the held batch belongs to the old patch's last block
         mask = 0
         for module in new.grouped:
             if module.enabled:
@@ -1260,6 +1259,10 @@ class CompiledRack:
         try:
             resume = _park()
             try:
+                if depth:
+                    # Not before the park: the pump would render the batch into the
+                    # old patch, ahead of the block the new one starts on.
+                    g.commit()
                 if carry:
                     new._apply_state(self, plan, controls=False)
                 frame = g.sounding()[1]

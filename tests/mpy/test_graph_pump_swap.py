@@ -38,6 +38,14 @@ def test_a_cable_plugged_while_the_pump_plays_renders_what_a_rack_built_with_it_
     assert first is None, (first, at)
 
 
+def test_a_batch_lands_with_the_swap_when_the_pump_renders_up_to_the_park():
+    if not HAVE:
+        return
+    first, at, refused = _ps().check(busy=True)
+    assert refused is None, refused
+    assert first is None, (first, at)
+
+
 def test_each_planted_fault_is_caught():
     if not HAVE:
         return
