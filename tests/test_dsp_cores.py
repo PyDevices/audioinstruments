@@ -497,3 +497,19 @@ def test_random_sequencer_locks_and_mutates():
         locked.append(round(float(cv[-1]), 6))
     assert locked[:8] == locked[8:]  # a locked loop repeats
     assert finite(cv)
+
+
+def test_biquad_filter_hands_its_stages_over_as_a_tuple(monkeypatch):
+    """CircuitPython's ``audiofilters.Filter`` refuses a list of biquads."""
+    from audioinstruments._rack.dsp import biquad
+
+    made = biquad.audiofilters.Filter
+    seen = []
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs["filter"])
+        return made(*args, **kwargs)
+
+    monkeypatch.setattr(biquad.audiofilters, "Filter", spy)
+    BiquadFilter(256, DEFAULT_SAMPLE_RATE, stages=2)
+    assert isinstance(seen[0], tuple) and len(seen[0]) == 2

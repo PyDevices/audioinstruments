@@ -44,8 +44,9 @@ class BiquadFilter:
         self.cutoff_hz = 1000.0
         self.q = q
         self.biquads = [synthio.Biquad(MODES[mode], 1000.0, Q=q) for _ in range(stages)]
+        # CircuitPython's Filter takes one Biquad or a tuple of them, never a list.
         flt = audiofilters.Filter(
-            filter=self.biquads if stages > 1 else self.biquads[0],
+            filter=tuple(self.biquads) if stages > 1 else self.biquads[0],
             **effect_kwargs(block_size, sample_rate),
         )
         self.bridge = NodeBridge(block_size, sample_rate).chain(flt)
