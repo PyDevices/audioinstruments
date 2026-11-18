@@ -2,6 +2,12 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.3.dev3 (2026-11-18)
+
+- Live patch change: a held batch lands with the new patch (#128)
+- BiquadFilter: stacked stages work on CircuitPython (#127)
+- Vocoder330: the band filters no longer have an offset tracker (#125)
+
 ## v0.5.3.dev2 (2026-11-17)
 
 - SoundFont: a preset is worked out when it is selected, not by its first note (#123)
