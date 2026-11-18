@@ -31,7 +31,7 @@ from ...core.module import Module
 from ...core.signal import BRIDGE_SCALE, add, add_scaled, copy_into, from_int16, mul, np
 from ...dsp.biquad import BiquadFilter
 from ..voice_mix import QUIET_LEVEL, QUIET_SECONDS
-from .filters import DCTracker, clear_filter
+from .filters import clear_filter
 
 #: The ten bands' centres, Hz. The analysis and the synthesis filters share them.
 BAND_HZ = (200.0, 280.0, 400.0, 600.0, 900.0, 1300.0, 2000.0, 2800.0, 4000.0, 6000.0)
@@ -98,7 +98,6 @@ class Vocoder330Bank(Module):
         for name in ("_band", "_sum", "_ramp", "_cons", "_unit", "_sq"):
             self.add_scratch(name)
         self._fill_unit()
-        self.dc = DCTracker(len(BAND_HZ), n, sr)
         self.level = [0.0] * len(BAND_HZ)
         self._prev = [0.0] * len(BAND_HZ)
         self._running = False
@@ -131,7 +130,6 @@ class Vocoder330Bank(Module):
             self.synthesis[i].set(BAND_HZ[i], BAND_Q)
         self.consonant = BiquadFilter(block_size, sr, "HP", CONSONANT_STAGES, 0.707)
         self.consonant.set(CONSONANT_HZ, 0.707)
-        self.dc = DCTracker(len(BAND_HZ), block_size, sr)
         self._fill_unit()
         self._rates()
 
@@ -188,7 +186,6 @@ class Vocoder330Bank(Module):
             for f in self.analysis + self.synthesis:
                 clear_filter(f)
             clear_filter(self.consonant)
-            self.dc.clear()
             self._running = True
 
         carrier = self.carrier_in.get_buffer()
@@ -218,7 +215,6 @@ class Vocoder330Bank(Module):
                 if l0 < SKIP_LEVEL and l1 < SKIP_LEVEL:
                     continue
                 self.synthesis[i].process(carrier, self._band)
-                self.dc.remove(i, self._band)
                 self._ramp_between(l0, l1)
                 mul(self._band, self._ramp)
                 add(total, self._band)

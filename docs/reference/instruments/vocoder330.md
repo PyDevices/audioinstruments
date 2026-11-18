@@ -199,15 +199,11 @@ in time. With the ensemble on, the first sound of an impulse is the dry share of
 each side's first line, at exactly that delay; the wet lines follow a few
 milliseconds later.
 
-## Two things about the filters
+## The filters
 
-The band-passes are the ported 16-bit `synthio.Biquad`. At the low end it is not
-clean: a 200 Hz one settles on a constant offset (up to half its RMS), and its
-gain at its centre droops (about 5 dB at 200 Hz). `DCTracker` follows each
-band's offset and takes it out (`DC_TRACK_S`, 0.03, is the time it takes to move
-by a factor of e), the followers read each band's RMS about its mean, and the
-lowest choir filters are a few decibels quieter than their nominal gain. Above a
-few hundred hertz it is accurate. The tests allow for the droop.
+The band-passes are `synthio.Biquad` through `audiofilters.Filter`, in
+audiodsp's widened arithmetic. They settle to exact zero when the input stops
+and carry no constant offset, so nothing in the rack removes one.
 
 ## Where the numbers come from
 
