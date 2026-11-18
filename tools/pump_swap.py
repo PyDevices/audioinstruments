@@ -30,6 +30,10 @@ stream must be the old patch's, whole. Where the pump runs inside
 calls, so a swap there cannot land inside a block, and ``unparked`` is no
 fault.
 
+``cable(busy=True)`` is no fault but the case a playing pump makes of its own
+accord: it goes on rendering while the swap gets ready, right up to the park.
+The batch must still land with the new patch, on the block ``since`` names.
+
 ``cost(voice)`` times a recompile of a playing instrument while the pump
 pulls it: the compile, which runs while the pump plays on, and the time the
 pump stood parked for the carry and the swap.
@@ -169,7 +173,24 @@ def _late(pump):
     return lambda: setattr(graph_mod.CompiledRack, "_hand_over", hand_over), seen
 
 
-def cable(fault=None):
+def _busy(pump, graph, park):
+    """``_park``, after the pump has rendered two more blocks: one may be under way already."""
+
+    def busy_park():
+        frame = graph.sounding()[1]
+        start = _now()
+        while (graph.sounding()[1] - frame) & 0xFFFFFFFF < 2 * BLOCK:
+            pump.turn()
+            if _ms(start) > 5000:
+                raise RuntimeError("the pump rendered nothing")
+            if pump.threaded:
+                _nap()
+        return park()
+
+    return busy_park
+
+
+def cable(fault=None, busy=False):
     """The phrase played by the pump with the cable plugged after ``AFTER`` blocks.
 
     Returns ``(blocks, at, refused)``: every block the pump played, the block
@@ -191,6 +212,8 @@ def cable(fault=None):
         restore, seen = _late(pump)
     elif fault == "unparked":
         graph_mod._park = lambda: None
+    if busy:
+        graph_mod._park = _busy(pump, compiled.graph, graph_mod._park)
     refused = None
     try:
         compiled.hold()
@@ -218,9 +241,9 @@ def cable(fault=None):
     return blocks, at, refused
 
 
-def check(fault=None):
-    """``cable(fault)`` against its reference; returns (first differing block, at, refused)."""
-    blocks, at, refused = cable(fault)
+def check(fault=None, busy=False):
+    """``cable(fault, busy)`` against its reference; returns (first differing block, at, refused)."""
+    blocks, at, refused = cable(fault, busy)
     if refused is not None:
         return lp.first_difference(reference(0, cable=False), blocks), at, refused
     return lp.first_difference(reference(at), blocks), at, refused
@@ -377,6 +400,11 @@ def main():
     print("cable: swap at block %d, first differing block %s" % (at, first))
     unchanged = lp.first_difference(reference(at), reference(0, cable=False))
     print("cable: the change is heard from block %s" % unchanged)
+    first, at, _ = check(busy=True)
+    print(
+        "cable, pump rendering up to the park: swap at block %d, first differing block %s"
+        % (at, first)
+    )
     for fault in FAULTS:
         first, at, refused = check(fault)
         print(
