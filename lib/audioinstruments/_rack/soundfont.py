@@ -78,6 +78,7 @@ Pure Python over the reader and the engine, so it imports on MicroPython;
 `audiosampler` is imported when an instrument is created.
 """
 
+import gc
 import os
 import sys
 
@@ -783,12 +784,19 @@ class Voices(object):
     def flush(self):
         """Send the queued writes, in order: with the pump parked at a
         block boundary when there is more than one, so they wait for one
-        block between them rather than one each."""
+        block between them rather than one each. Automatic collection is off
+        while it is parked: the writes allocate, and a collection on a large
+        heap outlasts what the output has buffered. Should the heap run out
+        all the same, that write raises `MemoryError` after the rest have gone."""
         queue = self._queue
         if not queue:
             return
         self._queue = []
-        parked = len(queue) > 1 and _park is not None and _park()
+        together = len(queue) > 1 and _park is not None
+        collecting = together and gc.isenabled()
+        if collecting:
+            gc.disable()
+        parked = together and _park()
         first = None
         try:
             for fn, args, kw in queue:
@@ -803,6 +811,8 @@ class Voices(object):
         finally:
             if parked:
                 _unpark()
+            if collecting:
+                gc.enable()
             self._pending.clear()
         if first is not None:
             raise first

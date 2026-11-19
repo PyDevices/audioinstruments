@@ -14,6 +14,7 @@ sibling bank whose pair is not already at the edges), and Control Change
 `test_cpython_soundfont_gm.py`.
 """
 
+import gc
 import os
 import pathlib
 import shutil
@@ -813,6 +814,39 @@ class SharedVoicesTest(unittest.TestCase):
         self.assertIsNone(self.voices._queue)
         self.a.set_macro(0, 127)  # straight through again
         self.assertNotEqual(voice[other].level, 0.0)
+
+    def test_no_collection_while_the_pump_is_parked_for_a_flush(self):
+        seen = []
+        park, unpark = soundfont._park, soundfont._unpark
+        soundfont._park = lambda: seen.append(("park", gc.isenabled())) or True
+        soundfont._unpark = lambda: seen.append(("unpark", gc.isenabled()))
+        try:
+            with self.voices.deferred():
+                self.voices._queue.append(
+                    (lambda: seen.append(("write", gc.isenabled())), (), None)
+                )
+                self.voices._queue.append(
+                    (lambda: seen.append(("write", gc.isenabled())), (), None)
+                )
+            self.assertEqual(
+                seen, [("park", False), ("write", False), ("write", False), ("unpark", False)]
+            )
+            self.assertTrue(gc.isenabled())
+            del seen[:]
+            with self.voices.deferred():  # a lone write doesn't park, or need to
+                self.voices._queue.append(
+                    (lambda: seen.append(("write", gc.isenabled())), (), None)
+                )
+            self.assertEqual(seen, [("write", True)])
+            with (
+                self.assertRaises(ValueError),
+                self.voices.deferred(),
+            ):  # a failing write ends it too
+                self.voices._queue.append((int, ("x",), None))
+                self.voices._queue.append((int, ("y",), None))
+            self.assertTrue(gc.isenabled())
+        finally:
+            soundfont._park, soundfont._unpark = park, unpark
 
     def test_a_pool_of_another_format_is_refused(self):
         other = soundfont.Voices(44100, 2, voice_count=4)
