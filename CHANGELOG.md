@@ -2,6 +2,10 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.3.dev4 (2026-11-22)
+
+- SoundFont: no collection while the pump is parked for a voice flush (#132)
+
 ## v0.5.3.dev3 (2026-11-18)
 
 - Live patch change: a held batch lands with the new patch (#128)
