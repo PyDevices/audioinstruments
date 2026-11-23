@@ -1008,6 +1008,17 @@ class CompiledRack:
         self._depth = 0
         self.pumped = True
         self.elapsed = 0
+        # The groups to run from the first block, and the patch built so far,
+        # as one batch: until a control() turn the graph would otherwise render
+        # with every group on, a parked kit costing what all its pads playing
+        # at once would.
+        mask = 0
+        for module in self.grouped:
+            if module.enabled:
+                mask |= module._fragment.bits
+        self._mask = mask
+        g.enable(mask)
+        g.commit()
         return g
 
     def _check_pullable(self):

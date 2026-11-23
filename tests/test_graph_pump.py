@@ -222,3 +222,21 @@ def test_graph_output_needs_the_compiled_form():
     """``engine="rack"`` has no graph to hand the pump."""
     with pytest.raises(ValueError):
         adapter.create(RATE, voice="poly6", engine="rack", output="graph")
+
+
+def test_a_parked_kit_runs_no_voice_before_its_first_fill():
+    # The pump can pull blocks before the first fill(), and until a fill()
+    # an attached graph used to run every group: a kit nobody had played cost
+    # what all its pads playing at once would. Its enable mask goes in with
+    # the patch now, at attach.
+    inst = adapter.create(RATE, voice="rhythm808", engine="graph", output="graph")
+    try:
+        assert inst._compiled._mask == 0
+        graph = inst.output
+        out = bytearray(BLOCK * 2 * 2)
+        graph.run(out)
+        stats = graph.stats()
+        assert stats["applied"] == stats["pushed"]
+        assert not any(out)
+    finally:
+        inst.deinit()

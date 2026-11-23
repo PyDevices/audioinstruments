@@ -12,6 +12,7 @@ import audioinstruments._rack.adapter as adapter
 import numpy as np
 import pytest
 from audioinstruments._rack.core import Module, Rack, SignalType, VoicePool
+from audioinstruments._rack.modules.voice_mix import HUSH_LEVEL, QUIET_LEVEL
 
 BLOCK = 64
 PADS = {36: 0, 38: 1, 42: 2, 46: 3}
@@ -27,6 +28,7 @@ class ToyDrum(Module):
         self.strikes = 0
         self.gates = []
         self.level = 0.0
+        self.floor = 0.0  # what it rings at once its strike has died away
         self._was = False
 
     def reset(self):
@@ -41,7 +43,7 @@ class ToyDrum(Module):
             self.strikes += 1
             self.level = 0.5
         self._was = g
-        self.out.buffer[:] = self.level
+        self.out.buffer[:] = self.level + self.floor
         self.level *= 0.5
 
 
@@ -138,6 +140,46 @@ def test_a_quiet_released_pad_parks():
     step(rack, 40)
     assert p.mix.parked[0]
     assert p.alloc.sounding() == 0
+
+
+def test_a_quiet_pad_parks_with_its_key_still_down_and_strikes_again():
+    # A drum machine is often played with no note-off: the pad's sound ends on
+    # its own, and its voice must park once it is quiet, not run for good.
+    rack, p, drums = kit()
+    p.note_on(36, 100)
+    step(rack, 200)  # 270 ms: its tail, then 200 ms of silence
+    assert p.mix.parked[0]
+    assert p.alloc.sounding() == 0
+    p.note_on(36, 100)
+    step(rack, 1)
+    assert not p.mix.parked[0]
+    assert drums[0].strikes == 2
+
+
+def test_a_held_pad_rings_its_tail_out_before_it_parks():
+    # Under the usual quiet level but still heard: with its key down the pad keeps
+    # sounding, as it did before a held pad could park.
+    rack, p, drums = kit()
+    drums[0].floor = (QUIET_LEVEL + HUSH_LEVEL) / 2
+    p.note_on(36, 100)
+    step(rack, 200)  # 270 ms
+    assert not p.mix.parked[0]
+    drums[0].floor = HUSH_LEVEL / 2
+    step(rack, 140)  # 190 ms
+    assert not p.mix.parked[0]
+    step(rack, 20)
+    assert p.mix.parked[0]
+
+
+def test_a_held_pad_that_never_falls_silent_still_parks():
+    # A voice that idles just under the quiet level (an offset, say) parks a second on.
+    rack, p, drums = kit()
+    drums[0].floor = (QUIET_LEVEL + HUSH_LEVEL) / 2
+    p.note_on(36, 100)
+    step(rack, 700)  # 930 ms
+    assert not p.mix.parked[0]
+    step(rack, 100)
+    assert p.mix.parked[0]
 
 
 def test_a_kit_pool_cannot_be_mono():

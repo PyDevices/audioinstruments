@@ -8,7 +8,9 @@ blocks (so a stolen voice fades out and the next note fades in without a
 step) and a stereo balance that unison spread sets. A voice that is not held
 and has been quiet for 30 ms is reported through ``on_quiet`` so the pool can
 stop processing it, after a one-block fade to zero; a parked voice is skipped
-here.
+here. A ``held`` voice (a kit's pad whose key is still down) is let go only
+once its tail is gone: 200 ms under a level 24 dB lower, or a second under
+the usual one, for a voice that idles just above that.
 
 ``VoicePool`` owns the gains, balances and the park list. Patched by hand the
 module is a plain mixer: every voice at unity, centred.
@@ -44,6 +46,13 @@ from ..core.signal import BRIDGE_SCALE, add_scaled, copy_into, np
 # 54 dB under a full-scale voice.
 QUIET_LEVEL = 2e-3
 QUIET_SECONDS = 0.03
+# A held voice parks after 200 ms under this (-78 dB, where a decaying drum has gone
+# silent), or after a second under QUIET_LEVEL, so one that idles between the two parks too.
+# A pad played again soon after its sound ends finds its voice still awake, as it does
+# when its key came up: a parked voice starts over from its reset state.
+HUSH_LEVEL = QUIET_LEVEL / 16
+HUSH_SECONDS = 0.2
+HELD_QUIET_SECONDS = 1.0
 
 
 def _is_name(name):
@@ -121,6 +130,10 @@ class VoiceMix(Module):
         #: A list of flags, True for a voice whose key holds it: those never
         #: count as quiet. ``VoicePool`` shares the allocator's list.
         self.gated = [False] * n
+        #: True for a voice that may park while held, once its tail is gone (a kit's pad,
+        #: whose key often stays down). ``VoicePool`` shares the allocator's gate list.
+        self.held = [False] * n
+        self.hush = [0] * n
         #: Called with a voice number when it has been quiet and unheld long
         #: enough; returns True if the voice was parked.
         self.on_quiet = None
@@ -152,15 +165,19 @@ class VoiceMix(Module):
                 self.bus_outs[name].buffer[:] = 0.0
         level = self.params["level"]
         quiet_blocks = int(QUIET_SECONDS * self.sample_rate / block_size) + 1
+        hush_blocks = int(HUSH_SECONDS * self.sample_rate / block_size) + 1
+        held_blocks = int(HELD_QUIET_SECONDS * self.sample_rate / block_size) + 1
         for i in range(self.max_voices):
             if self.parked[i]:
                 continue
             src = self.audio_ins[i].get_buffer()
+            peak = 0.0 if self.gated[i] else _peak(src)
             if self.gated[i]:
                 self.quiet[i] = 0
-            elif _peak(src) < QUIET_LEVEL:
+            elif peak < QUIET_LEVEL:
                 self.quiet[i] += 1
-                if self.quiet[i] >= quiet_blocks:
+                self.hush[i] = self.hush[i] + 1 if peak < HUSH_LEVEL else 0
+                if self._quiet_enough(i, quiet_blocks, hush_blocks, held_blocks):
                     if self.target[i] != 0.0:
                         self.target[i] = 0.0  # fade it out this block, park it the next
                     elif self.gain[i] == 0.0:
@@ -169,6 +186,7 @@ class VoiceMix(Module):
                             continue
             else:
                 self.quiet[i] = 0
+                self.hush[i] = 0
             g0 = self.gain[i]
             g1 = self.target[i]
             self.gain[i] = g1
@@ -452,6 +470,8 @@ class VoiceMix(Module):
         if blocks < 1:
             return
         threshold = None  # worked out only if some voice needs it: a held chord has none
+        hush_blocks = int(HUSH_SECONDS * self.sample_rate / self.block_size) + 1
+        held_blocks = int(HELD_QUIET_SECONDS * self.sample_rate / self.block_size) + 1
         for i in range(self.max_voices):
             if self.parked[i]:
                 continue
@@ -469,16 +489,27 @@ class VoiceMix(Module):
                     # strict.
                     threshold = threshold * self._fold_gain + 1e-6
             wire = self._wires[i]
-            if wire is not None and f.peak(wire) >= threshold:
+            peak = f.peak(wire) if wire is not None else 0
+            if peak >= threshold:
                 self.quiet[i] = 0
+                self.hush[i] = 0
                 continue
             self.quiet[i] += blocks
-            if self.quiet[i] >= quiet_blocks:
+            self.hush[i] = (
+                self.hush[i] + blocks if peak < threshold * (HUSH_LEVEL / QUIET_LEVEL) else 0
+            )
+            if self._quiet_enough(i, quiet_blocks, hush_blocks, held_blocks):
                 if self.target[i] != 0.0:
                     self.target[i] = 0.0  # the next block fades it, the one after parks it
                 elif self.gain[i] == 0.0:
                     self.quiet[i] = 0
                     on_quiet(i)
+
+    def _quiet_enough(self, i, quiet_blocks, hush_blocks, held_blocks):
+        """Voice ``i``, under ``QUIET_LEVEL`` for ``quiet[i]`` blocks, may fade and park."""
+        if self.held[i]:
+            return self.hush[i] >= hush_blocks or self.quiet[i] >= held_blocks
+        return self.quiet[i] >= quiet_blocks
 
     def get_state(self):
         state = super().get_state()
