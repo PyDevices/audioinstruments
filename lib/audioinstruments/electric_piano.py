@@ -7,7 +7,7 @@
 NAME = "electric_piano"
 DISPLAY_NAME = "Electric Piano"
 CATEGORIES = ("Piano",)
-VERSION = "0.5.3.dev4"
+VERSION = "0.5.3.dev5"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
