@@ -280,6 +280,13 @@ class VoiceAllocator:
             self.state[voice] = FREE
             self.key[voice] = None
 
+    def let_go(self, voice):
+        """A kit's pad whose sound has ended while its key is still down: release it as if
+        the key had come up, so its voice can park. A drum machine is often played with no
+        note-off at all."""
+        if self.state[voice] in (HELD, SUSTAINED):
+            self._release(voice)
+
     def reset(self):
         """Cut every voice and lift the pedal."""
         self.pedal = False
@@ -587,7 +594,9 @@ class VoicePool:
             rack.connect(out, mix.audio_ins[i])
             self.voices.append(voice)
         midi.listener = self
-        mix.gated = self.alloc.gated
+        # A key held down keeps a keyboard's voice awake, but not a kit's: a pad's sound
+        # ends on its own, and the voice parks once it is quiet (see park()).
+        mix.gated = self.alloc.gated if pads is None else [False] * max_voices
         mix.on_quiet = self.park
         for i in range(max_voices):
             self._park(i)  # an idle copy costs nothing until a note wakes it
@@ -733,6 +742,10 @@ class VoicePool:
 
     def park(self, i):
         """Voice ``i`` is quiet and not held: stop processing it. False if it is busy."""
+        if self.alloc.pads is not None and self.alloc.gated[i]:
+            # a kit's pad gone quiet with its key still down: let it go, and park it once
+            # the release has gone through
+            self.alloc.let_go(i)
         if self.alloc.gated[i] or self.midi.busy(i):
             return False
         self._park(i)

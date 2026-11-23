@@ -140,6 +140,20 @@ def test_a_quiet_released_pad_parks():
     assert p.alloc.sounding() == 0
 
 
+def test_a_quiet_pad_parks_with_its_key_still_down_and_strikes_again():
+    # A drum machine is often played with no note-off: the pad's sound ends on
+    # its own, and its voice must park once it is quiet, not run for good.
+    rack, p, drums = kit()
+    p.note_on(36, 100)
+    step(rack, 80)
+    assert p.mix.parked[0]
+    assert p.alloc.sounding() == 0
+    p.note_on(36, 100)
+    step(rack, 1)
+    assert not p.mix.parked[0]
+    assert drums[0].strikes == 2
+
+
 def test_a_kit_pool_cannot_be_mono():
     rack = Rack(sample_rate=48000, block_size=BLOCK)
     with pytest.raises(ValueError):
