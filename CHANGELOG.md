@@ -2,6 +2,10 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.3.dev5 (2026-11-23)
+
+- Instruments: parked kits cost nothing on the pump, and pads park with no note-off (#135)
+
 ## v0.5.3.dev4 (2026-11-22)
 
 - SoundFont: no collection while the pump is parked for a voice flush (#132)
