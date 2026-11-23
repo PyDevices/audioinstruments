@@ -595,8 +595,12 @@ class VoicePool:
             self.voices.append(voice)
         midi.listener = self
         # A key held down keeps a keyboard's voice awake, but not a kit's: a pad's sound
-        # ends on its own, and the voice parks once it is quiet (see park()).
-        mix.gated = self.alloc.gated if pads is None else [False] * max_voices
+        # ends on its own, and the voice parks once its tail is gone (see park()).
+        if pads is None:
+            mix.gated = self.alloc.gated
+        else:
+            mix.gated = [False] * max_voices
+            mix.held = self.alloc.gated
         mix.on_quiet = self.park
         for i in range(max_voices):
             self._park(i)  # an idle copy costs nothing until a note wakes it
@@ -739,6 +743,7 @@ class VoicePool:
                 module.enabled = True
             self.mix.parked[i] = False
         self.mix.quiet[i] = 0
+        self.mix.hush[i] = 0
 
     def park(self, i):
         """Voice ``i`` is quiet and not held: stop processing it. False if it is busy."""
@@ -760,6 +765,7 @@ class VoicePool:
                 jack.buffer[:] = 0.0
         self.mix.parked[i] = True
         self.mix.quiet[i] = 0
+        self.mix.hush[i] = 0
         self.mix.gain[i] = self.mix.target[i] = 0.0
 
     def fade_out(self, i):
