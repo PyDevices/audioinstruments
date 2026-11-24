@@ -590,6 +590,7 @@ class Instrument:
         engine="auto",
         pad_map=None,
         strict_pads=False,
+        _ring_if_no_graph=False,
     ):
         sample_rate = _positive_int(sample_rate, "sample_rate")
         if channel_count not in (1, 2) or isinstance(channel_count, bool):
@@ -607,6 +608,17 @@ class Instrument:
         if output == "graph" and engine == "rack":
             raise ValueError('output="graph" needs engine="graph" or "auto"')
         self.patch = voice_patch(voice) if isinstance(voice, str) else voice
+        # From audioinstruments.create(): the graph where the patch compiles,
+        # else the ring with the rack already built, rather than a second
+        # build when memory is short. A patch the graph would give fewer
+        # voices than the ring refuses here, before anything is built.
+        if (
+            _ring_if_no_graph
+            and output == "graph"
+            and voices is None
+            and getattr(self.patch, "VOICES", 8) > PUMP_VOICES
+        ):
+            raise ValueError("%s has more voices than the graph plays" % self.patch.NAME)
         self._pads = kit_pads(self.patch, pad_map, strict_pads)
         self._strict_pads = bool(strict_pads)
         asked = voices
@@ -675,6 +687,8 @@ class Instrument:
         self._ring = None
         self._attached = False
         self._due = False  # a patch change waits for its recompile (attached)
+        if output == "graph" and self._compiled is None and _ring_if_no_graph:
+            output = "ring"
         if output == "graph":
             if self._compiled is None:
                 raise ValueError(
