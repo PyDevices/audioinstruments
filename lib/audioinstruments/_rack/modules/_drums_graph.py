@@ -32,8 +32,108 @@ def relative_decay(seconds, master):
     return 1.0 / (1.0 / seconds - 1.0 / master)
 
 
-def _biquad(f, ag, audiobiquad, src, dst, mode, freq, q):
-    node = f.add(ag.BIQUAD, (src,), dst)
+class Parts:
+    """The parts of a drum voice that finish before the voice does, each stopped on its own.
+
+    A kick's click lasts a few milliseconds and its tone most of a second, but every
+    node of a voice runs until the voice parks. A part is a ``switch`` group of the
+    module's own: its nodes run from the strike until its envelopes have stopped
+    ringing and its output has been silent for a block, then stop. Their outputs stay
+    at zero, which is what the stopped envelopes were writing, so the voice sounds the
+    same. The next rising gate turns the part back on, in the batch that raises the
+    gate, and resets the part's envelopes: a stopped envelope differs from a reset one
+    only in the gate it last saw, so the strike finds it as a running one would. A
+    filter, an oscillator or a noise generator in a part keeps its state while it is
+    stopped, as the rack's cores do while they are silent.
+
+    One ``Parts`` serves every builder in a module (``of``). A part takes a group only
+    while the graph has one to spare, so a kit with too many voices for that keeps the
+    rest of its parts in the voice's group, as before. A gate that no control feeds (a
+    voice patched by hand from a signal) has no parts: nothing would see its edge in
+    time to wake them.
+    """
+
+    @staticmethod
+    def of(f):
+        """The module's ``Parts`` for fragment ``f``, made on first use."""
+        module = f.module
+        parts = getattr(module, "_graph_parts", None)
+        if parts is None or parts.f is not f:
+            parts = module._graph_parts = Parts(f, getattr(module, "gate_in", None))
+        return parts
+
+    def __init__(self, f, gate_jack):
+        self.f = f
+        self.names = []
+        self.groups = []
+        self.on = []
+        self.wires = []  # per part, a wire that rings on after its envelopes, or None
+        self.decays = []  # per part, the nodes a strike resets
+        self.awake = 0
+        self.live = gate_jack is not None and f.is_control(gate_jack)
+        if self.live:
+            f.watch(gate_jack, self._gate)
+            f.after_run(self._after)
+
+    def group(self):
+        """A group for a new part, or None (the voice's own) when the graph has none to spare."""
+        f = self.f
+        if not self.live or f.spare_groups < 1:
+            return None
+        name = "part%d" % len(self.names)
+        group = f.switch(name, False)
+        self.names.append(name)
+        self.groups.append(group)
+        self.on.append(False)
+        self.wires.append(None)
+        self.decays.append(())
+        return group
+
+    def close(self, group, resets, wire=None):
+        """Finish part ``group`` (from ``group()``; None does nothing).
+
+        Args:
+            group: The part's group.
+            resets: The nodes a strike resets: its envelopes, and a lag after them.
+            wire: A wire of the part's own that rings on after its envelopes stop (a
+                lag); the part stops only once its last block was silent.
+        """
+        if group is None:
+            return
+        i = self.groups.index(group)
+        self.decays[i] = tuple(resets)
+        if wire is not None:
+            self.f.keep(wire)
+            self.wires[i] = wire
+
+    def _gate(self, value):
+        if value <= 0.5 or self.awake == len(self.on):
+            return
+        f = self.f
+        for i in range(len(self.on)):
+            if not self.on[i]:
+                self.on[i] = True
+                self.awake += 1
+                f.enable(self.names[i], True)
+                for node in self.decays[i]:
+                    f.reset(node)
+
+    def _after(self, sounding):
+        if self.awake == 0:
+            return
+        f = self.f
+        for i in range(len(self.on)):
+            if self.on[i] and not (sounding >> self.groups[i]) & 1:
+                wire = self.wires[i]
+                if wire is not None and f.peak(wire) != 0:
+                    continue
+                self.on[i] = False
+                self.awake -= 1
+                f.enable(self.names[i], False)
+
+
+def _biquad(f, ag, audiobiquad, src, dst, mode, freq, q, group=None):
+    node = f.add(ag.BIQUAD, (src,), dst, group=group)
     f.set(node, ag.BIQUAD_MODE, mode)
     f.set(node, ag.BIQUAD_FREQUENCY, freq)
     f.set(node, ag.BIQUAD_Q, q)
@@ -85,9 +185,13 @@ class BridgedTGraph:
         f.set(self.n_tone_vca, ag.VCA_SELECT, 0.0)
         f.set(self.n_tone_vca, ag.VCA_GAIN, 1.0)
 
-        self.n_click_env = f.add(ag.DECAY, (gate, b_click_vel), b_click_env)
-        self.n_click_lp = f.add(ag.SAMPLE_HOLD, (b_click_env, None), b_click_lp)
+        # the click: an envelope through a one-pole, gone in a few milliseconds
+        parts = Parts.of(f)
+        g = parts.group()
+        self.n_click_env = f.add(ag.DECAY, (gate, b_click_vel), b_click_env, group=g)
+        self.n_click_lp = f.add(ag.SAMPLE_HOLD, (b_click_env, None), b_click_lp, group=g)
         f.set(self.n_click_lp, ag.SH_RATE, self.sample_rate)
+        parts.close(g, (self.n_click_env, self.n_click_lp), b_click_lp)
 
         mix_in = [b_tone_env, b_click_lp]
         self.n_white = None
@@ -96,12 +200,14 @@ class BridgedTGraph:
         if noise:
             b_white, b_pink = f.buffer(), f.buffer()
             b_noise_env, b_noise = f.buffer(), f.buffer()
-            self.n_white = f.add(ag.NOISE, (), b_white)
+            g = parts.group()
+            self.n_white = f.add(ag.NOISE, (), b_white, group=g)
             f.set(self.n_white, 0, 0.5 * UNIT)
-            self.n_pink = f.add(ag.PINK, (b_white,), b_pink)
-            self.n_noise_env = f.add(ag.DECAY, (gate, b_vel), b_noise_env)
-            self.n_noise_vca = f.add(ag.VCA, (b_pink, b_noise_env, None), b_noise)
+            self.n_pink = f.add(ag.PINK, (b_white,), b_pink, group=g)
+            self.n_noise_env = f.add(ag.DECAY, (gate, b_vel), b_noise_env, group=g)
+            self.n_noise_vca = f.add(ag.VCA, (b_pink, b_noise_env, None), b_noise, group=g)
             f.set(self.n_noise_vca, ag.VCA_SELECT, 0.0)
+            parts.close(g, (self.n_noise_env,))
             mix_in.append(b_noise)
 
         self.n_mix = f.add(ag.MIX, tuple(mix_in), out)
@@ -372,24 +478,28 @@ class MetallicBankGraph:
         self.ag = ag
         self.f = f
         self.kind = kind
+        # Hats under their own envelope are all one part: the bank stops with it, as the
+        # rack's does while the envelope is silent.
+        parts = Parts.of(f) if kind == "hats" and enveloped else None
+        g = parts.group() if parts is not None else None
 
         b_vel, b_env = f.buffer(), f.buffer()
         b_sum = f.buffer()
         self.n_oscs = []
         for freq in self.FREQS:
             buf = f.buffer()
-            node = f.add(ag.OSC, (None, None, None, None), buf)
+            node = f.add(ag.OSC, (None, None, None, None), buf, group=g)
             f.set(node, ag.OSC_WAVEFORM, 2)
             f.set(node, ag.OSC_LEVEL, 0.25 * self.BANK_SCALE)
             f.set(node, ag.OSC_FREQUENCY, freq)
             f.set(node, ag.OSC_PULSE_WIDTH, 0.5)
             self.n_oscs.append((node, buf))
-        self.n_sum = f.add(ag.MIX, tuple(buf for _, buf in self.n_oscs), b_sum)
+        self.n_sum = f.add(ag.MIX, tuple(buf for _, buf in self.n_oscs), b_sum, group=g)
         for i in range(len(self.n_oscs)):
             f.set(self.n_sum, i, 1.0)
 
-        self.n_vel = f.add(ag.CONST, (), b_vel)
-        self.n_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        self.n_vel = f.add(ag.CONST, (), b_vel, group=g)
+        self.n_env = f.add(ag.DECAY, (gate, b_vel), b_env, group=g)
         self.n_envs = [self.n_env]
         self.n_vels = [self.n_vel]
 
@@ -401,15 +511,16 @@ class MetallicBankGraph:
             b1 = f.buffer()
             b_filt = f.buffer() if enveloped else out
             self.n_filts.append(
-                _biquad(f, ag, audiobiquad, b_sum, b1, audiobiquad.BAND_PASS, 7500.0, 2.5)
+                _biquad(f, ag, audiobiquad, b_sum, b1, audiobiquad.BAND_PASS, 7500.0, 2.5, g)
             )
             self.n_filts.append(
-                _biquad(f, ag, audiobiquad, b1, b_filt, audiobiquad.HIGH_PASS, 7000.0, 1.0)
+                _biquad(f, ag, audiobiquad, b1, b_filt, audiobiquad.HIGH_PASS, 7000.0, 1.0, g)
             )
             if enveloped:
-                n_vca = f.add(ag.VCA, (b_filt, b_env, None), out)
+                n_vca = f.add(ag.VCA, (b_filt, b_env, None), out, group=g)
                 f.set(n_vca, ag.VCA_SELECT, 0.0)
                 self.n_vcas.append(n_vca)
+                parts.close(g, (self.n_env,))
             self.n_mix = None
         else:
             # cymbal: two envelopes, the low band's 0.9 of the high band's time.
@@ -525,16 +636,20 @@ class SweptOscGraph:
         f.set(self.n_tone_vca, ag.VCA_SELECT, 0.0)
         f.set(self.n_tone_vca, ag.VCA_GAIN, 1.0)
 
-        self.n_click_env = f.add(ag.DECAY, (gate, b_click_vel), b_click_env)
-        self.n_click_lp = f.add(ag.SAMPLE_HOLD, (b_click_env, None), b_click_lp)
+        # the click: an envelope through a one-pole and over high-passed noise
+        parts = Parts.of(f)
+        g = parts.group()
+        self.n_click_env = f.add(ag.DECAY, (gate, b_click_vel), b_click_env, group=g)
+        self.n_click_lp = f.add(ag.SAMPLE_HOLD, (b_click_env, None), b_click_lp, group=g)
         f.set(self.n_click_lp, ag.SH_RATE, self.sample_rate)
 
-        self.n_white_c = f.add(ag.NOISE, (), b_white_c)
+        self.n_white_c = f.add(ag.NOISE, (), b_white_c, group=g)
         f.set(self.n_white_c, 0, 0.5 * UNIT)
-        self.n_click_hp = f.add(ag.BIQUAD, (b_white_c,), b_hp)
+        self.n_click_hp = f.add(ag.BIQUAD, (b_white_c,), b_hp, group=g)
         f.set(self.n_click_hp, ag.BIQUAD_MODE, audiobiquad.HIGH_PASS)
-        self.n_click_vca = f.add(ag.VCA, (b_hp, b_click_env, None), b_click_noise)
+        self.n_click_vca = f.add(ag.VCA, (b_hp, b_click_env, None), b_click_noise, group=g)
         f.set(self.n_click_vca, ag.VCA_SELECT, 0.0)
+        parts.close(g, (self.n_click_env, self.n_click_lp), b_click_lp)
 
         mix_in = [b_tone_env, b_click_lp, b_click_noise]
         self.n_white = None
@@ -543,12 +658,14 @@ class SweptOscGraph:
         self.n_filt = None
         if noise:
             b_white, b_filt, b_noise_env, b_noise = f.buffer(), f.buffer(), f.buffer(), f.buffer()
-            self.n_noise_env = f.add(ag.DECAY, (gate, b_vel), b_noise_env)
-            self.n_white = f.add(ag.NOISE, (), b_white)
+            g = parts.group()
+            self.n_noise_env = f.add(ag.DECAY, (gate, b_vel), b_noise_env, group=g)
+            self.n_white = f.add(ag.NOISE, (), b_white, group=g)
             f.set(self.n_white, 0, 0.5 * UNIT)
-            self.n_filt = f.add(ag.BIQUAD, (b_white,), b_filt)
-            self.n_noise_vca = f.add(ag.VCA, (b_filt, b_noise_env, None), b_noise)
+            self.n_filt = f.add(ag.BIQUAD, (b_white,), b_filt, group=g)
+            self.n_noise_vca = f.add(ag.VCA, (b_filt, b_noise_env, None), b_noise, group=g)
             f.set(self.n_noise_vca, ag.VCA_SELECT, 0.0)
+            parts.close(g, (self.n_noise_env,))
             self._noise_mode = noise_filter_mode
             mix_in.append(b_noise)
 
@@ -771,13 +888,17 @@ class Cymbal909Graph:
             )
             shaped.append(self._voice(f, ag, gate, b_hp))
         else:
+            # the ride's bell falls in a tenth of a second, under a tail of seconds
+            parts = Parts.of(f)
+            g = parts.group()
             b_bell = f.buffer()
-            self.n_bell = f.add(ag.OSC, (None, None, None, None), b_bell)
+            self.n_bell = f.add(ag.OSC, (None, None, None, None), b_bell, group=g)
             f.set(self.n_bell, ag.OSC_WAVEFORM, 2)
             f.set(self.n_bell, ag.OSC_LEVEL, 0.25)
             f.set(self.n_bell, ag.OSC_FREQUENCY, 820.0)
             f.set(self.n_bell, ag.OSC_PULSE_WIDTH, 0.5)
-            shaped.append(self._voice(f, ag, gate, b_bell))
+            shaped.append(self._voice(f, ag, gate, b_bell, g))
+            parts.close(g, (self.n_envs[-1],))
 
         b_mix, b_crushed = f.buffer(), f.buffer()
         self.n_mix = f.add(ag.MIX, tuple(shaped), b_mix)
@@ -786,17 +907,17 @@ class Cymbal909Graph:
         f.set(self.n_master, ag.VCA_SELECT, 0.0)
         f.set(self.n_master, ag.VCA_GAIN, 1.0)
 
-    def _envelope(self, f, ag, gate):
+    def _envelope(self, f, ag, gate, group=None):
         b_vel, b_env = f.buffer(), f.buffer()
-        n_vel = f.add(ag.CONST, (), b_vel)
+        n_vel = f.add(ag.CONST, (), b_vel, group=group)
         f.set(n_vel, 0, UNIT)
         self.n_vels.append(n_vel)
-        self.n_envs.append(f.add(ag.DECAY, (gate, b_vel), b_env))
+        self.n_envs.append(f.add(ag.DECAY, (gate, b_vel), b_env, group=group))
         return b_env
 
-    def _voice(self, f, ag, gate, src):
-        b_env, b_out = self._envelope(f, ag, gate), f.buffer()
-        n_vca = f.add(ag.VCA, (src, b_env, None), b_out)
+    def _voice(self, f, ag, gate, src, group=None):
+        b_env, b_out = self._envelope(f, ag, gate, group), f.buffer()
+        n_vca = f.add(ag.VCA, (src, b_env, None), b_out, group=group)
         f.set(n_vca, ag.VCA_SELECT, 0.0)
         self.n_vcas.append(n_vca)
         return b_out
