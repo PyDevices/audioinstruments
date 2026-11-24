@@ -17,7 +17,7 @@ from ...dsp.biquad import BiquadFilter
 from ...dsp.drums import BitDepthRateCore, MetallicBankCore, OneShotEnvelopeCore
 from ...dsp.noise import NoiseGenerator
 from ...dsp.oscillator import OscillatorCore
-from .._drums_graph import Cymbal909Graph
+from .._drums_graph import CRASH_TIMES, RIDE_TIMES, Cymbal909Graph, relative_decay
 
 
 class Rhythm909Crash(Module):
@@ -36,13 +36,16 @@ class Rhythm909Crash(Module):
         self.core.cym_low.set(3400.0)
         self.core.cym_high.set(7100.0)
 
-        # Crash envelope: ~2.0 s decay
+        # Crash envelope: ~2.0 s decay. The high band's is the master, applied after
+        # the crusher; the low band and the noise go in under their own envelope
+        # divided by it, so each still falls over its own time.
+        low, high, noise = CRASH_TIMES
         self.env_low = OneShotEnvelopeCore(sr, bs)
         self.env_high = OneShotEnvelopeCore(sr, bs)
         self.env_noise = OneShotEnvelopeCore(sr, bs)
-        self.env_low.set_times(0.001, 1.8)
-        self.env_high.set_times(0.001, 2.0)
-        self.env_noise.set_times(0.001, 1.6)
+        self.env_low.set_times(0.001, relative_decay(low, high))
+        self.env_high.set_times(0.001, high)
+        self.env_noise.set_times(0.001, relative_decay(noise, high))
 
         self.noise_gen = NoiseGenerator()
         self.noise_filter = BiquadFilter(bs, sr, mode="HP", stages=1, q=1.0)
@@ -130,7 +133,11 @@ class Rhythm909Crash(Module):
         self.env_high.render(gate, self._env_high_buf)
         self.env_noise.render(gate, self._env_noise_buf)
 
-        if not self.env_low.ringing and not self.env_high.ringing and not self.env_noise.ringing:
+        if not self.env_high.ringing:
+            # The master is the longest: past it the voice is silent, and a slower
+            # relative envelope stops with it rather than ringing on unheard.
+            self.env_low.stop()
+            self.env_noise.stop()
             clear_buffer(self.audio_out.buffer)
             return
 
@@ -140,7 +147,6 @@ class Rhythm909Crash(Module):
 
         self.core.render_cymbal(self._low_buf, self._high_buf)
         mul(self._low_buf, self._env_low_buf)
-        mul(self._high_buf, self._env_high_buf)
 
         self.noise_gen.white(self._white)
         self.noise_filter.process(self._white, self._noise_buf)
@@ -150,8 +156,13 @@ class Rhythm909Crash(Module):
         add_scaled(self._mix_buf, self._high_buf, 1.1 * high_boost, self._white)
         add_scaled(self._mix_buf, self._noise_buf, 0.45 * high_boost, self._white)
 
+        # The reduction stage comes before the master envelope, as on the original,
+        # whose DAC reference follows the envelope: its step shrinks as the sound
+        # decays, so a quiet tail stays a scaled copy of the sound rather than
+        # sparse one-step pulses.
         out = self.audio_out.buffer
         self.crusher.process(self._mix_buf, out)
+        mul(out, self._env_high_buf)
 
         gain = (self.level / 10.0) * accent_gain * 1.25
         scale(out, gain)
@@ -159,7 +170,7 @@ class Rhythm909Crash(Module):
     # -- as a graph fragment ------------------------------------------------------------
 
     def fragment(self, f):
-        """``MetallicBankCore``'s two bands and a high-passed noise under three envelopes, then the crusher."""
+        """``MetallicBankCore``'s two bands and a high-passed noise through the crusher, then the master envelope."""
         self._fragment = f
         self._cym = Cymbal909Graph(
             f,
@@ -208,13 +219,16 @@ class Rhythm909Ride(Module):
         self.core.cym_low.set(3400.0)
         self.core.cym_high.set(7100.0)
 
-        # Ride envelope: ~2.5 s decay
+        # Ride envelope: ~2.5 s decay. The high band's is the master, applied after
+        # the crusher; the low band and the bell go in under their own envelope
+        # divided by it, so each still falls over its own time.
+        low, high, bell = RIDE_TIMES
         self.env_low = OneShotEnvelopeCore(sr, bs)
         self.env_high = OneShotEnvelopeCore(sr, bs)
         self.env_bell = OneShotEnvelopeCore(sr, bs)
-        self.env_low.set_times(0.001, 2.2)
-        self.env_high.set_times(0.001, 2.5)
-        self.env_bell.set_times(0.001, 0.08)  # bell ping at the front
+        self.env_low.set_times(0.001, relative_decay(low, high))
+        self.env_high.set_times(0.001, high)
+        self.env_bell.set_times(0.001, relative_decay(bell, high))  # bell ping at the front
 
         # Bell oscillator: near 820 Hz
         self.bell_osc = OscillatorCore(sr)
@@ -301,7 +315,11 @@ class Rhythm909Ride(Module):
         self.env_high.render(gate, self._env_high_buf)
         self.env_bell.render(gate, self._env_bell_buf)
 
-        if not self.env_low.ringing and not self.env_high.ringing and not self.env_bell.ringing:
+        if not self.env_high.ringing:
+            # The master is the longest: past it the voice is silent, and a slower
+            # relative envelope stops with it rather than ringing on unheard.
+            self.env_low.stop()
+            self.env_bell.stop()
             clear_buffer(self.audio_out.buffer)
             return
 
@@ -311,7 +329,6 @@ class Rhythm909Ride(Module):
 
         self.core.render_cymbal(self._low_buf, self._high_buf)
         mul(self._low_buf, self._env_low_buf)
-        mul(self._high_buf, self._env_high_buf)
 
         # Bell ping
         if self.env_bell.ringing:
@@ -327,8 +344,13 @@ class Rhythm909Ride(Module):
         add_scaled(self._mix_buf, self._high_buf, 1.2 * high_boost, self._tmp)
         add_scaled(self._mix_buf, self._bell_buf, 0.5 * high_boost, self._tmp)
 
+        # The reduction stage comes before the master envelope, as on the original,
+        # whose DAC reference follows the envelope: its step shrinks as the sound
+        # decays, so a quiet tail stays a scaled copy of the sound rather than
+        # sparse one-step pulses.
         out = self.audio_out.buffer
         self.crusher.process(self._mix_buf, out)
+        mul(out, self._env_high_buf)
 
         gain = (self.level / 10.0) * accent_gain * 1.25
         scale(out, gain)
@@ -336,7 +358,7 @@ class Rhythm909Ride(Module):
     # -- as a graph fragment ------------------------------------------------------------
 
     def fragment(self, f):
-        """``MetallicBankCore``'s two bands and an 820 Hz pulse bell under three envelopes, then the crusher."""
+        """``MetallicBankCore``'s two bands and an 820 Hz pulse bell through the crusher, then the master envelope."""
         self._fragment = f
         self._cym = Cymbal909Graph(
             f,

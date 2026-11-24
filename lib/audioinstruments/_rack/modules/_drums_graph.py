@@ -15,6 +15,21 @@ from ..core.graph import UNIT
 
 #: The rack's ``exp(-4.60517 / (sr * t))`` fall time; DECAY takes seconds to -40 dB.
 LN_100 = 4.60517
+#: The 909 crash's and ride's (low band, high band, noise or bell) fall times in seconds.
+CRASH_TIMES = (1.8, 2.0, 1.6)
+RIDE_TIMES = (2.2, 2.5, 0.08)
+
+
+def relative_decay(seconds, master):
+    """The fall time that, under a master envelope falling over ``master``, falls over ``seconds``.
+
+    Both envelopes fall exponentially, 40 dB over their time, so their rates add:
+    ``1 / seconds = 1 / master + 1 / relative``. ``seconds`` must be shorter than
+    ``master``.
+    """
+    if not 0.0 < seconds < master:
+        raise ValueError("a relative envelope needs 0 < seconds < master")
+    return 1.0 / (1.0 / seconds - 1.0 / master)
 
 
 def _biquad(f, ag, audiobiquad, src, dst, mode, freq, q):
@@ -689,13 +704,21 @@ class CrushGraph:
 
 
 class Cymbal909Graph:
-    """The 909 crash and ride: ``MetallicBankCore`` bands, their envelopes, then the crusher.
+    """The 909 crash and ride: ``MetallicBankCore`` bands through the crusher, then an envelope.
 
-    Three ``OneShotEnvelopeCore`` envelopes (1 ms attack, long fall) are each first
-    scanned inside their own ``render``, which forces 1.0, so every DECAY velocity
-    is open. The crash adds high-passed white noise under its own envelope; the
-    ride adds a 820 Hz pulse bell under a short one. ``tune`` moves the crusher's
-    rate, the bank, the band-pass centres and the bell together.
+    The high band's envelope is the master: it comes after the crusher, as on the
+    original, whose DAC reference follows the envelope, so the reduction stage's
+    step shrinks as the sound decays and a quiet tail stays a scaled copy of the
+    sound. The other parts (the low band, and the crash's high-passed white noise
+    or the ride's 820 Hz pulse bell) go into the crusher under their envelope
+    divided by the master's (``relative_decay``), so after the master each part
+    falls over its own time, as before.
+
+    The envelopes (1 ms attack, long fall) are each first scanned inside their own
+    ``render``, which forces 1.0, so every DECAY velocity is open. A relative
+    envelope slower than the master holds its fall for the master's life and then
+    stops, so it never keeps the voice awake. ``tune`` moves the crusher's rate,
+    the bank, the band-pass centres and the bell together.
     """
 
     def __init__(self, f, gate, out, *, sample_rate, kind="crash"):
@@ -724,16 +747,17 @@ class Cymbal909Graph:
             f.set(self.n_sum, i, 1.0)
 
         self.n_vels = []
+        #: The master envelope, then the low band's and the third part's relative ones.
         self.n_envs = []
+        #: The low band's and the third part's VCAs; the high band's gain is ``n_mix`` input 1.
         self.n_vcas = []
         b_low, b_high = f.buffer(), f.buffer()
         self.n_lowf = _biquad(f, ag, audiobiquad, b_sum, b_low, audiobiquad.BAND_PASS, 3400.0, 3.0)
         self.n_highf = _biquad(
             f, ag, audiobiquad, b_sum, b_high, audiobiquad.BAND_PASS, 7100.0, 3.0
         )
-        shaped = []
-        for src in (b_low, b_high):
-            shaped.append(self._voice(f, ag, gate, src))
+        b_master = self._envelope(f, ag, gate)
+        shaped = [self._voice(f, ag, gate, b_low), b_high]
 
         self.n_white = None
         self.n_noise_hp = None
@@ -755,19 +779,25 @@ class Cymbal909Graph:
             f.set(self.n_bell, ag.OSC_PULSE_WIDTH, 0.5)
             shaped.append(self._voice(f, ag, gate, b_bell))
 
-        b_mix = f.buffer()
+        b_mix, b_crushed = f.buffer(), f.buffer()
         self.n_mix = f.add(ag.MIX, tuple(shaped), b_mix)
-        self.crush = CrushGraph(f, b_mix, out, sample_rate=sample_rate)
+        self.crush = CrushGraph(f, b_mix, b_crushed, sample_rate=sample_rate)
+        self.n_master = f.add(ag.VCA, (b_crushed, b_master, None), out)
+        f.set(self.n_master, ag.VCA_SELECT, 0.0)
+        f.set(self.n_master, ag.VCA_GAIN, 1.0)
 
-    def _voice(self, f, ag, gate, src):
-        b_vel, b_env, b_out = f.buffer(), f.buffer(), f.buffer()
+    def _envelope(self, f, ag, gate):
+        b_vel, b_env = f.buffer(), f.buffer()
         n_vel = f.add(ag.CONST, (), b_vel)
         f.set(n_vel, 0, UNIT)
-        n_env = f.add(ag.DECAY, (gate, b_vel), b_env)
+        self.n_vels.append(n_vel)
+        self.n_envs.append(f.add(ag.DECAY, (gate, b_vel), b_env))
+        return b_env
+
+    def _voice(self, f, ag, gate, src):
+        b_env, b_out = self._envelope(f, ag, gate), f.buffer()
         n_vca = f.add(ag.VCA, (src, b_env, None), b_out)
         f.set(n_vca, ag.VCA_SELECT, 0.0)
-        self.n_vels.append(n_vel)
-        self.n_envs.append(n_env)
         self.n_vcas.append(n_vca)
         return b_out
 
@@ -778,13 +808,14 @@ class Cymbal909Graph:
         v = max(0.0, min(1.0, velocity))
         a = accent
         accent_gain = (1.0 - a) + a * (v**1.85)
+        # (low, high, third) fall times and gains; the high band's is the master.
         if self.kind == "crash":
             high_boost = (1.0 - a) + a * (0.5 + 0.9 * v)
-            times = (1.8, 2.0, 1.6)
+            times = CRASH_TIMES
             gains = (0.9, 1.1 * high_boost, 0.45 * high_boost)
         else:
             high_boost = (1.0 - a) + a * (0.6 + 0.7 * v)
-            times = (2.2, 2.5, 0.08)
+            times = RIDE_TIMES
             gains = (0.9, 1.2 * high_boost, 0.5 * high_boost)
         rate = 24000.0 + (tune / 10.0) * 16000.0
         ratio = rate / 32000.0
@@ -794,17 +825,33 @@ class Cymbal909Graph:
         f.set(self.n_highf, ag.BIQUAD_FREQUENCY, min(sr * 0.45, 7100.0 * ratio))
         if self.n_bell is not None:
             f.set(self.n_bell, ag.OSC_FREQUENCY, 820.0 * ratio)
-        for node, t in zip(self.n_envs, times):
-            f.set(node, ag.DECAY_DECAY, t)
-            f.set(node, ag.DECAY_RESTRIKE, t)
-        for node, g in zip(self.n_vcas, gains):
-            f.set(node, ag.VCA_GAIN, g)
-        for i in range(len(gains)):
-            f.set(self.n_mix, i, 1.0)
+        master = times[1]
+        n_master, n_low, n_third = self.n_envs
+        self._decay(n_master, master, 0.0)
+        for node, t in ((n_low, times[0]), (n_third, times[2])):
+            rel = relative_decay(t, master)
+            if rel > master:
+                # Held at its own fall for the master's life (silent at 2 * master,
+                # checked once a block), then gone in a millisecond.
+                self._decay(node, 0.001, rel, 2.0 * master + 0.1)
+            else:
+                self._decay(node, rel, 0.0)
+        f.set(self.n_vcas[0], ag.VCA_GAIN, gains[0])
+        f.set(self.n_vcas[1], ag.VCA_GAIN, gains[2])
+        f.set(self.n_mix, 0, 1.0)
+        f.set(self.n_mix, 1, gains[1])
+        f.set(self.n_mix, 2, 1.0)
         self.crush.apply(bits=bits, rate=rate, crush=crush, gain=level / 10.0 * accent_gain * 1.25)
 
+    def _decay(self, node, tail, fast, fast_sec=0.0):
+        ag = self.ag
+        self.f.set(node, ag.DECAY_DECAY, tail)
+        self.f.set(node, ag.DECAY_RESTRIKE, tail)
+        self.f.set(node, ag.DECAY_FAST, fast)
+        self.f.set(node, ag.DECAY_FAST_SEC, fast_sec)
+
     def reset(self, f):
-        nodes = [self.n_sum, self.n_lowf, self.n_highf, self.n_mix]
+        nodes = [self.n_sum, self.n_lowf, self.n_highf, self.n_mix, self.n_master]
         nodes += list(self.n_oscs) + self.n_envs + self.n_vcas
         for node in (self.n_white, self.n_noise_hp, self.n_bell):
             if node is not None:

@@ -100,6 +100,11 @@ class OneShotEnvelopeCore:
         self.level = level
         self.ringing = True
 
+    def stop(self):
+        """Fall silent now, keeping the gate's edge state (unlike ``reset``)."""
+        self.level = 0.0
+        self.ringing = False
+
     def render(self, gate, dst):
         """Render one block into dst. If gate is None, continues current state."""
         n = len(dst)
