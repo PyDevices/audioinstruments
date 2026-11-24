@@ -327,6 +327,9 @@ class MaracasGraph:
 class MetallicBankGraph:
     """``MetallicBankCore`` plus a ``OneShotEnvelopeCore`` as nodes.
 
+    ``enveloped=False`` (hats only) leaves the envelope off the bank's output and
+    keeps it in ``b_env``, for a module that applies it after a later stage.
+
     Six pulse OSCs at the rack's ``METALLIC_FREQS`` are summed and filtered
     (hats: band-pass 7500 q 2.5 then high-pass 7000; cymbal: two band-passes at
     3400 and 7100, q 3.0). The envelope is a DECAY under a ``OneShotEnvelopeCore``.
@@ -347,7 +350,7 @@ class MetallicBankGraph:
     BANK_SCALE = 1.0
     BANK_GAIN = 1.0
 
-    def __init__(self, f, gate, out, *, kind="hats"):
+    def __init__(self, f, gate, out, *, kind="hats", enveloped=True):
         import audiobiquad
         import audiograph as ag
 
@@ -377,17 +380,21 @@ class MetallicBankGraph:
 
         self.n_filts = []
         self.n_vcas = []
+        #: The envelope's buffer, for a module that applies it later (``enveloped=False``).
+        self.b_env = b_env
         if kind == "hats":
-            b1, b_filt = f.buffer(), f.buffer()
+            b1 = f.buffer()
+            b_filt = f.buffer() if enveloped else out
             self.n_filts.append(
                 _biquad(f, ag, audiobiquad, b_sum, b1, audiobiquad.BAND_PASS, 7500.0, 2.5)
             )
             self.n_filts.append(
                 _biquad(f, ag, audiobiquad, b1, b_filt, audiobiquad.HIGH_PASS, 7000.0, 1.0)
             )
-            n_vca = f.add(ag.VCA, (b_filt, b_env, None), out)
-            f.set(n_vca, ag.VCA_SELECT, 0.0)
-            self.n_vcas.append(n_vca)
+            if enveloped:
+                n_vca = f.add(ag.VCA, (b_filt, b_env, None), out)
+                f.set(n_vca, ag.VCA_SELECT, 0.0)
+                self.n_vcas.append(n_vca)
             self.n_mix = None
         else:
             # cymbal: two envelopes, the low band's 0.9 of the high band's time.
@@ -422,7 +429,8 @@ class MetallicBankGraph:
             d = max(0.001, decay_sec)
             f.set(self.n_env, ag.DECAY_DECAY, d)
             f.set(self.n_env, ag.DECAY_RESTRIKE, d)
-            f.set(self.n_vcas[0], ag.VCA_GAIN, gain_low * k)
+            if self.n_vcas:
+                f.set(self.n_vcas[0], ag.VCA_GAIN, gain_low * k)
         else:
             f.set(self.n_vels[1], 0, UNIT)
             d_high = max(0.001, decay_sec)
