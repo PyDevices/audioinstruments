@@ -21,8 +21,8 @@ class Ramp:
 
     def __init__(self, block_size):
         self.buf = create_buffer(block_size)
-        for i in range(block_size):
-            self.buf[i] = float(i + 1)
+        # one vector fill: a store per element boxes a float each, and a kit builds dozens
+        self.buf += np.arange(1, block_size + 1)
 
     def view(self, length):
         return self.buf[0:length]

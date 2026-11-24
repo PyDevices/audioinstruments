@@ -234,6 +234,7 @@ class Rack:
         """Render one block from every module, then read the master inputs."""
         if self._dirty:
             self.schedule()
+            self._make_blocks()
         b_size = self.block_size
         for module in self._order:
             if module.enabled:
@@ -246,6 +247,17 @@ class Rack:
             buf_r = buf_l
         self.output_buffer_left = buf_l
         self.output_buffer_right = buf_r
+
+    def _make_blocks(self):
+        # A jack builds its block on first use; the rack renders every block, so build
+        # them all here rather than in the first block's render.
+        for module in self.modules:
+            for jack in module.inputs.values():
+                jack.make_block()
+            for jack in module.outputs.values():
+                jack.make_block()
+        self.master_left_in.make_block()
+        self.master_right_in.make_block()
 
     def reset(self):
         """Reset every module's DSP state."""
