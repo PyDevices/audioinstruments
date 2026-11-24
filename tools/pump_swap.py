@@ -93,8 +93,10 @@ PER_TURN = 2  # blocks a turn lets the pump render where it has no thread
 STATUS_RING_OVF = 10
 
 
-def _status(status):
-    return array("I", bytes(status))
+def _status_word(status, index):
+    """Word ``index`` of the pump's status block: little-endian 64-bit words, of which a
+    count only ever needs the low half."""
+    return array("I", bytes(status))[2 * index]
 
 
 class _Pump:
@@ -114,13 +116,12 @@ class _Pump:
         """What a player's tick does: let the pump run, take what it played."""
         if not self.threaded:
             audiopump.service(PER_TURN)
-        while True:
-            n = audiopump.drain(self.scratch)
-            if not n:
-                break
-            self.count += n
-            if self.keep:
-                self.played.extend(self.scratch[:n])
+        # One drain a turn, as a player's tick takes: a pump with a thread of its own can
+        # refill the ring as fast as a loop drains it, and one turn would run the phrase.
+        n = audiopump.drain(self.scratch)
+        self.count += n
+        if self.keep:
+            self.played.extend(self.scratch[:n])
         return self.count // BLOCK_BYTES
 
     def finish(self, blocks):
@@ -234,7 +235,7 @@ def cable(fault=None, busy=False):
         compiled.control()
         _nap()
     blocks = pump.finish(BLOCKS)
-    overflows = _status(pump.status)[STATUS_RING_OVF]
+    overflows = _status_word(pump.status, STATUS_RING_OVF)
     compiled.deinit()
     if overflows:
         raise RuntimeError("the pump dropped %d blocks" % overflows)
@@ -326,7 +327,7 @@ def cost(voice, swaps=8):
     nodes = sum(len(f.nodes) for f in inst._compiled.fragments)
     played = pump.count
     audiopump.shutdown()
-    overflows = _status(pump.status)[STATUS_RING_OVF]
+    overflows = _status_word(pump.status, STATUS_RING_OVF)
     inst.deinit()
     if overflows:
         raise RuntimeError("the pump dropped %d blocks" % overflows)
