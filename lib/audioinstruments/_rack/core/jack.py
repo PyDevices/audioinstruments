@@ -51,8 +51,21 @@ class OutputJack(Jack):
     ):
         super().__init__(name, label=label, module=module, signal_type=signal_type)
         self.block_size = block_size
-        self.buffer = create_buffer(block_size, fill=0.0)
         self.cables = []
+
+    def __getattr__(self, name):
+        # The block is built on first use. A rack compiled to a graph never reads most
+        # of its jacks' blocks, and on a fragmented heap every block is a slow allocation.
+        if name == "buffer":
+            return self.make_block()
+        raise AttributeError(name)
+
+    def make_block(self):
+        """Build the jack's block now if it has none yet, and return it."""
+        buf = self.__dict__.get("buffer")
+        if buf is None:
+            buf = self.buffer = create_buffer(self.block_size)
+        return buf
 
     def set_block_size(self, size):
         if self.block_size != size:
@@ -97,7 +110,19 @@ class InputJack(Jack):
         self.block_size = block_size
         self.normal = normal  # Can be an OutputJack, callable, or None
         self.cable = None
-        self._silent_buffer = create_buffer(block_size, fill=0.0)
+
+    def __getattr__(self, name):
+        # Built on first use, as an output's block is.
+        if name == "_silent_buffer":
+            return self.make_block()
+        raise AttributeError(name)
+
+    def make_block(self):
+        """Build the block read while nothing is plugged in, if there is none yet."""
+        buf = self.__dict__.get("_silent_buffer")
+        if buf is None:
+            buf = self._silent_buffer = create_buffer(self.block_size)
+        return buf
 
     def set_block_size(self, size):
         if self.block_size != size:

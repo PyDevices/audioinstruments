@@ -1099,5 +1099,108 @@ class BoundedCacheTest(unittest.TestCase):
         self.assertGreater(kit.sounding(), 0)
 
 
+class SlowReadTest(unittest.TestCase):
+    """A sample that takes longer than `NOTE_READ_MS` to read starts playing
+    from what has been read, silent past it, and `fill()` reads the rest in
+    pieces. That is a board's way; here it is turned on, with no time at a
+    note-on or in `fill()` and pieces of 32 frames (low_c4 is 200): the
+    note-on reads one, and the event's own `fill()` one more."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix="sf2slow")
+        cls.path = os.path.join(cls.tmp, "tiny.sf2")
+        sf2_builder.tiny_bank().write(cls.path)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def setUp(self):
+
+        self.saved = (
+            soundfont.NOTE_READ_MS,
+            soundfont.FILL_READ_MS,
+            soundfont.READ_PIECE_BYTES,
+            soundfont._MIN_PIECE_BYTES,
+        )
+        self.fonts = []
+        self.made = []
+
+    def tearDown(self):
+        (
+            soundfont.NOTE_READ_MS,
+            soundfont.FILL_READ_MS,
+            soundfont.READ_PIECE_BYTES,
+            soundfont._MIN_PIECE_BYTES,
+        ) = self.saved
+        for inst in self.made:
+            inst.deinit()
+        for font in self.fonts:
+            font.close()
+
+    def piano(self, slow):
+        import audioinstruments._rack._sf2 as _sf2
+
+        font = _sf2.SoundFont(self.path)
+        self.fonts.append(font)
+        bank = soundfont.open_bank(font)
+        if slow:
+            soundfont.NOTE_READ_MS = soundfont.FILL_READ_MS = 0
+            soundfont.READ_PIECE_BYTES = soundfont._MIN_PIECE_BYTES = 64
+            bank._piece = 64
+        inst = adapter.create(SR, voice="soundfont", bank=bank)
+        self.made.append(inst)
+        return bank, inst
+
+    def test_a_desktop_reads_each_sample_whole_at_its_note(self):
+        self.assertIsNone(soundfont.NOTE_READ_MS)
+        bank, piano = self.piano(slow=False)
+        piano.note_on(60, 100)
+        self.assertEqual(bank.partial_reads, 0)
+        self.assertFalse(piano.fill())
+
+    def test_the_rest_is_read_in_pieces_and_plays_as_if_read_whole(self):
+        _, whole = self.piano(slow=False)
+        whole.note_on(60, 100)
+        want = sf2_play.render(whole, 0.05)
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        self.assertEqual(bank.partial_reads, 1)
+        entry, sample, done = bank._partial[0]
+        self.assertEqual(done, 64)
+        calls = 1
+        while piano.fill(0):  # one piece a call
+            calls += 1
+        self.assertEqual(calls, 5)  # the other 136 frames: four pieces of 32 and one of 8
+        self.assertEqual(sf2_play.render(piano, 0.05), want)
+
+    def test_unread_frames_are_silent_not_stale(self):
+        bank, piano = self.piano(slow=True)
+        bank._open()
+        for raw in bank._bytes:  # what samples read earlier left there
+            raw[:] = b"U" * len(raw)
+        piano.note_on(60, 100)
+        entry = bank._partial[0][0]
+        slab, at = divmod(entry[0], bank._slab)
+        raw = bytes(bank._bytes[slab][(at + 64) * 2 : (at + entry[1]) * 2])
+        self.assertEqual(raw, bytes(len(raw)))
+
+    def test_an_event_reads_on_too(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        done = bank._partial[0][2]
+        piano.control_change(7, 100)
+        self.assertGreater(bank._partial[0][2] if bank._partial else 200, done)
+
+    def test_a_sample_let_go_stops_being_read(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        entry = bank._partial[0][0]
+        bank._evict(entry)
+        self.assertEqual(bank._partial, [])
+        self.assertFalse(piano.fill())
+
+
 if __name__ == "__main__":
     unittest.main()

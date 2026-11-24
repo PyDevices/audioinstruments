@@ -245,10 +245,7 @@ class Vocoder330Bank(Module):
         moves the levels as it does on the rack, and the levels become the synthesis
         ``MIX`` gains, which ramp across the next block. The rack ramps from the last block's
         level to this one's within the block, so the carrier and the mic go through a
-        one-block ``FBDELAY`` first and the bank sounds a block late.
-
-        The ported ``synthio.Biquad`` of the rack settles on a constant offset that
-        the rack takes out with a tracker; the graph's float ``BIQUAD`` has none."""
+        one-block ``FBDELAY`` first and the bank sounds a block late."""
         import audiograph as ag
 
         self._ag = ag

@@ -90,11 +90,13 @@ class Rhythm909ClosedHat(Module):
         a = self.accent / 10.0
         accent_gain = (1.0 - a) + a * (v**1.85)
 
+        # The reduction stage comes before the envelope, as on the original, whose DAC
+        # reference follows the envelope: its step shrinks as the sound decays, so a
+        # quiet tail stays a scaled copy of the sound rather than sparse one-step pulses.
         self.core.render_hats(self._hat_buf)
-        mul(self._hat_buf, self._env_buf)
-
         out = self.audio_out.buffer
         self.crusher.process(self._hat_buf, out)
+        mul(out, self._env_buf)
 
         gain = (self.level / 10.0) * accent_gain * 1.98
         scale(out, gain)
@@ -102,18 +104,23 @@ class Rhythm909ClosedHat(Module):
     # -- as a graph fragment ------------------------------------------------------------
 
     def fragment(self, f):
-        """``MetallicBankCore``'s hats bank under a 40-120 ms envelope, then the crusher.
+        """``MetallicBankCore``'s hats bank through the crusher, then a 40-120 ms envelope.
 
         The envelope is first scanned inside its own ``render`` and forces 1.0,
         so its DECAY velocity is open. The crusher is the rack's
         ``BitDepthRateCore``: anti-alias, CRUSH, SAMPLE_HOLD, with a dry path
         for ``crush=False``.
         """
+        import audiograph as ag
+
         self._fragment = f
         gate = f.input(self.gate_in)
-        b_bank = f.buffer()
-        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats")
-        self._crush = CrushGraph(f, b_bank, f.output(self.audio_out), sample_rate=self.sample_rate)
+        b_bank, b_crushed = f.buffer(), f.buffer()
+        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats", enveloped=False)
+        self._crush = CrushGraph(f, b_bank, b_crushed, sample_rate=self.sample_rate)
+        self._vca = f.add(ag.VCA, (b_crushed, self._bank.b_env, None), f.output(self.audio_out))
+        f.set(self._vca, ag.VCA_SELECT, 0.0)
+        f.set(self._vca, ag.VCA_GAIN, 1.0)
         self._velocity = 100.0 / 127.0
         f.bind(("level", "decay", "accent", "bits", "crush"), self._graph_params)
         f.watch(self.vel_in, self._graph_velocity)
@@ -127,6 +134,7 @@ class Rhythm909ClosedHat(Module):
     def _graph_reset(self):
         self._bank.reset(self._fragment)
         self._crush.reset(self._fragment)
+        self._fragment.reset(self._vca)
 
     def _graph_params(self):
         v = max(0.0, min(1.0, self._velocity))
@@ -217,11 +225,13 @@ class Rhythm909OpenHat(Module):
         a = self.accent / 10.0
         accent_gain = (1.0 - a) + a * (v**1.85)
 
+        # The reduction stage comes before the envelope, as on the original, whose DAC
+        # reference follows the envelope: its step shrinks as the sound decays, so a
+        # quiet tail stays a scaled copy of the sound rather than sparse one-step pulses.
         self.core.render_hats(self._hat_buf)
-        mul(self._hat_buf, self._env_buf)
-
         out = self.audio_out.buffer
         self.crusher.process(self._hat_buf, out)
+        mul(out, self._env_buf)
 
         gain = (self.level / 10.0) * accent_gain * 1.98
         scale(out, gain)
@@ -229,12 +239,17 @@ class Rhythm909OpenHat(Module):
     # -- as a graph fragment ------------------------------------------------------------
 
     def fragment(self, f):
-        """``MetallicBankCore``'s hats bank under a 150-1000 ms envelope, then the crusher."""
+        """``MetallicBankCore``'s hats bank through the crusher, then a 150-1000 ms envelope."""
+        import audiograph as ag
+
         self._fragment = f
         gate = f.input(self.gate_in)
-        b_bank = f.buffer()
-        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats")
-        self._crush = CrushGraph(f, b_bank, f.output(self.audio_out), sample_rate=self.sample_rate)
+        b_bank, b_crushed = f.buffer(), f.buffer()
+        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats", enveloped=False)
+        self._crush = CrushGraph(f, b_bank, b_crushed, sample_rate=self.sample_rate)
+        self._vca = f.add(ag.VCA, (b_crushed, self._bank.b_env, None), f.output(self.audio_out))
+        f.set(self._vca, ag.VCA_SELECT, 0.0)
+        f.set(self._vca, ag.VCA_GAIN, 1.0)
         self._velocity = 100.0 / 127.0
         f.bind(("level", "decay", "accent", "bits", "crush"), self._graph_params)
         f.watch(self.vel_in, self._graph_velocity)
@@ -248,6 +263,7 @@ class Rhythm909OpenHat(Module):
     def _graph_reset(self):
         self._bank.reset(self._fragment)
         self._crush.reset(self._fragment)
+        self._fragment.reset(self._vca)
 
     def _graph_params(self):
         v = max(0.0, min(1.0, self._velocity))

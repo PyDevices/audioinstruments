@@ -353,7 +353,7 @@ def _faults():
         (
             "open hat envelope VCA",
             hats.Rhythm909OpenHat,
-            lambda s: s._bank.n_vcas[0],
+            lambda s: s._vca,
             ag.VCA_GAIN,
             "oh",
         ),

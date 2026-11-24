@@ -37,6 +37,17 @@ sounding reads it outside the arena, just for that note. Where audiosampler
 has `SampleBuffer`, the arena's buffers sit outside the collected heap, so
 a `gc.collect()` doesn't read megabytes of samples looking for pointers.
 
+A slow card. On a board a note-on reads its sample for at most
+`NOTE_READ_MS` (20) and starts the note from what it has; the rest is read
+in pieces, ahead of the voice, by the instrument's `fill()` and at each
+event it takes, and is silent until it arrives. So a 700 KB sample on a card
+that reads 114 KB/s starts its note in tens of milliseconds, not six
+seconds. A host calls `fill()` every few milliseconds while notes sound;
+with a card fast enough to read a whole sample in that time there is never
+anything left for it to do. A card slower than the samples playing falls
+behind, and those notes go quiet in places rather than holding everything
+up. A desktop reads every sample whole.
+
 Attenuation. A region's `initialAttenuation` is applied scaled by
 `ATTENUATION_SCALE` (0.4): the banks in circulation were voiced on players
 that scale it so, and played per the specification's centibels they come out
@@ -189,6 +200,27 @@ SLAB_BYTES = 1048576
 #: reading it, and the audio is rendered a block or two ahead.
 TAIL_MS = 100
 
+#: Milliseconds a note-on spends reading a sample it needs. A sample that
+#: takes longer, a large one on a slow card, starts playing from what has
+#: been read, and the rest follows in pieces of `READ_PIECE_BYTES`, ahead
+#: of the voice, each time the instrument's `fill()` runs or it takes an
+#: event. Until a piece is read its frames are silent. None reads every
+#: sample whole at its note, as a desktop does: there a slow read is a
+#: passing stall, and a host rendering without `fill()` would lose audio.
+NOTE_READ_MS = None if sys.implementation.name == "cpython" else 20
+
+#: Milliseconds `fill()` spends reading the rest of those samples, at most.
+FILL_READ_MS = 10
+
+#: Bytes read from the bank at a time while a sample is read in pieces, at
+#: most; on a slow card a piece is what it reads in about `PIECE_MS`, so a
+#: note-on or `fill()` stops close to its time.
+READ_PIECE_BYTES = 32768
+PIECE_MS = 4
+_MIN_PIECE_BYTES = 1024
+
+_ZEROS = None
+
 
 def _slab(nbytes):
     """One of the arena's buffers: outside the collected heap where
@@ -310,6 +342,11 @@ class _Bank(object):
         self.evicted = 0
         self.outside = 0
         self.dropped = 0
+        self._partial = []  # [entry, sample, frames read], oldest first
+        self._ranged = True  # the font reads part of a sample
+        self._piece = 2048  # bytes to the next piece, from the speed reads have had
+        #: Samples a note-on started playing before they were all read.
+        self.partial_reads = 0
 
     @property
     def cache_bytes(self):
@@ -339,6 +376,7 @@ class _Bank(object):
         self._head = 0
         self._held = {}
         self._tails = {}
+        self._partial = []
         self.cached = 0
         self.arena_bytes = 0
         font = self.font
@@ -426,6 +464,10 @@ class _Bank(object):
         return pinned
 
     def _evict(self, entry):
+        for item in self._partial:
+            if item[0] is entry:
+                self._partial.remove(item)
+                break
         self._order.remove(entry)
         del self.samples[entry[2]]
         self.cached -= entry[1] * 2
@@ -487,8 +529,12 @@ class _Bank(object):
             if pos is None:
                 return self._outside(sample, frames, reader)
             slab, at = divmod(pos, self._slab)
-            reader(sample, self._bytes[slab][at * 2 : (at + frames) * 2])
+            dest = self._bytes[slab][at * 2 : (at + frames) * 2]
             entry = [pos, frames, index]
+            done = self._read_for_note(sample, dest, reader)
+            if done < frames:
+                self._partial.append([entry, sample, done])
+                self.partial_reads += 1
             order = self._order
             i = 0
             while i < len(order) and order[i][0] < pos:
@@ -500,6 +546,70 @@ class _Bank(object):
         slab, at = divmod(pos, self._slab)
         unit = self._unit
         return self._frames[slab][at * unit : (at + frames) * unit], unit
+
+    def _read_piece(self, reader, sample, dest, done, frames):
+        """Read the next piece of `sample`, frames from `done`, into `dest`
+        (the sample's place in the arena), sized to the speed reads have
+        had. The frames read."""
+        n = min(self._piece // 2, frames - done)
+        started = ticks_ms()
+        reader(
+            sample, dest[done * 2 : (done + n) * 2], sample.start + done, sample.start + done + n
+        )
+        took = ticks_diff(ticks_ms(), started)
+        if took > 0:
+            piece = n * 2 * PIECE_MS // took
+            self._piece = max(_MIN_PIECE_BYTES, min(READ_PIECE_BYTES, (piece + self._piece) // 2))
+        elif n * 2 >= self._piece:
+            self._piece = min(READ_PIECE_BYTES, self._piece * 2)
+        return n
+
+    def _read_for_note(self, sample, dest, reader):
+        """Read `sample` into `dest` for a note about to play it: all of it,
+        or as much as `NOTE_READ_MS` allows with the rest silent. The
+        frames read."""
+        frames = sample.end - sample.start
+        if NOTE_READ_MS is None or not self._ranged or frames * 2 <= self._piece:
+            reader(sample, dest)
+            return frames
+        started = ticks_ms()
+        done = 0
+        while done < frames:
+            try:
+                done += self._read_piece(reader, sample, dest, done, frames)
+            except TypeError:  # a reader of whole samples only
+                self._ranged = False
+                reader(sample, dest)
+                return frames
+            if done < frames and ticks_diff(ticks_ms(), started) >= NOTE_READ_MS:
+                _silence(dest[done * 2 :])
+                break
+        return done
+
+    def fill(self, ms=None):
+        """Read on into the samples notes started before they were all
+        read, oldest first, for up to `ms` milliseconds (`FILL_READ_MS`
+        when None). Whether any are left to read."""
+        partial = self._partial
+        if not partial:
+            return False
+        budget = FILL_READ_MS if ms is None else ms
+        started = ticks_ms()
+        reader = self.font.read_sample_into
+        while partial:
+            item = partial[0]
+            entry, sample, done = item
+            frames = entry[1]
+            slab, at = divmod(entry[0], self._slab)
+            dest = self._bytes[slab][at * 2 : (at + frames) * 2]
+            done += self._read_piece(reader, sample, dest, done, frames)
+            if done >= frames:
+                partial.pop(0)
+            else:
+                item[2] = done
+            if ticks_diff(ticks_ms(), started) >= budget:
+                break
+        return bool(partial)
 
     def _outside(self, sample, frames, reader):
         """The sample in a buffer of its own, for one note; None when the
@@ -564,6 +674,19 @@ class _Bank(object):
         if mode == 0:
             loop_start, loop_end = 0, length
         return pcm, loop_start, loop_end, mode
+
+
+def _silence(dest):
+    """Zero a writable byte view, a piece at a time."""
+    global _ZEROS
+    if _ZEROS is None:
+        _ZEROS = bytes(READ_PIECE_BYTES)
+    size = len(dest)
+    at = 0
+    while at < size:
+        n = min(READ_PIECE_BYTES, size - at)
+        dest[at : at + n] = _ZEROS[:n] if n < READ_PIECE_BYTES else _ZEROS
+        at += n
 
 
 def _sounding(voice):
@@ -1217,6 +1340,8 @@ class _Player(object):
                 gain = self.cc_volume * self.expression
                 self.controller_gain = gain * gain
                 self.relevel()
+        if self.bank._partial:
+            self.bank.fill()  # read on into samples still arriving, between events too
 
 
 class SoundFontInstrument(Instrument):
@@ -1351,6 +1476,17 @@ class SoundFontInstrument(Instrument):
         """How many of this instrument's own voices are sounding now,
         releases included: on shared `Voices`, the others' are not counted."""
         return self._player.sounding()
+
+    def fill(self, ms=None):
+        """Read on into the samples its notes started playing before they
+        were all read, for up to `ms` milliseconds (`FILL_READ_MS`, 10, when
+        None). Only a bank on slow storage leaves any: a note-on reads for at
+        most `NOTE_READ_MS` and plays from there. Call it every few
+        milliseconds while notes sound, as a host calls `fill()` on the other
+        instruments; each event the instrument takes does the same. Returns
+        whether any sample is still being read."""
+        self._check_live()
+        return self._player.bank.fill(ms)
 
     def deinit(self):
         """On a shared `Voices`, stop this instrument's own voices and leave
