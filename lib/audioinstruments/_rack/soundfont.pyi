@@ -50,6 +50,10 @@ CACHE_BYTES: int
 INDEX_AT_OPEN: bool
 SLAB_BYTES: int
 TAIL_MS: int
+NOTE_READ_MS: int | None
+FILL_READ_MS: int
+READ_PIECE_BYTES: int
+PIECE_MS: int
 BEND_RANGE: float
 MAX_BEND_RANGE: float
 MAX_TUNING: float
@@ -253,6 +257,11 @@ class SoundFontInstrument(Instrument):
     def sounding(self) -> int:
         """How many of this instrument's own voices are sounding now,
         releases included: on shared `Voices`, the others' are not counted."""
+
+    def fill(self, ms: int | None = None) -> bool:
+        """Read on into the samples its notes started playing before they
+        were all read, for up to `ms` milliseconds (`FILL_READ_MS`, 10, when
+        None). Returns whether any sample is still being read."""
 
     def deinit(self) -> None:
         """On a shared `Voices`, stop this instrument's own voices and leave
