@@ -209,6 +209,19 @@ def test_the_rhythm909_compiles_every_module():
     rack.deinit()
 
 
+def test_the_hats_and_cymbals_ring_from_one_metal_bank():
+    inst = adapter.create(48000, voice="rhythm909", output="pull")
+    try:
+        group, _ = inst._compiled._shared["rhythm909.metal"]
+        joined = [f for f in inst._compiled.fragments if f.joined & (1 << group)]
+        assert len(joined) == 4  # closed hat, open hat, crash, ride
+        cymbals = [f for f in joined if "own_bank" in f.switches]
+        assert len(cymbals) == 2
+        assert not any(f.switches["own_bank"][1] for f in cymbals)
+    finally:
+        inst.deinit()
+
+
 # -- the pads and patches --------------------------------------------------------------
 
 

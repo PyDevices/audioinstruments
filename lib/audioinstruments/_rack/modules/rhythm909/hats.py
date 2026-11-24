@@ -116,7 +116,7 @@ class Rhythm909ClosedHat(Module):
         self._fragment = f
         gate = f.input(self.gate_in)
         b_bank, b_crushed = f.buffer(), f.buffer()
-        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats", enveloped=False)
+        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats", enveloped=False, shared=True)
         self._crush = CrushGraph(f, b_bank, b_crushed, sample_rate=self.sample_rate)
         self._vca = f.add(ag.VCA, (b_crushed, self._bank.b_env, None), f.output(self.audio_out))
         f.set(self._vca, ag.VCA_SELECT, 0.0)
@@ -245,7 +245,7 @@ class Rhythm909OpenHat(Module):
         self._fragment = f
         gate = f.input(self.gate_in)
         b_bank, b_crushed = f.buffer(), f.buffer()
-        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats", enveloped=False)
+        self._bank = MetallicBankGraph(f, gate, b_bank, kind="hats", enveloped=False, shared=True)
         self._crush = CrushGraph(f, b_bank, b_crushed, sample_rate=self.sample_rate)
         self._vca = f.add(ag.VCA, (b_crushed, self._bank.b_env, None), f.output(self.audio_out))
         f.set(self._vca, ag.VCA_SELECT, 0.0)
