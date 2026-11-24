@@ -44,6 +44,9 @@ What a fragment can say (every call is on ``f``):
   into a gain. Values are in the rack's units (1.0 is 10 V).
 - ``switch(name)`` is a group of the module's own that ``enable(name, on)``
   turns on and off: a sub-oscillator a patch has no use for is skipped.
+- ``shared(key, build)`` is nodes several modules use, built once by the
+  first module that asks, in a group that runs while any of them does: one
+  oscillator bank for a kit's hats and cymbals.
 - ``before_run(fn)`` and ``after_run(fn)`` run every block around the graph
   call; the latter gets the mask of groups whose envelopes are sounding.
   ``on_reset(fn)`` runs in place of the module's ``reset()``, and the
@@ -262,6 +265,7 @@ class Fragment:
         self.primers = []
         self.binds = {}
         self.switches = {}
+        self.joined = 0  # the shared groups this module runs
         self.bits = 0 if group == ALWAYS else 1 << group
 
     @property
@@ -425,8 +429,38 @@ class Fragment:
             entry[1] = bool(on)
             self._refresh_bits()
 
+    def shared(self, key, build):
+        """Nodes several modules use, built once, in a group that runs while any of them does.
+
+        The first module to ask for ``key`` calls ``build(group)``, which adds the nodes
+        (each ``add`` given ``group=group``) and returns ``(value, reset)``: what the modules
+        use, such as a buffer, and a function that resets the nodes, or None. Every module
+        that asks gets the same ``value``, and its group runs the shared group too. A voice
+        that parks leaves the shared nodes alone, since the others may still be using them;
+        ``reset`` runs when the whole rack resets.
+
+        Returns:
+            ``value``, or None when the graph has no group to spare, and the module builds
+            its own.
+        """
+        c = self._c
+        entry = c._shared.get(key)
+        if entry is None:
+            if self.spare_groups < 1:
+                return None
+            group = c.new_group()
+            value, reset = build(group)
+            entry = c._shared[key] = (group, value)
+            if reset is not None:
+                c.shared_resets.append(reset)
+        group, value = entry
+        self.joined |= 1 << group
+        self._refresh_bits()
+        return value
+
     def _refresh_bits(self):
-        bits = 0 if self.group == ALWAYS else 1 << self.group
+        bits = self.joined
+        bits |= 0 if self.group == ALWAYS else 1 << self.group
         for group, on in self.switches.values():
             if on:
                 bits |= 1 << group
@@ -722,6 +756,8 @@ class CompiledRack:
         self._watch_jacks = []  # the input jack of each of those watches
         self._groups = 0
         self._within = {}  # a switch's group: its module's
+        self._shared = {}  # key -> (group, value) of what Fragment.shared built
+        self.shared_resets = []
         self._gated = set()  # wires only read while their writer runs
         group_of = {}
         for members in groups:
@@ -746,7 +782,7 @@ class CompiledRack:
                 self.fragments.append(f)
                 self.before.extend(f.before)
                 self.after.extend(f.after)
-                if f.group != ALWAYS or f.switches:
+                if f.group != ALWAYS or f.switches or f.joined:
                     self.grouped.append(module)
             else:
                 self.rack_side.append(module)
@@ -1173,6 +1209,8 @@ class CompiledRack:
         try:
             for f in self.fragments:
                 f.do_reset()
+            for fn in self.shared_resets:
+                fn()
             for module in self.rack_side:
                 module.reset()
         finally:

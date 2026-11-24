@@ -32,6 +32,50 @@ def relative_decay(seconds, master):
     return 1.0 / (1.0 / seconds - 1.0 / master)
 
 
+def _pulse_bank(f, ag, freqs, group=None):
+    """Pulse OSCs at ``freqs`` summed by a MIX, in ``group``: (oscillators, sum node, sum buffer)."""
+    oscs, bufs = [], []
+    for freq in freqs:
+        buf = f.buffer()
+        node = f.add(ag.OSC, (None, None, None, None), buf, group=group)
+        f.set(node, ag.OSC_WAVEFORM, 2)
+        f.set(node, ag.OSC_LEVEL, 0.25)
+        f.set(node, ag.OSC_FREQUENCY, freq)
+        f.set(node, ag.OSC_PULSE_WIDTH, 0.5)
+        oscs.append(node)
+        bufs.append(buf)
+    b_sum = f.buffer()
+    n_sum = f.add(ag.MIX, tuple(bufs), b_sum, group=group)
+    for i in range(len(bufs)):
+        f.set(n_sum, i, 1.0)
+    return oscs, n_sum, b_sum
+
+
+def shared_909_bank(f, ag):
+    """The 909's metal bank, one for the whole kit: the buffer of its six pulses' sum.
+
+    The closed and open hats, the crash and the ride all ring from the same six
+    pulses at ``MetallicBankGraph.FREQS``, each through its own filters and
+    envelopes, so the bank costs once however many of them are sounding. It runs
+    while any of them does. Its oscillators free-run across strikes and voices, so
+    two of these voices that overlap hear the bank at the same phase.
+
+    Returns None when the graph has no group to spare; the voice then builds a bank
+    of its own.
+    """
+
+    def build(group):
+        oscs, n_sum, b_sum = _pulse_bank(f, ag, MetallicBankGraph.FREQS, group)
+
+        def reset():
+            for node in oscs + [n_sum]:
+                f.reset(node)
+
+        return b_sum, reset
+
+    return f.shared("rhythm909.metal", build)
+
+
 class Parts:
     """The parts of a drum voice that finish before the voice does, each stopped on its own.
 
@@ -471,7 +515,7 @@ class MetallicBankGraph:
     BANK_SCALE = 1.0
     BANK_GAIN = 1.0
 
-    def __init__(self, f, gate, out, *, kind="hats", enveloped=True):
+    def __init__(self, f, gate, out, *, kind="hats", enveloped=True, shared=False):
         import audiobiquad
         import audiograph as ag
 
@@ -484,19 +528,24 @@ class MetallicBankGraph:
         g = parts.group() if parts is not None else None
 
         b_vel, b_env = f.buffer(), f.buffer()
-        b_sum = f.buffer()
+        #: The bank's oscillators as (node, buffer); empty when it rings from the kit's
+        #: shared bank (``shared``, the 909's, see ``shared_909_bank``).
         self.n_oscs = []
-        for freq in self.FREQS:
-            buf = f.buffer()
-            node = f.add(ag.OSC, (None, None, None, None), buf, group=g)
-            f.set(node, ag.OSC_WAVEFORM, 2)
-            f.set(node, ag.OSC_LEVEL, 0.25 * self.BANK_SCALE)
-            f.set(node, ag.OSC_FREQUENCY, freq)
-            f.set(node, ag.OSC_PULSE_WIDTH, 0.5)
-            self.n_oscs.append((node, buf))
-        self.n_sum = f.add(ag.MIX, tuple(buf for _, buf in self.n_oscs), b_sum, group=g)
-        for i in range(len(self.n_oscs)):
-            f.set(self.n_sum, i, 1.0)
+        self.n_sum = None
+        b_sum = shared_909_bank(f, ag) if shared else None
+        if b_sum is None:
+            b_sum = f.buffer()
+            for freq in self.FREQS:
+                buf = f.buffer()
+                node = f.add(ag.OSC, (None, None, None, None), buf, group=g)
+                f.set(node, ag.OSC_WAVEFORM, 2)
+                f.set(node, ag.OSC_LEVEL, 0.25 * self.BANK_SCALE)
+                f.set(node, ag.OSC_FREQUENCY, freq)
+                f.set(node, ag.OSC_PULSE_WIDTH, 0.5)
+                self.n_oscs.append((node, buf))
+            self.n_sum = f.add(ag.MIX, tuple(buf for _, buf in self.n_oscs), b_sum, group=g)
+            for i in range(len(self.n_oscs)):
+                f.set(self.n_sum, i, 1.0)
 
         self.n_vel = f.add(ag.CONST, (), b_vel, group=g)
         self.n_env = f.add(ag.DECAY, (gate, b_vel), b_env, group=g)
@@ -847,21 +896,20 @@ class Cymbal909Graph:
         self.kind = kind
         self.sample_rate = float(sample_rate)
 
-        b_sum = f.buffer()
-        self.n_oscs = []
-        bufs = []
-        for freq in MetallicBankGraph.FREQS:
-            buf = f.buffer()
-            node = f.add(ag.OSC, (None, None, None, None), buf)
-            f.set(node, ag.OSC_WAVEFORM, 2)
-            f.set(node, ag.OSC_LEVEL, 0.25)
-            f.set(node, ag.OSC_FREQUENCY, freq)
-            f.set(node, ag.OSC_PULSE_WIDTH, 0.5)
-            self.n_oscs.append(node)
-            bufs.append(buf)
-        self.n_sum = f.add(ag.MIX, tuple(bufs), b_sum)
-        for i in range(len(bufs)):
-            f.set(self.n_sum, i, 1.0)
+        # The kit's shared bank plays at the default tune. A cymbal tuned away from it
+        # turns on a bank of its own at its own pitch (switch ``own_bank``, parked
+        # otherwise), and the selector ``n_pick`` takes one or the other.
+        self.n_pick = None
+        b_shared = shared_909_bank(f, ag)
+        if b_shared is None:
+            self.n_oscs, self.n_sum, b_sum = _pulse_bank(f, ag, MetallicBankGraph.FREQS)
+        else:
+            own = f.switch("own_bank", False)
+            self.n_oscs, self.n_sum, b_own = _pulse_bank(f, ag, MetallicBankGraph.FREQS, own)
+            b_sum = f.buffer()
+            self.n_pick = f.add(ag.MIX, (b_shared, b_own), b_sum)
+            f.set(self.n_pick, 0, 1.0)
+            f.set(self.n_pick, 1, 0.0)
 
         self.n_vels = []
         #: The master envelope, then the low band's and the third part's relative ones.
@@ -942,6 +990,11 @@ class Cymbal909Graph:
         ratio = rate / 32000.0
         for node, freq in zip(self.n_oscs, MetallicBankGraph.FREQS):
             f.set(node, ag.OSC_FREQUENCY, freq * ratio)
+        if self.n_pick is not None:
+            own = ratio != 1.0
+            f.enable("own_bank", own)
+            f.set(self.n_pick, 0, 0.0 if own else 1.0)
+            f.set(self.n_pick, 1, 1.0 if own else 0.0)
         f.set(self.n_lowf, ag.BIQUAD_FREQUENCY, min(sr * 0.45, 3400.0 * ratio))
         f.set(self.n_highf, ag.BIQUAD_FREQUENCY, min(sr * 0.45, 7100.0 * ratio))
         if self.n_bell is not None:
@@ -974,7 +1027,7 @@ class Cymbal909Graph:
     def reset(self, f):
         nodes = [self.n_sum, self.n_lowf, self.n_highf, self.n_mix, self.n_master]
         nodes += list(self.n_oscs) + self.n_envs + self.n_vcas
-        for node in (self.n_white, self.n_noise_hp, self.n_bell):
+        for node in (self.n_white, self.n_noise_hp, self.n_bell, self.n_pick):
             if node is not None:
                 nodes.append(node)
         for node in nodes:
