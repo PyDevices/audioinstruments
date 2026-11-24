@@ -175,6 +175,7 @@ class Instrument:
         engine: str = "auto",
         pad_map: Mapping[int, int] | Iterable[tuple[int, int]] | None = None,
         strict_pads: bool = False,
+        _ring_if_no_graph: bool = False,
     ) -> None: ...
     @property
     def engine(self) -> str:

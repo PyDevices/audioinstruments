@@ -65,13 +65,14 @@ def _build(name, sample_rate, channel_count, transport, options):
         # The graph renders as it is pulled, so a host that pulls and calls
         # fill() now and then keeps time. A patch that does not compile, or
         # an audiograph older than the change queue (before audiodsp 0.6.11),
-        # takes the ring.
+        # takes the ring: one that doesn't fit keeps the rack it built.
         try:
             return adapter.create(
                 sample_rate,
                 channel_count=channel_count,
                 transport=transport,
                 output="graph",
+                _ring_if_no_graph=True,
                 **options,
             )
         except (ImportError, ValueError, RuntimeError):
