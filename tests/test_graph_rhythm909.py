@@ -18,11 +18,12 @@ What matches, to what, and how it is checked:
 * The bridged-T rim shot matches to about 75 counts worst, 6 rms. Each of its
   tones strikes twice on one gate edge (the module's ``trigger`` plus the
   tone's own edge scan), so each amp step is ``0.40``.
-* The crusher voices (closed and open hat, crash) match to 2 counts when the
-  hold phase agrees (``HOLD_PHASE``). The ride matches to 2 counts except for
-  one pair of samples where an input a count apart lands either side of a
-  6-bit quantiser edge, and the two sides differ by one step (503 counts at
-  the default level). Its bound is 700 worst, 20 rms.
+* The crusher voices (closed and open hat) match to 2 counts when the hold
+  phase agrees (``HOLD_PHASE``). The crash and ride match to 4 counts except
+  where an input a count apart lands either side of a 6-bit quantiser edge,
+  and the two sides differ by one step (about 500 counts at the default
+  level) on that sample: one sample on the crash's default strike. Their
+  bound is 900 worst, 30 rms.
 * The clap, the snare's snap, the crash's noise and the toms' noise mix come
   from the graph's own generator: they match the rack in level (rms within
   35%), not sample for sample. With the noise silenced on both sides
@@ -81,7 +82,7 @@ BOUND = {
     "lt": SWEPT,
     "mt": SWEPT,
     "ht": SWEPT,
-    "cr": CRUSHED,
+    "cr": STEP,
     "rd": STEP,
 }
 
@@ -232,6 +233,28 @@ def test_the_clean_metal_patch_bypasses_the_crusher_on_both_sides(voice):
     assert match(worst, rms, peak, STEP), f"{voice} worst={worst} rms={rms} peak={peak}"
 
 
+# -- quiet tails ------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("engine", ("rack", "graph"))
+@pytest.mark.parametrize("voice,at", (("oh", 0.30), ("cr", 1.40), ("rd", 1.40)))
+def test_a_metal_voices_quiet_tail_stays_a_scaled_copy_of_the_sound(engine, voice, at):
+    """Past -30 dB the tail is still a waveform, not sparse one-step pulses.
+
+    The reduction stage comes before the envelope (the master envelope on the
+    cymbals), so its step shrinks with the sound. Quantised after the envelope, a
+    tail below one 6-bit step is mostly zeros with a few +-1-step samples: at these
+    times 4% to 23% of samples are nonzero, on two or three levels.
+    """
+    blocks = int((at + 0.11) * 48000 / BUFFER)
+    out = render(engine, 0, ([(0, 1, PADS[voice], 100)], blocks))[:, 0]
+    tail = out[int(at * 48000) : int((at + 0.1) * 48000)]
+    nonzero = float(np.mean(tail != 0))
+    levels = len(np.unique(np.abs(tail)))
+    assert np.max(np.abs(out)) > 5000, f"{voice} made no sound"
+    assert nonzero > 0.6 and levels > 20, f"{voice} tail: {nonzero:.0%} nonzero, {levels} levels"
+
+
 # -- knobs and velocity ----------------------------------------------------------------
 
 
@@ -358,13 +381,7 @@ def _faults():
             "oh",
         ),
         ("tom tone mix", tom.Rhythm909Tom, lambda s: s._so.n_mix, 0, "lt"),
-        (
-            "crash high band VCA",
-            cymbal.Rhythm909Crash,
-            lambda s: s._cym.n_vcas[1],
-            ag.VCA_GAIN,
-            "cr",
-        ),
+        ("crash high band gain", cymbal.Rhythm909Crash, lambda s: s._cym.n_mix, 1, "cr"),
         ("ride crusher mix", cymbal.Rhythm909Ride, lambda s: s._cym.crush.n_mix, 1, "rd"),
     ]
 
