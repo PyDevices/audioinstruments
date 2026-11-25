@@ -30,3 +30,6 @@ on a virtual rack, rendered a block at a time on audiodsp.
 - More polyphony: a pool that grows past the voices it was built with, and
   one pool shared by several instruments.
 - A tempo that follows the host's transport in `audioinstruments._rack.adapter`.
+- Notes queued ahead and played on their audio frame, so a sequencer's timing
+  holds while the app is busy (a screen redraw, a view change) instead of
+  landing up to a redraw late.
