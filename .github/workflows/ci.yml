@@ -68,7 +68,7 @@ jobs:
         if: steps.scope.outputs.nothing != 'true'
         run: |
           python -m pip install -q \
-            "omnipython-audiodsp==0.6.16" numpy pytest pytest-xdist ruff==0.17.1
+            "omnipython-audiodsp==0.6.17rc1" numpy pytest pytest-xdist ruff==0.17.1
           python -m pip list 2>/dev/null | grep -iE "^(omnipython-audiodsp|numpy|pytest|pytest-xdist|ruff) "
 
       - name: Lint
@@ -98,7 +98,7 @@ jobs:
     env:
       MICROPYTHON_REF: v1.29.0
       ULAB_REF: 6.7.3
-      AUDIODSP_REF: v0.6.16.dev0
+      AUDIODSP_REF: v0.6.17rc1
     steps:
       - uses: actions/checkout@v7
         with:
