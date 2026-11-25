@@ -57,6 +57,9 @@ PIECE_MS: int
 BEND_RANGE: float
 MAX_BEND_RANGE: float
 MAX_TUNING: float
+#: Milliseconds since the host last called `fill()` within which an event
+#: leaves the reading to it.
+HOST_FILL_MS: int
 
 def find_bank(path: str | None = None) -> str:
     """The `.sf2` to play: `path` when given, else `$SOUNDFONT`, else the
