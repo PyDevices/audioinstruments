@@ -1098,6 +1098,51 @@ class BoundedCacheTest(unittest.TestCase):
         self.assertEqual(bank.outside, 1)
         self.assertGreater(kit.sounding(), 0)
 
+    def test_a_heap_with_no_big_block_gets_smaller_buffers(self):
+        # A board's heap with no block as big as SLAB_BYTES, but room for
+        # smaller ones: the arena halves its buffers, down to the largest
+        # sample, rather than taking none and reading every note from the file.
+        slab_bytes = soundfont.SLAB_BYTES
+        taker = soundfont._slab
+        soundfont.SLAB_BYTES = 800  # buffers of 400 frames
+
+        def small_blocks_only(nbytes):
+            if nbytes > 500:
+                raise MemoryError("no block that big")
+            return bytearray(nbytes)
+
+        soundfont._slab = small_blocks_only
+        try:
+            bank, piano, kit = self.bank(10**6)
+        finally:
+            soundfont._slab = taker
+            soundfont.SLAB_BYTES = slab_bytes
+        self.assertEqual(bank._slab, 200)  # the largest sample, low_c4
+        self.assertEqual((bank.arena_asked, bank.arena_bytes), (2364, 2400))
+        piano.note_on(60, 100)
+        piano.note_on(80, 100)
+        kit.note_on(38, 100)
+        self.assertEqual(self.names(bank), ["high_c5", "low_c4", "snare"])
+        self.assertEqual((bank.outside, bank.evicted), (0, 0))
+
+    def test_a_bank_that_fits_is_kept_whole(self):
+        # 1182 frames in buffers of 400: a third buffer holds what the first two
+        # leaves over, so no sample is let go and read again.
+        slab_bytes = soundfont.SLAB_BYTES
+        soundfont.SLAB_BYTES = 800
+        try:
+            bank, piano, kit = self.bank(10**6)
+        finally:
+            soundfont.SLAB_BYTES = slab_bytes
+        self.assertEqual((bank.arena_asked, bank.arena_bytes), (2364, 2400))
+        piano.note_on(60, 100)
+        piano.note_on(80, 100)
+        kit.note_on(38, 100)
+        piano.reset()
+        kit.reset()
+        piano.note_on(61, 100)
+        self.assertEqual((bank.reads, bank.evicted, bank.outside), (3, 0, 0))
+
 
 class SlowReadTest(unittest.TestCase):
     """A sample that takes longer than `NOTE_READ_MS` to read starts playing
