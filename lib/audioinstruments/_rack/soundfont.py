@@ -343,6 +343,9 @@ class _Bank(object):
         self._retired = None  # the last arena, while a voice may still read it
         self._tails = {}  # shdr index -> ticks_ms when a voice let go of it
         self.arena_bytes = 0
+        #: The bytes the arena asked for: more than `arena_bytes` when the heap
+        #: had less to give.
+        self.arena_asked = 0
         self.cached = 0
         self.reads = 0
         self.evicted = 0
@@ -373,7 +376,10 @@ class _Bank(object):
 
     def _open(self):
         """Take the arena: buffers of `SLAB_BYTES`, or of the largest
-        sample, up to `cache_bytes` and no more than the file holds."""
+        sample, up to `cache_bytes` and no more than the file holds. When
+        the heap gives less than half of that, the buffers are let go and
+        taken again at half the size, down to the largest sample: a board's
+        heap may have no 1 MB block left but several of 300 KB."""
         self.evicted += len(self._order)
         self._retire()
         self._slabs = []
@@ -388,10 +394,12 @@ class _Bank(object):
         self._partial = []
         self.cached = 0
         self.arena_bytes = 0
+        self.arena_asked = 0
         font = self.font
         size = self._cache_bytes
         total = getattr(font, "_smpl_frames", None)
-        if total is not None and total * 2 < size:
+        whole = total is not None and total * 2 <= size
+        if whole:
             size = total * 2
         largest = 0
         for sample in getattr(font, "samples", ()):
@@ -401,17 +409,37 @@ class _Bank(object):
         slab = max(SLAB_BYTES // 2, largest)
         if size // 2 < slab:
             slab = size // 2
-        self._slab = slab
         if slab <= 0:
+            self._slab = slab
             return
+        self.arena_asked = size
         import gc
 
         gc.collect()  # what an earlier arena or bank left is free again first
-        for _ in range(size // 2 // slab):
+        while True:
+            # A bank that fits whole gets a last buffer for what the others
+            # leave over, so none of it has to be read twice.
+            count = size // 2 // slab
+            if whole and count * slab < size // 2:
+                count += 1
+            self._take(slab, count)
+            if len(self._slabs) * slab * 2 * 2 >= size or slab <= largest or slab <= 1:
+                break
+            self._slabs = []
+            self._frames = []
+            self._bytes = []
+            gc.collect()
+            slab = max(largest, slab // 2)
+        self._slab = slab
+        self.arena_bytes = len(self._slabs) * slab * 2
+
+    def _take(self, slab, count):
+        """Up to `count` buffers of `slab` frames, until the heap says no."""
+        for _ in range(count):
             try:
                 buf = _slab(slab * 2)
             except MemoryError:
-                break  # the heap gave less than asked: the arena is what it gave
+                return  # the heap gave less than asked: the arena is what it gave
             raw = memoryview(buf)
             if hasattr(raw, "cast"):
                 frames = raw.cast("h")
@@ -421,7 +449,6 @@ class _Bank(object):
             self._slabs.append(buf)
             self._frames.append(frames)
             self._bytes.append(raw)
-        self.arena_bytes = len(self._slabs) * slab * 2
 
     def _retire(self):
         """Keep the arena being replaced until the voices playing from it
