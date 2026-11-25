@@ -297,6 +297,9 @@ class SoundFont(object):
         self._file = open(path, "rb")  # noqa: SIM115 - held open for the life of the bank
         self._readers = []  # [file, position, last use] for samples, opened as wanted
         self._uses = 0
+        #: Whether the last `read_sample_into` had to seek first: its time
+        #: is then the seek's as much as the card's.
+        self.sought = False
         self._smpl_offset = 0
         self._smpl_frames = 0
         self._smpl = None
@@ -638,7 +641,8 @@ class SoundFont(object):
         offset = self._smpl_offset + start * 2
         reader = self._reader(offset)
         f = reader[0]
-        if reader[1] != offset:
+        self.sought = reader[1] != offset
+        if self.sought:
             f.seek(offset)
         reader[1] = offset
         got = 0

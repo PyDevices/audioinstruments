@@ -574,6 +574,10 @@ class _Bank(object):
         took = ticks_diff(ticks_ms(), started)
         if took > 0:
             piece = n * 2 * PIECE_MS // took
+            if piece < self._piece and getattr(self.font, "sought", False):
+                # The time went on a seek, not the card's speed: a smaller
+                # piece would pay the same seek again for less.
+                return n
             self._piece = max(_MIN_PIECE_BYTES, min(READ_PIECE_BYTES, (piece + self._piece) // 2))
         elif n * 2 >= self._piece:
             self._piece = min(READ_PIECE_BYTES, self._piece * 2)

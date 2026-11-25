@@ -1227,6 +1227,41 @@ class SlowReadTest(unittest.TestCase):
         piano.control_change(7, 100)
         self.assertEqual(bank._partial[0][2], done)
 
+    def test_a_piece_that_had_to_seek_does_not_shrink_the_next(self):
+        bank, piano = self.piano(slow=True)
+        soundfont.READ_PIECE_BYTES = 4096
+        clock = [0]
+
+        def slow():  # every reading of the clock is 50 ms later
+            clock[0] += 50
+            return clock[0]
+
+        saved = soundfont.ticks_ms
+        soundfont.ticks_ms = slow
+        try:
+            sample = bank.font.samples[0]
+            dest = bytearray(sample.end - sample.start) * 2
+            reader = bank.font.read_sample_into
+            bank._piece = 256
+            bank.font.sought = True
+            reader_sought = bank.font.read_sample_into
+
+            def seeking(*args):
+                reader_sought(*args)
+                bank.font.sought = True
+
+            bank._read_piece(seeking, sample, memoryview(dest), 0, 100)
+            self.assertEqual(bank._piece, 256)
+
+            def straight(*args):
+                reader(*args)
+                bank.font.sought = False
+
+            bank._read_piece(straight, sample, memoryview(dest), 0, 100)
+            self.assertLess(bank._piece, 256)
+        finally:
+            soundfont.ticks_ms = saved
+
     def test_unread_frames_are_silent_not_stale(self):
         bank, piano = self.piano(slow=True)
         bank._open()
