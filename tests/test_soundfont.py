@@ -1262,6 +1262,17 @@ class SlowReadTest(unittest.TestCase):
         finally:
             soundfont.ticks_ms = saved
 
+    def test_while_the_host_fills_a_note_on_leaves_its_read_to_fill(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        piano.fill(0)
+        piano.note_on(72, 100)
+        self.assertEqual(self._done(bank, "high_c5"), 0)
+        low = self._done(bank, "low_c4")
+        piano.fill(0)  # the note that has just started is read first
+        self.assertGreater(self._done(bank, "high_c5"), 0)
+        self.assertEqual(self._done(bank, "low_c4"), low)
+
     def test_unread_frames_are_silent_not_stale(self):
         bank, piano = self.piano(slow=True)
         bank._open()

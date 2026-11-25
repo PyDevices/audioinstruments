@@ -51,7 +51,11 @@ REGION_CACHE = 512
 #: tens of milliseconds into a large bank, where a seek forward from close
 #: by costs nearly nothing. Two samples read in turn, a stereo pair's
 #: halves or two notes' samples, then each keep a handle of their own.
-READ_HANDLES = 4
+READ_HANDLES = 16
+
+#: Bytes ahead a handle may be and still be taken for a read rather than a
+#: new one: walking that far along the chain costs well under a millisecond.
+NEAR_BYTES = 1048576
 
 # Generator operators (specification section 8.1.2).
 GEN_START_OFFSET = 0
@@ -656,18 +660,20 @@ class SoundFont(object):
 
     def _reader(self, offset):
         """The sample handle to read from `offset` with: the one closest
-        before it, else a new one while there are fewer than
-        `READ_HANDLES`, else the one used longest ago."""
+        before it when that is within `NEAR_BYTES`, else a new one while
+        there are fewer than `READ_HANDLES`, so a sample still being read
+        keeps its own; else the closest before it, else the one used
+        longest ago."""
         self._uses += 1
         best = None
         for reader in self._readers:
             if 0 <= reader[1] <= offset and (best is None or reader[1] > best[1]):
                 best = reader
-        if best is None:
+        if best is None or offset - best[1] > NEAR_BYTES:
             if len(self._readers) < READ_HANDLES:
                 best = [open(self.path, "rb"), 0, 0]  # noqa: SIM115 - closed by close()
                 self._readers.append(best)
-            else:
+            elif best is None:
                 best = min(self._readers, key=lambda r: r[2])
         best[2] = self._uses
         return best

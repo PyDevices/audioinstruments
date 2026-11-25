@@ -231,7 +231,7 @@ class SoundFontTest(unittest.TestCase):
 
         saved = sf2.READ_HANDLES
         sf2.READ_HANDLES = handles
-        sf2.open = lambda path, mode="rb": Watched(open(path, mode))
+        sf2.open = lambda path, mode="rb": Watched(open(path, mode))  # noqa: SIM115 - closed by the bank
         try:
             with sf2.SoundFont(self.path) as bank:
                 low = self.one(0, 0, 60).sample
@@ -240,7 +240,9 @@ class SoundFontTest(unittest.TestCase):
                 buf = array.array("h", [0] * 10)
                 for at in range(0, 100, 10):
                     for sample in (low, high):
-                        bank.read_sample_into(sample, buf, sample.start + at, sample.start + at + 10)
+                        bank.read_sample_into(
+                            sample, buf, sample.start + at, sample.start + at + 10
+                        )
                         got[sample.name] += list(buf)
                 self.assertEqual(got[low.name], list(self.bank.read_sample(low))[:100])
                 self.assertEqual(got[high.name], list(self.bank.read_sample(high))[:100])

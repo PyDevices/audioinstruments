@@ -213,8 +213,8 @@ NOTE_READ_MS = None if sys.implementation.name == "cpython" else 20
 FILL_READ_MS = 10
 
 #: Milliseconds since the host last called `fill()` within which an event
-#: leaves the reading to it: a burst of notes then waits for its own reads
-#: alone, not for one `fill()` after each of them.
+#: leaves the reading to it: a note-on starts its sample unread and the next
+#: `fill()` reads it, so a burst of notes waits for no card at all.
 HOST_FILL_MS = 50
 
 #: Bytes read from the bank at a time while a sample is read in pieces, at
@@ -592,6 +592,11 @@ class _Bank(object):
             reader(sample, dest)
             return frames
         started = ticks_ms()
+        if self._host_fill is not None and ticks_diff(started, self._host_fill) < HOST_FILL_MS:
+            # The host's next fill() reads it, the newest notes first: the
+            # MIDI behind this note doesn't wait for a card.
+            _silence(dest)
+            return 0
         done = 0
         while done < frames:
             try:
@@ -627,10 +632,8 @@ class _Bank(object):
             if item is None:
                 continue
             timing = clock.get(voice)
-            if timing is None:
-                left = 0  # no rate given: as soon as can be
-            else:
-                left = item[2] * 1000 // timing[1] - ticks_diff(now, timing[0])
+            # With no rate given, as soon as can be.
+            left = 0 if timing is None else item[2] * 1000 // timing[1] - ticks_diff(now, timing[0])
             if left < -TAIL_MS:
                 late.add(index)
             elif index not in due or left < due[index]:
