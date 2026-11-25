@@ -45,6 +45,14 @@ import struct
 #: is most of what a note costs on a board.
 REGION_CACHE = 512
 
+#: Handles a bank keeps open on its file for reading samples. Each read
+#: takes the handle that sits closest before it, so the file moves forward:
+#: on a FAT card a seek back walks the file's cluster chain from its start,
+#: tens of milliseconds into a large bank, where a seek forward from close
+#: by costs nearly nothing. Two samples read in turn, a stereo pair's
+#: halves or two notes' samples, then each keep a handle of their own.
+READ_HANDLES = 4
+
 # Generator operators (specification section 8.1.2).
 GEN_START_OFFSET = 0
 GEN_END_OFFSET = 1
@@ -287,6 +295,8 @@ class SoundFont(object):
         self.has_modulators = False
         self.samples = []
         self._file = open(path, "rb")  # noqa: SIM115 - held open for the life of the bank
+        self._readers = []  # [file, position, last use] for samples, opened as wanted
+        self._uses = 0
         self._smpl_offset = 0
         self._smpl_frames = 0
         self._smpl = None
@@ -310,6 +320,9 @@ class SoundFont(object):
             raise
 
     def close(self):
+        for reader in self._readers:
+            reader[0].close()
+        self._readers = []
         if self._file is not None:
             self._file.close()
             self._file = None
@@ -622,13 +635,38 @@ class SoundFont(object):
         if self._smpl is not None:
             out[:size] = self._smpl[start * 2 : end * 2]
             return
-        self._file.seek(self._smpl_offset + start * 2)
+        offset = self._smpl_offset + start * 2
+        reader = self._reader(offset)
+        f = reader[0]
+        if reader[1] != offset:
+            f.seek(offset)
+        reader[1] = offset
         got = 0
         while got < size:
-            n = self._file.readinto(out[got:size])
+            n = f.readinto(out[got:size])
             if not n:
-                raise SoundFontError("truncated at %d" % (self._smpl_offset + start * 2 + got))
+                reader[1] = -1  # where it stopped is unknown: seek next time
+                raise SoundFontError("truncated at %d" % (offset + got))
             got += n
+        reader[1] = offset + size
+
+    def _reader(self, offset):
+        """The sample handle to read from `offset` with: the one closest
+        before it, else a new one while there are fewer than
+        `READ_HANDLES`, else the one used longest ago."""
+        self._uses += 1
+        best = None
+        for reader in self._readers:
+            if 0 <= reader[1] <= offset and (best is None or reader[1] > best[1]):
+                best = reader
+        if best is None:
+            if len(self._readers) < READ_HANDLES:
+                best = [open(self.path, "rb"), 0, 0]  # noqa: SIM115 - closed by close()
+                self._readers.append(best)
+            else:
+                best = min(self._readers, key=lambda r: r[2])
+        best[2] = self._uses
+        return best
 
     def load_samples(self):
         """Read the whole smpl chunk into memory, for `read_sample` to slice."""
