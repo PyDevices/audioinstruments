@@ -149,3 +149,15 @@ def test_the_sequencer_lays_a_pattern_on_a_queue():
     assert hits == 2 * 2 and seq.refused == 0, (hits, seq.refused)
     seq.stop()
     assert queue.pending() == 0
+
+
+def test_a_bank_from_bytes_plays_in_place():
+    with open(bank(), "rb") as f:
+        data = f.read()
+    kit = adapter.create(SR, voice="soundfont_drums", bank=data)
+    loaded = soundfont.open_bank(data)
+    assert loaded.in_place
+    kit.note_on(38, 100)
+    assert peak(kit) > 200
+    assert (loaded.arena_bytes, loaded.reads) == (0, 0)
+    kit.deinit()

@@ -21,6 +21,38 @@ the instrument looks at `$SOUNDFONT`, then at the first `.sf2` in
 `OSError` that names all three when it finds none. Two instruments made from
 one file share the open bank and the samples read from it.
 
+## A bank frozen into the firmware
+
+`bank=` also takes the bank's bytes. Freeze a small bank into your MicroPython
+firmware as a module that holds those bytes, and the instruments play it in
+place: each sample is read from flash as its note plays, so the bank needs no
+SD card, no file and no RAM for its samples.
+
+`tools/freeze_soundfont.py` makes the module. It checks the bank with the
+package's own reader, writes it as `BANK` in `my_drums.py`, and compiles
+`my_drums.mpy` beside it with your firmware's mpy-cross, since a bank of more
+than a few hundred kilobytes is more than mpy-cross compiles with its default
+heap:
+
+```sh
+python tools/freeze_soundfont.py drums.sf2 frozen/my_drums.py --license CC0-1.0 \
+    --mpy-cross micropython/mpy-cross/build/mpy-cross
+```
+
+Freeze the `.mpy` from a manifest in the same folder,
+`freeze_mpy(".", "my_drums.mpy")`, and play it on the board:
+
+```python
+from my_drums import BANK
+
+kit = adapter.create(48000, voice="soundfont_drums", bank=BANK)
+```
+
+The firmware grows by the size of the bank, and that room comes out of the
+board's filesystem, so keep to a small bank. `soundfont.open_bank(BANK).in_place`
+is True when the voices play the bank's own bytes; a bank at an odd address
+(a view cut one byte in) is read into the sample arena instead, like a file.
+
 ## Voices, and sharing them
 
 The bank's samples play on an `audiosampler.Sampler`. `voices=` is how many

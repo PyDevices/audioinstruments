@@ -67,11 +67,13 @@ def find_bank(path: str | None = None) -> str:
     none of them yields a file."""
 
 def open_bank(bank: Any = None, cache_bytes: int | None = None) -> Any:
-    """The shared `_Bank` for `bank` (a path, a `SoundFont`, or None to
-    search). Banks opened by path are kept, so two instruments on one file
-    read each sample once. `cache_bytes` bounds the samples it keeps
-    (`CACHE_BYTES` when None); given for a bank already open, it changes
-    that bank's bound."""
+    """The shared `_Bank` for `bank` (a path, the bank's bytes, a
+    `SoundFont`, or None to search). Banks opened by path or from bytes are
+    kept, so two instruments on one file read each sample once, and two on
+    one `bytes` object parse it once. `cache_bytes` bounds the samples it
+    keeps (`CACHE_BYTES` when None); given for a bank already open, it
+    changes that bank's bound. A bank played in place keeps none, whatever
+    the bound."""
 
 class Voices:
     """Engine voices on one sampler, for one instrument or shared by several.
@@ -287,7 +289,7 @@ def create(
     voice_pool: Voices | None = None,
     voices: int | None = None,
 ) -> SoundFontInstrument:
-    """The bank's melodic presets as one instrument; `bank` is a path, an
-    open `SoundFont`, or None to look in the usual places. `voice_pool` is
-    a `Voices` to share with other instruments, or None for its own of
-    `voices` voices (`MAX_VOICES` when None)."""
+    """The bank's melodic presets as one instrument; `bank` is a path, the
+    bank's bytes (played in place), an open `SoundFont`, or None to look in
+    the usual places. `voice_pool` is a `Voices` to share with other
+    instruments, or None for its own of `voices` voices (`MAX_VOICES` when None)."""
