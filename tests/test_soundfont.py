@@ -1273,6 +1273,25 @@ class SlowReadTest(unittest.TestCase):
         self.assertGreater(self._done(bank, "high_c5"), 0)
         self.assertEqual(self._done(bank, "low_c4"), low)
 
+    def test_a_note_on_slow_to_find_its_sample_still_leaves_the_read_to_fill(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        piano.fill(0)
+        clock = [soundfont.ticks_ms()]
+
+        def slow():  # finding regions and room takes longer than the window
+            clock[0] += soundfont.HOST_FILL_MS // 2
+            return clock[0]
+
+        saved = soundfont.ticks_ms
+        soundfont.ticks_ms = slow
+        try:
+            bank._host_fill = clock[0]
+            piano.note_on(72, 100)
+        finally:
+            soundfont.ticks_ms = saved
+        self.assertEqual(self._done(bank, "high_c5"), 0)
+
     def test_unread_frames_are_silent_not_stale(self):
         bank, piano = self.piano(slow=True)
         bank._open()

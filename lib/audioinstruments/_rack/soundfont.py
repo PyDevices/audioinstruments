@@ -350,6 +350,7 @@ class _Bank(object):
         self.dropped = 0
         self._partial = []  # [entry, sample, frames read, bytes view to read into], oldest first
         self._host_fill = None  # ticks_ms of the host's last fill()
+        self._event_at = None  # ticks_ms the event being taken arrived, while it is
         self._ranged = True  # the font reads part of a sample
         self._piece = 2048  # bytes to the next piece, from the speed reads have had
         #: Samples a note-on started playing before they were all read.
@@ -592,7 +593,10 @@ class _Bank(object):
             reader(sample, dest)
             return frames
         started = ticks_ms()
-        if self._host_fill is not None and ticks_diff(started, self._host_fill) < HOST_FILL_MS:
+        # Measured from when the event arrived: finding the note's regions
+        # and room can take longer than HOST_FILL_MS on a board.
+        at = started if self._event_at is None else self._event_at
+        if self._host_fill is not None and ticks_diff(at, self._host_fill) < HOST_FILL_MS:
             # The host's next fill() reads it, the newest notes first: the
             # MIDI behind this note doesn't wait for a card.
             _silence(dest)
@@ -1370,6 +1374,18 @@ class _Player(object):
     # -- events -------------------------------------------------------------
 
     def handle_event(self, event_type, channel, note_id, data0, value0, value1, sample_position):
+        bank = self.bank
+        at = bank._event_at = ticks_ms()
+        try:
+            self._take(event_type, channel, note_id, data0, value0, value1)
+        finally:
+            bank._event_at = None
+        if bank._partial and (
+            bank._host_fill is None or ticks_diff(at, bank._host_fill) >= HOST_FILL_MS
+        ):
+            bank.fill()  # read on into samples still arriving, between events too
+
+    def _take(self, event_type, channel, note_id, data0, value0, value1):
         if event_type == EVENT_NOTE_ON and value0 > 0.0:
             self.note_on(key_of(channel, note_id, data0), data0, value0, value1)
         elif event_type in (EVENT_NOTE_OFF, EVENT_NOTE_ON):
@@ -1416,11 +1432,6 @@ class _Player(object):
                 gain = self.cc_volume * self.expression
                 self.controller_gain = gain * gain
                 self.relevel()
-        bank = self.bank
-        if bank._partial and (
-            bank._host_fill is None or ticks_diff(ticks_ms(), bank._host_fill) >= HOST_FILL_MS
-        ):
-            bank.fill()  # read on into samples still arriving, between events too
 
 
 class SoundFontInstrument(Instrument):
