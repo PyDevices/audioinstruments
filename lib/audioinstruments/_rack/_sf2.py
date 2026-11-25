@@ -31,7 +31,13 @@ reader only records whether a bank carries any (`has_modulators`).
 Samples stay on disk. The reader keeps the `smpl` chunk's offset and
 `read_sample()` reads a region's frames when asked, which is what a board
 with a few hundred kilobytes of RAM needs. `load_samples=True` reads the
-whole chunk once instead, for the desktop. The optional 24-bit extension
+whole chunk once instead, for the desktop.
+
+A bank can also be the file's bytes rather than its path: `SoundFont(data)`
+with any buffer. The bank then reads in place, and `sample_view()` gives a
+sample's frames as a view of those bytes with no copy. Frozen into a
+firmware as a module's `bytes` constant, the bank stays in flash and its
+samples cost no RAM at all. The optional 24-bit extension
 (`sm24`) is ignored: samples are read as 16-bit.
 
 Runs on CPython and MicroPython: plain classes, `struct.unpack_from`, no
@@ -285,8 +291,10 @@ class Region(object):
 class SoundFont(object):
     """A SoundFont 2 bank open for reading.
 
-    `load_samples=True` reads the sample chunk into memory at open; the
-    default leaves it on disk and `read_sample()` seeks. `index=True`
+    `path` is the bank's file, or the bank itself as `bytes` or any other
+    buffer, which it then reads in place. `load_samples=True` reads the
+    sample chunk into memory at open; the default leaves it on disk and
+    `read_sample()` seeks. `index=True`
     (the default) resolves every preset's zones at open so the first note
     on any preset is as fast as the rest; `index=False` resolves each preset
     the first time it is asked for, which keeps a board's RAM for the
@@ -294,11 +302,17 @@ class SoundFont(object):
     """
 
     def __init__(self, path, load_samples=False, index=True):
-        self.path = path
         self.info = {}
         self.has_modulators = False
         self.samples = []
-        self._file = open(path, "rb")  # noqa: SIM115 - held open for the life of the bank
+        if isinstance(path, str):
+            self.path = path
+            self._data = None
+            self._file = open(path, "rb")  # noqa: SIM115 - held open for the life of the bank
+        else:
+            self.path = None
+            self._data = memoryview(path)
+            self._file = None
         self._readers = []  # [file, position, last use] for samples, opened as wanted
         self._uses = 0
         #: Whether the last `read_sample_into` had to seek first: its time
@@ -317,7 +331,13 @@ class SoundFont(object):
         self._built = {}  # (bank, program, key) -> [[candidate, Region or None], ...]
         try:
             self._parse()
-            if load_samples:
+            if self._data is not None:
+                self._smpl = self._data[
+                    self._smpl_offset : self._smpl_offset + self._smpl_frames * 2
+                ]
+                if len(self._smpl) != self._smpl_frames * 2:
+                    raise SoundFontError("truncated at %d" % len(self._data))
+            elif load_samples:
                 self.load_samples()
             if index:
                 for key in self._preset_keys():
@@ -343,6 +363,10 @@ class SoundFont(object):
     # -- the file -----------------------------------------------------------
 
     def _read(self, offset, size):
+        if self._data is not None:
+            if offset + size > len(self._data):
+                raise SoundFontError("truncated at %d" % offset)
+            return bytes(self._data[offset : offset + size])
         self._file.seek(offset)
         data = self._file.read(size)
         if len(data) != size:
@@ -657,6 +681,30 @@ class SoundFont(object):
                 raise SoundFontError("truncated at %d" % (offset + got))
             got += n
         reader[1] = offset + size
+
+    @property
+    def in_memory(self):
+        """Whether the samples are in memory: a bank made from bytes, or
+        one opened with `load_samples=True`. `sample_view()` needs it."""
+        return self._smpl is not None
+
+    def sample_view(self, sample, start=None, end=None):
+        """Frames `[start, end)` of a sample (the whole sample when no
+        bounds are given) as a view of the bank's own bytes: no copy, two
+        bytes a frame, little-endian. For a bank in flash the view reads
+        from flash. Raises `SoundFontError` for a bank whose samples are on
+        file (see `in_memory`)."""
+        if self._smpl is None:
+            raise SoundFontError(
+                "the samples are on file: open the bank from bytes, or load_samples"
+            )
+        if start is None:
+            start = sample.start
+        if end is None:
+            end = sample.end
+        if start < 0 or end > self._smpl_frames or end < start:
+            raise SoundFontError("sample %r out of the smpl chunk" % sample.name)
+        return self._smpl[start * 2 : end * 2]
 
     def _reader(self, offset):
         """The sample handle to read from `offset` with: the one closest

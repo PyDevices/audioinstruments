@@ -15,8 +15,8 @@ melodic bank for the next program change, falling back to bank 0 when the
 bank has no such preset, as a GM player does. The kit, bank 128, is the
 `soundfont_drums` instrument.
 
-The bank is found in this order: the `bank` option to `create()` (a path, or
-an open `SoundFont`), the `SOUNDFONT` environment variable, then the
+The bank is found in this order: the `bank` option to `create()` (a path, the
+bank's bytes, or an open `SoundFont`), the `SOUNDFONT` environment variable, then the
 first `.sf2` in `~/soundfonts/` (`%USERPROFILE%\\soundfonts` on Windows). The
 hydra is read at `create()`; samples are read from the file the first time a
 note needs them and kept, so a 148 MB bank costs only the presets you play.
@@ -36,6 +36,14 @@ note's fade for `TAIL_MS`. A note whose sample can't fit beside the ones
 sounding reads it outside the arena, just for that note. Where audiosampler
 has `SampleBuffer`, the arena's buffers sit outside the collected heap, so
 a `gc.collect()` doesn't read megabytes of samples looking for pointers.
+
+A bank in memory. `bank=` also takes the bank's bytes, or any buffer that
+holds them, such as a module's `bytes` constant frozen into the firmware.
+Its voices then play views of those bytes, with no arena and no reads: a
+frozen bank's samples stay in flash and cost no RAM. `_Bank.in_place` says
+which way a bank plays. A buffer at an odd address (a view cut one byte in)
+can't be played in place, since the engine reads whole 16-bit frames, and
+goes through the arena like a file.
 
 A slow card. On a board a note-on reads its sample for at most
 `NOTE_READ_MS` (20) and starts the note from what it has; the rest is read
@@ -121,6 +129,11 @@ try:
     from audiopump import unpark as _unpark
 except ImportError:  # no pump: every write goes straight to the engine
     _park = _unpark = None
+
+try:
+    from uctypes import addressof as _addressof
+except ImportError:  # CPython
+    _addressof = None
 
 try:
     from audiosampler import SampleBuffer as _SampleBuffer
@@ -258,6 +271,17 @@ _CC_EXPRESSION = 11
 _CC_SUSTAIN = 64
 
 
+def _plays_in_place(font):
+    """Whether a bank's voices can play views of its own bytes: its samples
+    are in memory, at an even address where the port can say (the engine
+    reads 16-bit frames)."""
+    if not getattr(font, "in_memory", False):
+        return False
+    if _addressof is None:  # CPython: a view is read wherever it is
+        return True
+    return not _addressof(font._smpl) & 1
+
+
 def _bipolar(value0):
     """A bipolar macro's -1..1 from the 0..1 the event carries, with a
     centre detent: MIDI 64 is exactly 0 and 0 and 127 are the ends."""
@@ -321,11 +345,14 @@ class _Bank(object):
     the heap had no room for either, whose notes went without that sample
     rather than stop the music. `arena_bytes` is the
     arena's size once it is taken: less than `cache_bytes` for a bank whose
-    samples are smaller, or a heap that couldn't give it all.
+    samples are smaller, or a heap that couldn't give it all. `in_place` is
+    True for a bank whose voices play views of the bank's own bytes, which
+    then has no arena at all.
     """
 
     def __init__(self, font, cache_bytes=None):
         self.font = font
+        self.in_place = _plays_in_place(font)
         self.samples = {}  # shdr index -> [offset, frames, index] in the arena
         self.presets = {}  # (bank, program) -> name
         for bank, program, name in font.presets():
@@ -382,6 +409,9 @@ class _Bank(object):
         heap may have no 1 MB block left but several of 300 KB."""
         self.evicted += len(self._order)
         self._retire()
+        if self.in_place:
+            self._slabs = []
+            return
         self._slabs = []
         self._frames = []
         self._bytes = []
@@ -560,6 +590,11 @@ class _Bank(object):
     def _sample(self, sample):
         """The whole sample, from the arena or the file, and the items of
         it per frame."""
+        if self.in_place:
+            view = self.font.sample_view(sample)
+            if hasattr(view, "cast"):
+                return view.cast("h"), 1
+            return view, 2
         index = sample.index
         entry = self.samples.get(index)
         if entry is None:
@@ -805,15 +840,24 @@ _OPEN = {}
 
 
 def open_bank(bank=None, cache_bytes=None):
-    """The shared `_Bank` for `bank` (a path, a `SoundFont`, or None to
-    search). Banks opened by path are kept, so two instruments on one file
-    read each sample once. `cache_bytes` bounds the samples it keeps
-    (`CACHE_BYTES` when None); given for a bank already open, it changes
-    that bank's bound."""
+    """The shared `_Bank` for `bank` (a path, the bank's bytes, a
+    `SoundFont`, or None to search). Banks opened by path or from bytes are
+    kept, so two instruments on one file read each sample once, and two on
+    one `bytes` object parse it once. `cache_bytes` bounds the samples it
+    keeps (`CACHE_BYTES` when None); given for a bank already open, it
+    changes that bank's bound. A bank played in place keeps none, whatever
+    the bound."""
     if isinstance(bank, _Bank):
         loaded = bank
     elif hasattr(bank, "regions"):
         loaded = _Bank(bank)
+    elif isinstance(bank, (bytes, bytearray, memoryview)):
+        # Keyed by the object: the bank's view keeps it alive, so its id
+        # is never another object's while the bank is kept.
+        loaded = _OPEN.get(id(bank))
+        if loaded is None:
+            loaded = _Bank(_SoundFont(bank, index=INDEX_AT_OPEN))
+            _OPEN[id(bank)] = loaded
     else:
         path = find_bank(bank)
         loaded = _OPEN.get(path)
@@ -1653,10 +1697,10 @@ def voices_for(sample_rate, channel_count, voice_pool=None, voices=None):
 
 
 def create(sample_rate, channel_count=2, transport=None, bank=None, voice_pool=None, voices=None):
-    """The bank's melodic presets as one instrument; `bank` is a path, an
-    open `SoundFont`, or None to look in the usual places. `voice_pool` is
-    a `Voices` to share with other instruments, or None for its own of
-    `voices` voices (`MAX_VOICES` when None)."""
+    """The bank's melodic presets as one instrument; `bank` is a path, the
+    bank's bytes (played in place), an open `SoundFont`, or None to look in
+    the usual places. `voice_pool` is a `Voices` to share with other
+    instruments, or None for its own of `voices` voices (`MAX_VOICES` when None)."""
     loaded = open_bank(bank)
     melodic = loaded.melodic_bank()
     programs = loaded.programs(melodic)

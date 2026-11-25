@@ -298,5 +298,82 @@ class SoundFontTest(unittest.TestCase):
         self.assertAlmostEqual(sf2.cents_to_hz(13500), 8.176 * 2**11.25)
 
 
+class SoundFontFromBytesTest(unittest.TestCase):
+    """A bank made from the file's bytes reads as the file does, and hands
+    out its samples as views of those bytes."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = sf2_builder.tiny_bank().build()
+        cls.tmp = tempfile.mkdtemp(prefix="sf2bytes")
+        cls.path = os.path.join(cls.tmp, "tiny.sf2")
+        with open(cls.path, "wb") as f:
+            f.write(cls.data)
+
+    @classmethod
+    def tearDownClass(cls):
+        os.remove(cls.path)
+        os.rmdir(cls.tmp)
+
+    def test_it_reads_as_the_file_does(self):
+        on_file = sf2.SoundFont(self.path)
+        in_memory = sf2.SoundFont(self.data)
+        try:
+            self.assertIsNone(in_memory.path)
+            self.assertTrue(sf2_smoke.check(in_memory))
+            self.assertEqual(in_memory.presets(), on_file.presets())
+            self.assertEqual(in_memory.info, on_file.info)
+            for key in (40, 60, 80):
+                a = on_file.regions(0, 0, key)[0]
+                b = in_memory.regions(0, 0, key)[0]
+                self.assertEqual(
+                    (a.start, a.end, a.loop_start, a.root_key),
+                    (b.start, b.end, b.loop_start, b.root_key),
+                )
+                self.assertEqual(on_file.read_sample(a.sample), in_memory.read_sample(b.sample))
+                buf = bytearray((a.end - a.start) * 2)
+                in_memory.read_sample_into(b.sample, buf, b.start, b.end)
+                self.assertEqual(
+                    array.array("h", bytes(buf)), on_file.read_sample(a.sample, a.start, a.end)
+                )
+        finally:
+            on_file.close()
+            in_memory.close()
+
+    def test_a_sample_view_is_the_banks_own_bytes(self):
+        bank = sf2.SoundFont(self.data)
+        self.assertTrue(bank.in_memory)
+        sample = bank.samples[1]
+        view = bank.sample_view(sample)
+        self.assertIs(view.obj, self.data)  # a view, not a copy
+        self.assertEqual(array.array("h", bytes(view)), bank.read_sample(sample))
+        self.assertEqual(
+            bytes(bank.sample_view(sample, sample.start + 2, sample.start + 5)), bytes(view[4:10])
+        )
+        with self.assertRaises(sf2.SoundFontError):
+            bank.sample_view(sample, sample.start, bank._smpl_frames + 1)
+
+    def test_any_buffer_will_do(self):
+        for data in (bytearray(self.data), memoryview(self.data)):
+            bank = sf2.SoundFont(data)
+            self.assertEqual(
+                bank.read_sample(bank.samples[0]),
+                sf2.SoundFont(self.data).read_sample(bank.samples[0]),
+            )
+
+    def test_a_bank_on_file_has_no_view(self):
+        bank = sf2.SoundFont(self.path)
+        try:
+            self.assertFalse(bank.in_memory)
+            with self.assertRaises(sf2.SoundFontError):
+                bank.sample_view(bank.samples[0])
+        finally:
+            bank.close()
+
+    def test_truncated_bytes_are_refused(self):
+        with self.assertRaises(sf2.SoundFontError):
+            sf2.SoundFont(self.data[: len(self.data) // 2])
+
+
 if __name__ == "__main__":
     unittest.main()

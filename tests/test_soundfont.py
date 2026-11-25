@@ -1364,5 +1364,64 @@ class SlowReadTest(unittest.TestCase):
         self.assertFalse(piano.fill())
 
 
+class InPlaceBankTest(unittest.TestCase):
+    """A bank given as bytes plays views of those bytes: no arena, no reads,
+    and the instruments on one bytes object share one bank."""
+
+    def setUp(self):
+        self.data = sf2_builder.tiny_bank().build()
+        self.made = []
+
+    def tearDown(self):
+        for inst in self.made:
+            inst.deinit()
+        soundfont._OPEN.pop(id(self.data), None)
+
+    def make(self, voice, bank):
+        inst = adapter.create(SR, voice=voice, bank=bank)
+        self.made.append(inst)
+        return inst
+
+    def test_notes_play_from_the_banks_own_bytes(self):
+        piano = self.make("soundfont", self.data)
+        kit = self.make("soundfont_drums", self.data)
+        bank = soundfont.open_bank(self.data)
+        self.assertTrue(bank.in_place)
+        piano.note_on(60, 100)
+        kit.note_on(38, 100)
+        self.assertGreater(sf2_play.peak(sf2_play.render(piano, 0.05)), 0.0005)
+        self.assertGreater(sf2_play.peak(sf2_play.render(kit, 0.02)), 0.0005)
+        region = bank.font.regions(0, 0, 60)[0]
+        pcm = bank.buffer(region)[0]
+        self.assertIs(pcm.obj, self.data)  # a view of the bank, not a copy
+        self.assertEqual(
+            list(pcm), list(bank.font.read_sample(region.sample, region.start, region.end))
+        )
+        self.assertEqual((bank.arena_bytes, bank.cached, bank.reads), (0, 0, 0))
+        self.assertFalse(bank.fill())
+
+    def test_one_bytes_object_is_one_bank(self):
+        self.assertIs(soundfont.open_bank(self.data), soundfont.open_bank(self.data))
+
+    def test_a_bound_takes_no_arena(self):
+        bank = soundfont.open_bank(self.data, cache_bytes=10**6)
+        self.assertEqual((bank.arena_bytes, bank.arena_asked), (0, 0))
+
+    def test_an_odd_address_goes_through_the_arena(self):
+        # The engine reads whole 16-bit frames, so samples at an odd address
+        # are read into the arena as a file's are.
+        saved = soundfont._addressof
+        soundfont._addressof = lambda buf: 1
+        try:
+            bank = soundfont.open_bank(self.data, cache_bytes=10**6)
+        finally:
+            soundfont._addressof = saved
+        self.assertFalse(bank.in_place)
+        piano = self.make("soundfont", bank)
+        piano.note_on(60, 100)
+        self.assertGreater(sf2_play.peak(sf2_play.render(piano, 0.05)), 0.0005)
+        self.assertEqual(bank.reads, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
