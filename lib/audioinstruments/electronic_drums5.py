@@ -7,7 +7,7 @@
 NAME = "electronic_drums5"
 DISPLAY_NAME = "ElectronicDrums5"
 CATEGORIES = ("Drum",)
-VERSION = "0.5.3.dev5"
+VERSION = "0.5.3.dev6"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

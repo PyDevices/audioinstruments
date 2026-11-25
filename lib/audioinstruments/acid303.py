@@ -7,7 +7,7 @@
 NAME = "acid303"
 DISPLAY_NAME = "Acid303"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.3.dev5"
+VERSION = "0.5.3.dev6"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (

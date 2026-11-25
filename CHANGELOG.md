@@ -2,6 +2,23 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.3.dev6 (2026-11-25)
+
+- SoundFont: a bank frozen into the firmware plays in place from flash (#151)
+- SoundFont: the sample arena takes smaller buffers when the heap has no big block (#150)
+- Roadmap: a SoundFont frozen into the firmware, played in place from flash
+- SoundFont: a new note doesn't wait for a slow card, and reads go to sounding notes first (#147)
+- Roadmap: notes queued ahead and played on their audio frame
+- rhythm909: the hats, crash and ride ring from one metal bank (#146)
+- Drum kits: a voice's click, noise and bell stop running once they end (#145)
+- create(): a kit whose graph doesn't fit is built once, on the ring (#143)
+- Rhythm909: crash and ride tails fade out whole instead of breaking up (#142)
+- SoundFont: on a board a slow card no longer holds a note-on for seconds
+- Rhythm909: the hats reduce before their envelope, so tails stay whole
+- vocoder330: drop a note about a filter bug that is fixed
+- pump_swap: the overflow check reads the low half of the status word
+- Drum kits: a kit builds with about 60% fewer heap blocks
+
 ## v0.5.3.dev5 (2026-11-23)
 
 - Instruments: parked kits cost nothing on the pump, and pads park with no note-off (#135)
