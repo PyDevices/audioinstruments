@@ -212,6 +212,49 @@ class SoundFontTest(unittest.TestCase):
         with self.assertRaises(sf2.SoundFontError):
             self.bank.read_sample_into(r.sample, bytearray(400), 0, 10**9)
 
+    def _seeks_back(self, handles):
+        """Backward seeks reading two samples a piece at a time, in turn,
+        with `handles` read handles."""
+        back = []
+
+        class Watched:
+            def __init__(self, f):
+                self.f = f
+
+            def seek(self, offset, whence=0):
+                if offset < self.f.tell():
+                    back.append(offset)
+                return self.f.seek(offset, whence)
+
+            def __getattr__(self, name):
+                return getattr(self.f, name)
+
+        saved = sf2.READ_HANDLES
+        sf2.READ_HANDLES = handles
+        sf2.open = lambda path, mode="rb": Watched(open(path, mode))  # noqa: SIM115 - closed by the bank
+        try:
+            with sf2.SoundFont(self.path) as bank:
+                low = self.one(0, 0, 60).sample
+                high = self.one(0, 0, 80).sample
+                got = {low.name: [], high.name: []}
+                buf = array.array("h", [0] * 10)
+                for at in range(0, 100, 10):
+                    for sample in (low, high):
+                        bank.read_sample_into(
+                            sample, buf, sample.start + at, sample.start + at + 10
+                        )
+                        got[sample.name] += list(buf)
+                self.assertEqual(got[low.name], list(self.bank.read_sample(low))[:100])
+                self.assertEqual(got[high.name], list(self.bank.read_sample(high))[:100])
+        finally:
+            del sf2.open
+            sf2.READ_HANDLES = saved
+        return back
+
+    def test_two_samples_read_in_turn_only_seek_forward(self):
+        self.assertEqual(self._seeks_back(sf2.READ_HANDLES), [])
+        self.assertNotEqual(self._seeks_back(1), [])  # one handle goes back each time
+
     def test_lazy_index_matches_eager(self):
         with sf2.SoundFont(self.path, index=False) as lazy:
             self.assertEqual(lazy._index, {})

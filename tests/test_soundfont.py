@@ -1167,13 +1167,130 @@ class SlowReadTest(unittest.TestCase):
         bank, piano = self.piano(slow=True)
         piano.note_on(60, 100)
         self.assertEqual(bank.partial_reads, 1)
-        entry, sample, done = bank._partial[0]
+        entry, sample, done = bank._partial[0][:3]
         self.assertEqual(done, 64)
         calls = 1
         while piano.fill(0):  # one piece a call
             calls += 1
         self.assertEqual(calls, 5)  # the other 136 frames: four pieces of 32 and one of 8
         self.assertEqual(sf2_play.render(piano, 0.05), want)
+
+    def _done(self, bank, name):
+        for item in bank._partial:
+            if item[1].name == name:
+                return item[2]
+        return None
+
+    def test_fill_reads_a_sounding_note_before_one_that_has_ended(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)  # low_c4, read first
+        piano.note_on(72, 100)  # high_c5
+        low = self._done(bank, "low_c4")
+        high = self._done(bank, "high_c5")
+        for voice, index in list(bank._held.items()):
+            if bank.font.samples[index].name == "low_c4":
+                voice.stop()
+        piano.fill(0)
+        self.assertEqual(self._done(bank, "low_c4"), low)
+        self.assertGreater(self._done(bank, "high_c5"), high)
+        while piano.fill(0):  # an ended note's sample is still read in the end
+            pass
+        self.assertEqual(bank._partial, [])
+
+    def test_a_sample_with_no_room_is_read_in_pieces_and_plays_as_if_read_whole(self):
+        _, whole = self.piano(slow=False)
+        whole.note_on(60, 100)
+        want = sf2_play.render(whole, 0.05)
+        bank, piano = self.piano(slow=True)
+        bank.cache_bytes = 100  # no room for low_c4's 200 frames
+        piano.note_on(60, 100)
+        self.assertEqual((bank.outside, bank.partial_reads), (1, 1))
+        self.assertIsNone(bank._partial[0][0][0])
+        while piano.fill(0):
+            pass
+        self.assertEqual(sf2_play.render(piano, 0.05), want)
+
+    def test_an_ended_notes_own_buffer_is_not_read_on(self):
+        bank, piano = self.piano(slow=True)
+        bank.cache_bytes = 100
+        piano.note_on(60, 100)
+        for voice in list(bank._held):
+            voice.stop()
+        self.assertFalse(piano.fill(0))
+        self.assertEqual(bank._partial, [])
+
+    def test_an_event_leaves_the_reading_to_a_host_that_fills(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        piano.fill(0)
+        done = bank._partial[0][2]
+        piano.control_change(7, 100)
+        self.assertEqual(bank._partial[0][2], done)
+
+    def test_a_piece_that_had_to_seek_does_not_shrink_the_next(self):
+        bank, piano = self.piano(slow=True)
+        soundfont.READ_PIECE_BYTES = 4096
+        clock = [0]
+
+        def slow():  # every reading of the clock is 50 ms later
+            clock[0] += 50
+            return clock[0]
+
+        saved = soundfont.ticks_ms
+        soundfont.ticks_ms = slow
+        try:
+            sample = bank.font.samples[0]
+            dest = bytearray(sample.end - sample.start) * 2
+            reader = bank.font.read_sample_into
+            bank._piece = 256
+            bank.font.sought = True
+            reader_sought = bank.font.read_sample_into
+
+            def seeking(*args):
+                reader_sought(*args)
+                bank.font.sought = True
+
+            bank._read_piece(seeking, sample, memoryview(dest), 0, 100)
+            self.assertEqual(bank._piece, 256)
+
+            def straight(*args):
+                reader(*args)
+                bank.font.sought = False
+
+            bank._read_piece(straight, sample, memoryview(dest), 0, 100)
+            self.assertLess(bank._piece, 256)
+        finally:
+            soundfont.ticks_ms = saved
+
+    def test_while_the_host_fills_a_note_on_leaves_its_read_to_fill(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        piano.fill(0)
+        piano.note_on(72, 100)
+        self.assertEqual(self._done(bank, "high_c5"), 0)
+        low = self._done(bank, "low_c4")
+        piano.fill(0)  # the note that has just started is read first
+        self.assertGreater(self._done(bank, "high_c5"), 0)
+        self.assertEqual(self._done(bank, "low_c4"), low)
+
+    def test_a_note_on_slow_to_find_its_sample_still_leaves_the_read_to_fill(self):
+        bank, piano = self.piano(slow=True)
+        piano.note_on(60, 100)
+        piano.fill(0)
+        clock = [soundfont.ticks_ms()]
+
+        def slow():  # finding regions and room takes longer than the window
+            clock[0] += soundfont.HOST_FILL_MS // 2
+            return clock[0]
+
+        saved = soundfont.ticks_ms
+        soundfont.ticks_ms = slow
+        try:
+            bank._host_fill = clock[0]
+            piano.note_on(72, 100)
+        finally:
+            soundfont.ticks_ms = saved
+        self.assertEqual(self._done(bank, "high_c5"), 0)
 
     def test_unread_frames_are_silent_not_stale(self):
         bank, piano = self.piano(slow=True)
