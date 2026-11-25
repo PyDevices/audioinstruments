@@ -16,6 +16,9 @@ on a virtual rack, rendered a block at a time on audiodsp.
   and written up in `docs/how-it-works/performance.md`.
 - `examples/hmi_board.py` on the audio pump, as `examples/hmi_instrument.py
   --pump` already plays, so a busy screen doesn't eat the audio's time.
+- A SoundFont frozen into the firmware: the SoundFont instruments play a bank
+  held as `bytes` in flash, reading samples in place, so a small drum bank
+  needs no SD card and no RAM. A tool turns an `.sf2` into the module to freeze.
 
 ## Sound
 
