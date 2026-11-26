@@ -7,7 +7,7 @@
 NAME = "duo20"
 DISPLAY_NAME = "Duo20"
 CATEGORIES = ("Synth",)
-VERSION = "0.5.3rc1"
+VERSION = "0.5.3"
 VENDOR = "PyDevices"
 
 MACRO_LABELS = (
