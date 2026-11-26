@@ -2,6 +2,10 @@
 
 All notable changes to `audioinstruments` are recorded here.
 
+## v0.5.3 (2026-11-26)
+
+- CI: test against audiodsp 0.6.17 (#155)
+
 ## v0.5.3rc1 (2026-11-25)
 
 - CI: test against audiodsp 0.6.17rc1 (#153)
